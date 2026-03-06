@@ -11,7 +11,7 @@
       "label": "CAI-77-boost-spreadsheet",
       "model": "unknown",
       "totalTokens": 0,
-      "runtimeMs": 4285920,
+      "runtimeMs": 5559250,
       "agentId": "claude",
       "task": "CAI-77-boost-spreadsheet",
       "status": "done"
@@ -22,7 +22,7 @@
       "label": "CAI-88-metabase-replacement",
       "model": "unknown",
       "totalTokens": 0,
-      "runtimeMs": 4294462,
+      "runtimeMs": 5567792,
       "agentId": "claude",
       "task": "CAI-88-metabase-replacement",
       "status": "done"
@@ -33,7 +33,7 @@
       "label": "CAI-93-sheets-export",
       "model": "unknown",
       "totalTokens": 0,
-      "runtimeMs": 4308677,
+      "runtimeMs": 5582007,
       "agentId": "claude",
       "task": "CAI-93-sheets-export",
       "status": "done"
@@ -44,7 +44,7 @@
       "label": "CAI-108-llm-judge",
       "model": "unknown",
       "totalTokens": 0,
-      "runtimeMs": 6042052,
+      "runtimeMs": 7315382,
       "agentId": "claude",
       "task": "CAI-108-llm-judge",
       "status": "done"
@@ -55,7 +55,7 @@
       "label": "CAI-109-memory-tuning",
       "model": "unknown",
       "totalTokens": 0,
-      "runtimeMs": 6231918,
+      "runtimeMs": 7505248,
       "agentId": "claude",
       "task": "CAI-109-memory-tuning",
       "status": "done"
@@ -66,7 +66,7 @@
       "label": "CAI-110-time-constraints",
       "model": "unknown",
       "totalTokens": 0,
-      "runtimeMs": 6279451,
+      "runtimeMs": 7552781,
       "agentId": "claude",
       "task": "CAI-110-time-constraints",
       "status": "done"
@@ -77,7 +77,7 @@
       "label": "pipeline-cai-106-r1",
       "model": "unknown",
       "totalTokens": 0,
-      "runtimeMs": 16570550,
+      "runtimeMs": 17843880,
       "agentId": "claude",
       "task": "pipeline-cai-106-r1",
       "status": "done"
@@ -88,7 +88,7 @@
       "label": "pipeline-cai-110",
       "model": "unknown",
       "totalTokens": 0,
-      "runtimeMs": 16826895,
+      "runtimeMs": 18100225,
       "agentId": "claude",
       "task": "pipeline-cai-110",
       "status": "done"
@@ -99,7 +99,7 @@
       "label": "pipeline-cai-109",
       "model": "unknown",
       "totalTokens": 0,
-      "runtimeMs": 16833426,
+      "runtimeMs": 18106756,
       "agentId": "claude",
       "task": "pipeline-cai-109",
       "status": "done"
@@ -110,7 +110,7 @@
       "label": "pipeline-cai-108",
       "model": "unknown",
       "totalTokens": 0,
-      "runtimeMs": 16839261,
+      "runtimeMs": 18112591,
       "agentId": "claude",
       "task": "pipeline-cai-108",
       "status": "done"
@@ -121,7 +121,7 @@
       "label": "pipeline-cai-107",
       "model": "unknown",
       "totalTokens": 0,
-      "runtimeMs": 16844109,
+      "runtimeMs": 18117439,
       "agentId": "claude",
       "task": "pipeline-cai-107",
       "status": "done"
@@ -132,7 +132,7 @@
       "label": "pipeline-cai-106",
       "model": "unknown",
       "totalTokens": 0,
-      "runtimeMs": 16847899,
+      "runtimeMs": 18121229,
       "agentId": "claude",
       "task": "pipeline-cai-106",
       "status": "done"
@@ -143,7 +143,7 @@
       "label": "CAI-84-billy-weekly-reports",
       "model": "claude-sonnet-4-5",
       "totalTokens": 44281,
-      "runtimeMs": 18474440,
+      "runtimeMs": 19747770,
       "agentId": "main",
       "task": "CAI-84-billy-weekly-reports",
       "status": "done"
@@ -154,7 +154,7 @@
       "label": "CAI-78-billy-screen-time",
       "model": "claude-sonnet-4-5",
       "totalTokens": 37079,
-      "runtimeMs": 18589823,
+      "runtimeMs": 19863153,
       "agentId": "main",
       "task": "CAI-78-billy-screen-time",
       "status": "done"
@@ -165,7 +165,7 @@
       "label": "CAI-80-billy-okr-tracker",
       "model": "claude-sonnet-4-5",
       "totalTokens": 42604,
-      "runtimeMs": 18682937,
+      "runtimeMs": 19956267,
       "agentId": "main",
       "task": "CAI-80-billy-okr-tracker",
       "status": "done"
@@ -176,7 +176,7 @@
       "label": "CAI-81-billy-hubspot",
       "model": "claude-sonnet-4-5",
       "totalTokens": 37714,
-      "runtimeMs": 18774017,
+      "runtimeMs": 20047347,
       "agentId": "main",
       "task": "CAI-81-billy-hubspot",
       "status": "done"
@@ -187,7 +187,7 @@
       "label": "CAI-83-billy-guardian-monitor",
       "model": "claude-sonnet-4-5",
       "totalTokens": 34545,
-      "runtimeMs": 18826376,
+      "runtimeMs": 20099706,
       "agentId": "main",
       "task": "CAI-83-billy-guardian-monitor",
       "status": "done"
