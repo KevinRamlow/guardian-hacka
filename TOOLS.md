@@ -63,4 +63,5 @@
 - URL: https://us.cloud.langfuse.com | Project: cmhdj3t2z088oad08j6wngqhc
 - Public: [REDACTED]
 - Secret: [REDACTED]
+- Note: Anton's own project (NOT Guardian's)
 - Usage: Guardian agent trace analysis (256K+ traces)

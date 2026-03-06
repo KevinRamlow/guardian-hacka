@@ -88,6 +88,8 @@ for c in completions:
     tokens = c['tokens']
     runtime = c['runtime_min']
     print(f"✅ Completed: {label} ({runtime}min, {tokens} tokens)")
+    os.system(f'/root/.openclaw/workspace/scripts/agent-logger.sh "{label}" complete "Done in {runtime}min, {tokens} tokens"')
+    os.system(f'/root/.openclaw/workspace/scripts/capture-agent-transcript.sh "{label}"')
     
     # Clean spawn queue
     if os.path.exists(SPAWN_DIR):
@@ -98,6 +100,7 @@ for c in completions:
 # Report timeouts
 for t in timeouts:
     print(f"⏱️ Timeout: {t['label']} ({t['age_min']}min)")
+    os.system(f'/root/.openclaw/workspace/scripts/agent-logger.sh "{t["label"]}" timeout "Timed out after {t["age_min"]}min"')
 
 if not completions and not timeouts:
     print(f"[{time.strftime('%H:%M', time.gmtime())}] No changes detected")
