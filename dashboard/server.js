@@ -295,50 +295,72 @@ async function fetchLangfuseMetrics() {
 async function collectData() {
   checkMidnightReset();
 
-  // 1. Get session data from openclaw CLI (the correct command)
-  const raw = safeExecSync('openclaw sessions --active 120 --json --all-agents 2>/dev/null');
+  // 1. Read ALL agent session stores directly
+  const agentsDir = '/root/.openclaw/agents';
   let sessions = [];
-  try {
-    const parsed = raw ? JSON.parse(raw) : {};
-    sessions = (parsed.sessions || []);
-  } catch { sessions = []; }
-
-  // Classify sessions: active subagents vs recent completed vs cron/main
   const now = Date.now();
+  
+  try {
+    const agents = fs.readdirSync(agentsDir).filter(d => {
+      try { return fs.statSync(`${agentsDir}/${d}/sessions/sessions.json`).isFile(); } catch { return false; }
+    });
+    
+    for (const agentId of agents) {
+      try {
+        const store = JSON.parse(fs.readFileSync(`${agentsDir}/${agentId}/sessions/sessions.json`, 'utf-8'));
+        for (const [key, s] of Object.entries(store)) {
+          sessions.push({ ...s, key, agentId, label: s.label || key });
+        }
+      } catch {}
+    }
+  } catch {}
+
+  // Classify sessions
   const active = [];
   const recent = [];
+  const ACTIVE_THRESHOLD = 600000; // 10 min
 
   for (const s of sessions) {
-    // Skip main session and cron sessions
-    if (s.key === 'agent:main:main' || s.kind === 'direct') continue;
+    // Skip non-work sessions
+    const key = s.key || '';
+    const label = s.label || '';
+    if (key === 'agent:main:main') continue;
+    if (key.includes('cron:')) continue;
+    if (key.includes('slack:channel')) continue;
+    if (key === 'agent:billy:main') continue;
+    // Keep: anything with a meaningful label, subagent/acp keys, or pipeline/CAI tasks
+    const isWork = label.match(/CAI-|pipeline|gua-|guardian|billy|experiment/i) || 
+                   key.includes('subagent:') || key.includes('acp:') ||
+                   s.agentId === 'claude' || s.agentId === 'claude-code' || s.agentId === 'code';
+    if (!isWork) continue;
     
-    const runtimeMs = s.ageMs ? (now - (s.updatedAt - s.ageMs)) : 0;
-    const isSubagent = s.kind === 'subagent' || s.kind === 'acp' || s.key.includes('spawn');
-    const isCron = s.key.includes('cron');
-    
-    if (isCron && !isSubagent) continue; // Skip pure cron sessions
+    const updatedAt = s.updatedAt || 0;
+    const ageMs = now - updatedAt;
     
     const agent = {
-      sessionKey: s.key,
-      sessionId: s.sessionId,
-      label: s.label || s.key.split(':').pop() || 'unnamed',
-      model: s.model || 'unknown',
-      status: s.abortedLastRun ? 'error' : (s.ageMs < 60000 ? 'running' : 'done'),
+      sessionKey: key,
+      sessionId: s.sessionId || '',
+      label: s.label || key.split(':').pop() || 'unnamed',
+      model: s.model || s.modelOverride || 'unknown',
       totalTokens: s.totalTokens || 0,
-      runtimeMs: s.ageMs || 0,
-      kind: s.kind,
+      runtimeMs: ageMs,
+      agentId: s.agentId || 'unknown',
       task: s.label || '',
     };
 
-    // Sessions updated in last 5 min are likely still active
-    if (s.ageMs < 300000 && !s.abortedLastRun) {
+    if (ageMs < ACTIVE_THRESHOLD && !s.abortedLastRun) {
       agent.status = 'running';
       active.push(agent);
     } else {
       agent.status = s.abortedLastRun ? 'error' : 'done';
-      recent.push(agent);
+      // Only show recent (last 24h)
+      if (ageMs < 86400000) recent.push(agent);
     }
   }
+  
+  // Sort recent by most recent first
+  recent.sort((a, b) => a.runtimeMs - b.runtimeMs);
+  console.log(`[collectData] sessions: ${sessions.length}, active: ${active.length}, recent: ${recent.length}`);
 
   // 2. Merge with persisted recent agents
   const seenKeys = new Set();
@@ -351,13 +373,12 @@ async function collectData() {
   }
   const finalRecent = mergedRecent.slice(0, 20);
 
-  // 3. Get Linear updates for all task IDs
+  // 3. Linear updates DISABLED (causing crashes)
   const allAgents = [...active, ...finalRecent];
-  const taskIds = [...new Set(allAgents.map(a => extractTaskId(a.label)).filter(Boolean))];
-  const linearData = await fetchLinearUpdates(taskIds);
+  const linearData = {};
 
-  // 4. Enrich active agents
-  const enrichedActive = active.map(a => {
+  // 4. Enrich active agents (safe)
+  const enrichedActive = active.map(a => { try {
     const health = getHealthStatus(a);
     const taskId = extractTaskId(a.label);
     const linear = taskId ? linearData[taskId] : null;
@@ -370,16 +391,16 @@ async function collectData() {
     const cost = estimateTokenCost(a.totalTokens || 0, a.model);
 
     return { ...a, health, taskId, linear, runtimeMin: runtimeMin.toFixed(1), timeoutMin, etaMin: etaMin.toFixed(1), progress: progress.toFixed(0), cost, taskShort: (a.task || '').substring(0, 100) };
-  });
+  } catch(e) { return { ...a, health: { status: 'unknown', color: 'gray' }, runtimeMin: '0', cost: '0' }; } });
 
   // 5. Enrich recent agents
-  const enrichedRecent = finalRecent.map(a => {
+  const enrichedRecent = finalRecent.map(a => { try {
     const taskId = extractTaskId(a.label);
     const linear = taskId ? linearData[taskId] : null;
     const runtimeMin = (a.runtimeMs || 0) / 60000;
     const cost = estimateTokenCost(a.totalTokens || 0, a.model);
     return { ...a, taskId, linear, runtimeMin: runtimeMin.toFixed(1), cost, success: a.status === 'done' };
-  });
+  } catch(e) { return { ...a, runtimeMin: '0', cost: '0' }; } });
 
   // 6. Update persistent stats
   const newCompletions = recent.filter(a => !persistentStats.recentAgents.some(r => r.sessionKey === a.sessionKey));
@@ -398,8 +419,8 @@ async function collectData() {
     .filter(a => a.health.alert)
     .map(a => ({ level: a.health.status === 'frozen' ? 'CRITICAL' : 'WARNING', agent: a.label, taskId: a.taskId, message: a.health.alert, timestamp: new Date().toISOString() }));
 
-  // 8. Fetch Langfuse metrics
-  const langfuseData = await fetchLangfuseMetrics();
+  // 8. Langfuse metrics DISABLED for stability test
+  let langfuseData = langfuseCache.data || null;
 
   dashboardState = {
     active: enrichedActive,
