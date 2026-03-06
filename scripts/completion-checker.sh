@@ -90,9 +90,10 @@ for c in completions:
     print(f"✅ Completed: {label} ({runtime}min, {tokens} tokens)")
     
     # Clean spawn queue
-    for fname in os.listdir(SPAWN_DIR) if os.path.exists(SPAWN_DIR) else []:
-        if any(tid in fname for tid in [label.split('-')[0] + '-' + label.split('-')[1]] if '-' in label else []):
-            os.remove(os.path.join(SPAWN_DIR, fname))
+    if os.path.exists(SPAWN_DIR):
+        for fname in os.listdir(SPAWN_DIR):
+            if label and label.lower().replace(' ','-') in fname.lower():
+                os.remove(os.path.join(SPAWN_DIR, fname))
 
 # Report timeouts
 for t in timeouts:

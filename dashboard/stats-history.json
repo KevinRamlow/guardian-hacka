@@ -1,17 +1,50 @@
 {
   "date": "2026-03-06",
-  "completedToday": 18,
+  "completedToday": 48,
   "failedToday": 0,
-  "totalTokensToday": 196223,
-  "estimatedCostToday": 2943.3450000000003,
+  "totalTokensToday": 1128938,
+  "estimatedCostToday": 16934.069999999992,
   "recentAgents": [
+    {
+      "sessionKey": "agent:claude:acp:3b7cd077-9f9a-48fb-8b1b-6144c47c417a",
+      "sessionId": "1f77c2dc-ae69-45d8-96cb-25fddd89e1bc",
+      "label": "auto-queue-pipeline",
+      "model": "unknown",
+      "totalTokens": 0,
+      "runtimeMs": 814501,
+      "agentId": "claude",
+      "task": "auto-queue-pipeline",
+      "status": "done"
+    },
+    {
+      "sessionKey": "agent:claude:acp:2ff1dabe-c32a-4b0d-9df9-a8012bb7e2d1",
+      "sessionId": "9b70f5d1-2ad5-4d82-ac34-648160ed0b29",
+      "label": "CAI-68-max-tokens",
+      "model": "unknown",
+      "totalTokens": 0,
+      "runtimeMs": 834995,
+      "agentId": "claude",
+      "task": "CAI-68-max-tokens",
+      "status": "done"
+    },
+    {
+      "sessionKey": "agent:claude:acp:7b3c0d5b-5117-468c-ab7f-2b83e1924888",
+      "sessionId": "26fb5ac9-9cb9-4e1e-9ee5-ad4fa954a7a5",
+      "label": "CAI-88-metabase-queries",
+      "model": "unknown",
+      "totalTokens": 0,
+      "runtimeMs": 901211,
+      "agentId": "claude",
+      "task": "CAI-88-metabase-queries",
+      "status": "done"
+    },
     {
       "sessionKey": "agent:claude:acp:77ac9af0-51dd-4899-bfc1-285ad027fdc0",
       "sessionId": "102ca14b-114b-475f-82f9-860cfb909bbe",
       "label": "CAI-76-campaign-content",
       "model": "unknown",
       "totalTokens": 0,
-      "runtimeMs": 1549725,
+      "runtimeMs": 3007034,
       "agentId": "claude",
       "task": "CAI-76-campaign-content",
       "status": "done"
@@ -22,7 +55,7 @@
       "label": "CAI-77-boost-spreadsheet",
       "model": "unknown",
       "totalTokens": 0,
-      "runtimeMs": 19352760,
+      "runtimeMs": 20810069,
       "agentId": "claude",
       "task": "CAI-77-boost-spreadsheet",
       "status": "done"
@@ -33,7 +66,7 @@
       "label": "CAI-88-metabase-replacement",
       "model": "unknown",
       "totalTokens": 0,
-      "runtimeMs": 19361302,
+      "runtimeMs": 20818611,
       "agentId": "claude",
       "task": "CAI-88-metabase-replacement",
       "status": "done"
@@ -44,7 +77,7 @@
       "label": "CAI-93-sheets-export",
       "model": "unknown",
       "totalTokens": 0,
-      "runtimeMs": 19375517,
+      "runtimeMs": 20832826,
       "agentId": "claude",
       "task": "CAI-93-sheets-export",
       "status": "done"
@@ -55,7 +88,7 @@
       "label": "CAI-108-llm-judge",
       "model": "unknown",
       "totalTokens": 0,
-      "runtimeMs": 21108892,
+      "runtimeMs": 22566201,
       "agentId": "claude",
       "task": "CAI-108-llm-judge",
       "status": "done"
@@ -66,7 +99,7 @@
       "label": "CAI-109-memory-tuning",
       "model": "unknown",
       "totalTokens": 0,
-      "runtimeMs": 21298758,
+      "runtimeMs": 22756067,
       "agentId": "claude",
       "task": "CAI-109-memory-tuning",
       "status": "done"
@@ -77,7 +110,7 @@
       "label": "CAI-110-time-constraints",
       "model": "unknown",
       "totalTokens": 0,
-      "runtimeMs": 21346291,
+      "runtimeMs": 22803600,
       "agentId": "claude",
       "task": "CAI-110-time-constraints",
       "status": "done"
@@ -88,7 +121,7 @@
       "label": "pipeline-cai-106-r1",
       "model": "unknown",
       "totalTokens": 0,
-      "runtimeMs": 31637390,
+      "runtimeMs": 33094699,
       "agentId": "claude",
       "task": "pipeline-cai-106-r1",
       "status": "done"
@@ -99,7 +132,7 @@
       "label": "pipeline-cai-110",
       "model": "unknown",
       "totalTokens": 0,
-      "runtimeMs": 31893735,
+      "runtimeMs": 33351044,
       "agentId": "claude",
       "task": "pipeline-cai-110",
       "status": "done"
@@ -110,7 +143,7 @@
       "label": "pipeline-cai-109",
       "model": "unknown",
       "totalTokens": 0,
-      "runtimeMs": 31900266,
+      "runtimeMs": 33357575,
       "agentId": "claude",
       "task": "pipeline-cai-109",
       "status": "done"
@@ -121,7 +154,7 @@
       "label": "pipeline-cai-108",
       "model": "unknown",
       "totalTokens": 0,
-      "runtimeMs": 31906101,
+      "runtimeMs": 33363410,
       "agentId": "claude",
       "task": "pipeline-cai-108",
       "status": "done"
@@ -132,7 +165,7 @@
       "label": "pipeline-cai-107",
       "model": "unknown",
       "totalTokens": 0,
-      "runtimeMs": 31910949,
+      "runtimeMs": 33368258,
       "agentId": "claude",
       "task": "pipeline-cai-107",
       "status": "done"
@@ -143,7 +176,7 @@
       "label": "pipeline-cai-106",
       "model": "unknown",
       "totalTokens": 0,
-      "runtimeMs": 31914739,
+      "runtimeMs": 33372048,
       "agentId": "claude",
       "task": "pipeline-cai-106",
       "status": "done"
@@ -154,7 +187,7 @@
       "label": "CAI-84-billy-weekly-reports",
       "model": "claude-sonnet-4-5",
       "totalTokens": 44281,
-      "runtimeMs": 33541280,
+      "runtimeMs": 34998589,
       "agentId": "main",
       "task": "CAI-84-billy-weekly-reports",
       "status": "done"
@@ -165,7 +198,7 @@
       "label": "CAI-78-billy-screen-time",
       "model": "claude-sonnet-4-5",
       "totalTokens": 37079,
-      "runtimeMs": 33656663,
+      "runtimeMs": 35113972,
       "agentId": "main",
       "task": "CAI-78-billy-screen-time",
       "status": "done"
@@ -176,7 +209,7 @@
       "label": "CAI-80-billy-okr-tracker",
       "model": "claude-sonnet-4-5",
       "totalTokens": 42604,
-      "runtimeMs": 33749777,
+      "runtimeMs": 35207086,
       "agentId": "main",
       "task": "CAI-80-billy-okr-tracker",
       "status": "done"
@@ -187,20 +220,9 @@
       "label": "CAI-81-billy-hubspot",
       "model": "claude-sonnet-4-5",
       "totalTokens": 37714,
-      "runtimeMs": 33840857,
+      "runtimeMs": 35298166,
       "agentId": "main",
       "task": "CAI-81-billy-hubspot",
-      "status": "done"
-    },
-    {
-      "sessionKey": "agent:main:subagent:ebfc5941-d8db-4b06-b149-b8d7f6f474ac",
-      "sessionId": "9616cde0-0dcb-48d0-8e03-435299e23bd7",
-      "label": "CAI-83-billy-guardian-monitor",
-      "model": "claude-sonnet-4-5",
-      "totalTokens": 34545,
-      "runtimeMs": 33893216,
-      "agentId": "main",
-      "task": "CAI-83-billy-guardian-monitor",
       "status": "done"
     }
   ]
