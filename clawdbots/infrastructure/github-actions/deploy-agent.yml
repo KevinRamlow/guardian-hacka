@@ -1,0 +1,138 @@
+# .github/workflows/deploy-agent.yml
+# Deploy a ClawdBot agent to GKE
+#
+# Usage: trigger manually or on push to agents/<name>/**
+
+name: Deploy ClawdBot Agent
+
+on:
+  workflow_dispatch:
+    inputs:
+      agent_name:
+        description: "Agent name (e.g., neuron, billy)"
+        required: true
+        type: string
+      environment:
+        description: "Target environment"
+        required: true
+        type: choice
+        options:
+          - dev
+          - prod
+        default: dev
+
+  push:
+    branches: [main]
+    paths:
+      - "agents/**"
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  PROJECT_ID: brandlovers-prod
+  REGION: us-east1
+  REGISTRY: us-east1-docker.pkg.dev/brandlovers-prod/clawdbots
+  GKE_CLUSTER: bl-cluster-prod
+
+jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      agents: ${{ steps.changes.outputs.agents }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: changes
+        # On manual trigger, use the input; on push, detect changed agent dirs
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo 'agents=["${{ inputs.agent_name }}"]' >> $GITHUB_OUTPUT
+          else
+            CHANGED=$(git diff --name-only HEAD~1 HEAD | grep '^agents/' | cut -d/ -f2 | sort -u | jq -R -s -c 'split("\n") | map(select(. != ""))')
+            echo "agents=${CHANGED}" >> $GITHUB_OUTPUT
+          fi
+
+  deploy:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.agents != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        agent: ${{ fromJson(needs.detect-changes.outputs.agents) }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Determine namespace
+        id: ns
+        run: |
+          ENV="${{ inputs.environment || 'dev' }}"
+          if [ "$ENV" = "prod" ]; then
+            echo "namespace=clawdbots-prod" >> $GITHUB_OUTPUT
+          else
+            echo "namespace=clawdbots-dev" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY_PROD }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+
+      - name: Get GKE credentials
+        uses: google-github-actions/get-gke-credentials@v2
+        with:
+          cluster_name: ${{ env.GKE_CLUSTER }}
+          location: ${{ env.REGION }}
+
+      - name: Build and push image
+        run: |
+          IMAGE="${{ env.REGISTRY }}/clawdbot-${{ matrix.agent }}"
+          TAG="${{ github.sha }}"
+          
+          cd agents/${{ matrix.agent }}
+          docker build -t ${IMAGE}:${TAG} -t ${IMAGE}:latest .
+          docker push ${IMAGE}:${TAG}
+          docker push ${IMAGE}:latest
+
+      - name: Apply K8s manifests
+        run: |
+          NAMESPACE="${{ steps.ns.outputs.namespace }}"
+          cd agents/${{ matrix.agent }}/k8s
+          
+          for f in *.yaml; do
+            # Replace namespace in manifests
+            sed -i "s/namespace: clawdbots-.*/namespace: ${NAMESPACE}/" "$f"
+            kubectl apply -f "$f" -n ${NAMESPACE}
+          done
+
+      - name: Update deployment image
+        run: |
+          IMAGE="${{ env.REGISTRY }}/clawdbot-${{ matrix.agent }}"
+          TAG="${{ github.sha }}"
+          NAMESPACE="${{ steps.ns.outputs.namespace }}"
+          
+          kubectl set image deployment/clawdbot-${{ matrix.agent }} \
+            agent=${IMAGE}:${TAG} \
+            -n ${NAMESPACE}
+
+      - name: Wait for rollout
+        run: |
+          NAMESPACE="${{ steps.ns.outputs.namespace }}"
+          kubectl rollout status deployment/clawdbot-${{ matrix.agent }} \
+            -n ${NAMESPACE} --timeout=300s
+
+      - name: Verify deployment
+        run: |
+          NAMESPACE="${{ steps.ns.outputs.namespace }}"
+          echo "📊 Pod status:"
+          kubectl get pods -l app=clawdbot-${{ matrix.agent }} -n ${NAMESPACE}
+          echo ""
+          echo "📋 Recent events:"
+          kubectl get events -n ${NAMESPACE} --sort-by='.lastTimestamp' | tail -10

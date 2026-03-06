@@ -1,0 +1,38 @@
+#!/bin/bash
+# Quick reference for Linear sync system
+
+cat <<'EOF'
+📋 Linear Task Sync — Quick Reference
+
+AUTOMATIC (every 15 min):
+  ✅ Cron job runs: node scripts/linear-sync.js
+  📊 Logs: tail -f logs/linear-sync.log
+
+MANUAL UPDATE:
+  ./scripts/linear-sync-manual.sh <task-id> <session-id> <status> <minutes> <model>
+  
+  Example:
+  ./scripts/linear-sync-manual.sh CAI-35 a4efdc80-3627-4349-a3b0-08dd5503b7fd running 26 anthropic/claude-opus-4-6
+
+STATUS VALUES:
+  running, done, error, blocked
+
+TASK FORMAT (must include):
+  Session: <uuid>
+
+FILES:
+  📄 scripts/linear-sync.js — Automated sync (cron)
+  📄 scripts/linear-sync-manual.sh — Manual sync
+  📄 docs/LINEAR-SYNC.md — Full documentation
+  📄 DEPLOYMENT-SUMMARY.md — What was built
+  📄 .linear-sync-state.json — State tracking
+
+CRON:
+  Check: crontab -l | grep linear-sync
+  View logs: tail -f logs/linear-sync.log
+
+LINEAR:
+  Workspace: caio-tests
+  Team: CAI
+  URL: https://linear.app/caio-tests
+EOF

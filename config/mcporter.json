@@ -1,0 +1,28 @@
+{
+  "mcpServers": {
+    "metabase": {
+      "command": "npx",
+      "args": ["-y", "metabase-ai-assistant"],
+      "env": {
+        "METABASE_URL": "https://metabase.brandlovers.ai",
+        "METABASE_API_KEY": "REDACTED_METABASE_KEY",
+        "MB_METADATA_ENABLED": "true"
+      }
+    },
+    "langfuse": {
+      "command": "uvx",
+      "args": ["--python", "3.11", "langfuse-mcp"],
+      "env": {
+        "LANGFUSE_PUBLIC_KEY": "[REDACTED]",
+        "LANGFUSE_SECRET_KEY": "[REDACTED]",
+        "LANGFUSE_HOST": "https://us.cloud.langfuse.com"
+      }
+    },
+    "nano-banana": {
+      "command": "nano-banana-pro-mcp",
+      "env": {
+        "GEMINI_API_KEY": "REDACTED_GEMINI_KEY"
+      }
+    }
+  }
+}

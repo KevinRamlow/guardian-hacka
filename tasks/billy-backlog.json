@@ -1,0 +1,145 @@
+{
+  "description": "Billy task backlog - auto-spawned when agent slots open",
+  "tasks": [
+    {
+      "id": "CAI-76",
+      "title": "Campaign content download and collection",
+      "priority": "high",
+      "status": "spawned",
+      "task": "Build a Billy skill that lets users request campaign content downloads. Query MySQL (db-maestro-prod) for media URLs from a campaign via proofread_medias → actions → media_content joins. Support filtering by status (approved/rejected/pending). Return download links in user-friendly format. Read existing skills at /root/.openclaw/workspace/clawdbots/skills/ for patterns. Test locally with MySQL (creds in ~/.my.cnf). Deploy: rsync -av /root/.openclaw/workspace/clawdbots/skills/ root@89.167.64.183:/root/.openclaw/workspace/skills/"
+    },
+    {
+      "id": "CAI-82",
+      "title": "Creator performance analytics",
+      "priority": "high",
+      "task": "Build a Billy skill for creator performance analytics. Query MySQL for creator stats (actions completed, approval rate, campaigns participated). Support: top 10 creators this month, creator X performance, highest approval rate. Include total actions, approved/rejected ratio, avg moderation time, campaigns count. Format as bullet-point summaries (no tables). Read existing skills, test locally, deploy via rsync.",
+      "status": "completed"
+    },
+    {
+      "id": "CAI-88",
+      "title": "Metabase query replacement for common questions",
+      "priority": "high",
+      "task": "Build a Billy skill replacing common Metabase queries with direct MySQL/BigQuery. Cover: campaign counts by status, total GMV/revenue, creator signup counts, moderation queue stats, top campaigns by engagement. Pre-built SQL queries with natural language mapping. Read existing skills, test locally, deploy via rsync.",
+      "status": "spawned"
+    },
+    {
+      "id": "CAI-93",
+      "title": "Google Sheets export for any data query",
+      "priority": "high",
+      "task": "Build a Billy skill that exports query results to Google Sheets. Take SQL results → create Sheet → auto-format → share with user → return link. Use Google Sheets API (reference gog skill at /usr/lib/node_modules/openclaw/skills/gog/). Support common exports: campaign data, creator lists, moderation results. Use caio.fonseca@brandlovrs.com account. Read existing skills, test locally, deploy via rsync.",
+      "status": "spawned"
+    },
+    {
+      "id": "CAI-95",
+      "title": "Campaign lifecycle status tracker",
+      "priority": "high",
+      "task": "Build a Billy skill for campaign lifecycle tracking. Query campaign status from MySQL (draft/active/review/completed/cancelled). Show timeline of status changes, campaigns stuck in X stage >N days, summary of campaigns per stage. Alert-worthy: campaigns in review >3 days, active with no submissions >7 days. Read existing skills, test locally, deploy via rsync.",
+      "status": "spawned"
+    },
+    {
+      "id": "CAI-77",
+      "title": "Auto-generate boost spreadsheets",
+      "priority": "medium",
+      "task": "Build a Billy skill to auto-generate boost spreadsheets. Query campaign boost data from MySQL, format into spreadsheet-ready output. Use Google Sheets export. Read existing skills, test locally, deploy via rsync.",
+      "status": "spawned"
+    },
+    {
+      "id": "CAI-78",
+      "title": "Screen time and view retention reports",
+      "priority": "medium",
+      "task": "Build a Billy skill for screen time and view retention analytics. Query relevant metrics from MySQL/BigQuery. Format as clean summaries. Read existing skills, test locally, deploy via rsync.",
+      "status": "completed"
+    },
+    {
+      "id": "CAI-80",
+      "title": "OKR progress tracker and reporter",
+      "priority": "medium",
+      "task": "Build a Billy skill for OKR tracking. Query metrics relevant to team OKRs, calculate progress percentages. Format as progress reports. Read existing skills, test locally, deploy via rsync.",
+      "status": "completed"
+    },
+    {
+      "id": "CAI-81",
+      "title": "HubSpot deal pipeline queries",
+      "priority": "medium",
+      "task": "Build a Billy skill for HubSpot deal pipeline queries. If HubSpot API available, query deals by stage. Otherwise create mock/template. Read existing skills, test locally, deploy via rsync.",
+      "status": "completed"
+    },
+    {
+      "id": "CAI-83",
+      "title": "Guardian agreement rate monitor",
+      "priority": "medium",
+      "task": "Build a Billy skill to monitor Guardian agreement rate. Query proofread_medias for recent moderation stats, calculate agreement rate by brand/campaign. Alert if rate drops below threshold. Read existing skills, test locally, deploy via rsync.",
+      "status": "completed"
+    },
+    {
+      "id": "CAI-84",
+      "title": "Automated weekly campaign reports",
+      "priority": "medium",
+      "task": "Build a Billy skill for automated weekly campaign reports. Aggregate campaign metrics over past 7 days. Include: new campaigns, completions, top performers, issues. Format as Slack-friendly summary. Read existing skills, test locally, deploy via rsync.",
+      "status": "completed"
+    },
+    {
+      "id": "CAI-85",
+      "title": "Campaign health alerts and anomaly detection",
+      "priority": "medium",
+      "task": "Build a Billy skill for campaign health monitoring. Detect anomalies: sudden drops in submissions, high rejection rates, stalled campaigns. Alert thresholds configurable. Read existing skills, test locally, deploy via rsync.",
+      "status": "completed"
+    },
+    {
+      "id": "CAI-86",
+      "title": "Zendesk ticket analytics for CS team",
+      "priority": "medium",
+      "task": "Build a Billy skill for Zendesk ticket analytics. If Zendesk API available, query ticket counts/categories. Otherwise template for integration. Read existing skills, test locally, deploy via rsync.",
+      "status": "completed"
+    },
+    {
+      "id": "CAI-87",
+      "title": "Revenue forecasting and GMV tracking",
+      "priority": "medium",
+      "task": "Build a Billy skill for revenue/GMV forecasting. Query historical revenue data from MySQL/BigQuery, calculate trends, project forward. Read existing skills, test locally, deploy via rsync.",
+      "status": "completed"
+    },
+    {
+      "id": "CAI-89",
+      "title": "Creator churn prediction and alerts",
+      "priority": "medium",
+      "task": "Build a Billy skill for creator churn prediction. Identify creators with declining activity, long gaps between submissions. Alert on at-risk creators. Read existing skills, test locally, deploy via rsync.",
+      "status": "completed"
+    },
+    {
+      "id": "CAI-90",
+      "title": "Sales enablement - campaign results for pitches",
+      "priority": "medium",
+      "task": "Build a Billy skill for sales enablement. Package campaign success stories with metrics for sales pitches. Include ROI, engagement stats, creator counts. Read existing skills, test locally, deploy via rsync.",
+      "status": "completed"
+    },
+    {
+      "id": "CAI-91",
+      "title": "Budget violation detection and alerts",
+      "priority": "medium",
+      "task": "Build a Billy skill for budget violation detection. Monitor campaign spend vs budget. Alert when approaching or exceeding limits. Read existing skills, test locally, deploy via rsync.",
+      "status": "completed"
+    },
+    {
+      "id": "CAI-92",
+      "title": "Cross-platform creator profile unification",
+      "priority": "medium",
+      "task": "Build a Billy skill for cross-platform creator profiles. Unify creator data across platforms (Instagram, TikTok, YouTube). Show consolidated view. Read existing skills, test locally, deploy via rsync.",
+      "status": "completed"
+    },
+    {
+      "id": "CAI-94",
+      "title": "Refusal contest analysis and patterns",
+      "priority": "medium",
+      "task": "Build a Billy skill for refusal/contest pattern analysis. Query contest data from proofread_medias, identify most contested guideline types, brands with highest contest rates. Read existing skills, test locally, deploy via rsync.",
+      "status": "completed"
+    },
+    {
+      "id": "CAI-96",
+      "title": "Proactive daily Slack digest",
+      "priority": "medium",
+      "task": "Build a Billy skill for proactive daily Slack digest. Compile daily summary: campaign updates, moderation stats, alerts, upcoming deadlines. Post to relevant channels. Read existing skills, test locally, deploy via rsync.",
+      "status": "completed"
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  billy:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: billy-bot
+    ports:
+      - "18790:18790"
+    volumes:
+      - ./workspace:/workspace
+      - ./openclaw.json:/root/.openclaw/openclaw.json
+      - ./.env:/workspace/.env
+      - billy-state:/root/.openclaw
+    restart: unless-stopped
+    network_mode: bridge
+
+volumes:
+  billy-state:

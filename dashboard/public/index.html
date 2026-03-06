@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🦞 Anton Cockpit</title>
+<style>
+  :root {
+    --bg: #0a0e17; --bg2: #111827; --bg3: #1a2332; --border: #1e2d3d;
+    --text: #e2e8f0; --text2: #94a3b8; --text3: #64748b;
+    --green: #22c55e; --yellow: #eab308; --orange: #f97316; --red: #ef4444;
+    --blue: #3b82f6; --purple: #a855f7; --cyan: #06b6d4;
+    --green-bg: rgba(34,197,94,.1); --yellow-bg: rgba(234,179,8,.1);
+    --red-bg: rgba(239,68,68,.1); --blue-bg: rgba(59,130,246,.08);
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:'SF Mono','Fira Code','Cascadia Code',monospace; font-size:13px; overflow-x:hidden; }
+
+  /* Header */
+  .header { background:var(--bg2); border-bottom:1px solid var(--border); padding:12px 24px; display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:100; }
+  .header-left { display:flex; align-items:center; gap:12px; }
+  .logo { font-size:20px; }
+  .title { font-size:16px; font-weight:700; color:var(--text); }
+  .subtitle { font-size:11px; color:var(--text3); }
+  .header-right { display:flex; align-items:center; gap:16px; }
+  .status-dot { width:8px; height:8px; border-radius:50%; display:inline-block; }
+  .status-dot.live { background:var(--green); animation:pulse 2s infinite; }
+  .last-updated { font-size:11px; color:var(--text3); }
+  .refresh-btn { background:var(--bg3); border:1px solid var(--border); color:var(--text2); padding:4px 12px; border-radius:4px; cursor:pointer; font-family:inherit; font-size:11px; }
+  .refresh-btn:hover { background:var(--border); color:var(--text); }
+
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+  /* Stats Bar */
+  .stats-bar { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:12px; padding:16px 24px; }
+  .stat-card { background:var(--bg2); border:1px solid var(--border); border-radius:8px; padding:14px 16px; }
+  .stat-label { font-size:10px; color:var(--text3); text-transform:uppercase; letter-spacing:1px; margin-bottom:4px; }
+  .stat-value { font-size:22px; font-weight:700; }
+  .stat-value.green { color:var(--green); }
+  .stat-value.blue { color:var(--blue); }
+  .stat-value.purple { color:var(--purple); }
+  .stat-value.cyan { color:var(--cyan); }
+  .stat-value.yellow { color:var(--yellow); }
+  .stat-value.red { color:var(--red); }
+  .stat-sub { font-size:10px; color:var(--text3); margin-top:2px; }
+
+  /* Main Grid */
+  .main { display:grid; grid-template-columns:1fr 320px; gap:0; min-height:calc(100vh - 160px); }
+  .main-left { padding:0 24px 24px; overflow-y:auto; }
+  .main-right { background:var(--bg2); border-left:1px solid var(--border); padding:16px; overflow-y:auto; }
+
+  /* Section */
+  .section { margin-top:16px; }
+  .section-title { font-size:12px; font-weight:600; color:var(--text2); text-transform:uppercase; letter-spacing:1px; margin-bottom:10px; display:flex; align-items:center; gap:8px; }
+  .section-title .count { background:var(--bg3); color:var(--text3); padding:1px 7px; border-radius:10px; font-size:10px; }
+
+  /* Agent Cards */
+  .agent-card { background:var(--bg2); border:1px solid var(--border); border-radius:8px; padding:14px 16px; margin-bottom:10px; transition:border-color .2s; }
+  .agent-card:hover { border-color:var(--text3); }
+  .agent-card.frozen { border-left:3px solid var(--red); }
+  .agent-card.warning { border-left:3px solid var(--orange); }
+  .agent-card.healthy { border-left:3px solid var(--green); }
+  .agent-card.aging { border-left:3px solid var(--yellow); }
+  .agent-card.done { border-left:3px solid var(--text3); opacity:.7; }
+
+  .agent-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px; }
+  .agent-label { font-weight:600; font-size:13px; }
+  .agent-task-id { color:var(--blue); font-weight:600; }
+  .agent-status { display:flex; align-items:center; gap:6px; }
+  .health-badge { padding:2px 8px; border-radius:4px; font-size:10px; font-weight:600; text-transform:uppercase; }
+  .health-badge.green { background:var(--green-bg); color:var(--green); }
+  .health-badge.yellow { background:var(--yellow-bg); color:var(--yellow); }
+  .health-badge.orange { background:var(--yellow-bg); color:var(--orange); }
+  .health-badge.red { background:var(--red-bg); color:var(--red); }
+  .health-badge.gray { background:var(--bg3); color:var(--text3); }
+
+  .agent-meta { display:flex; gap:16px; flex-wrap:wrap; margin-bottom:8px; }
+  .meta-item { font-size:11px; color:var(--text3); }
+  .meta-item span { color:var(--text2); }
+
+  /* Progress Bar */
+  .progress-container { background:var(--bg); border-radius:4px; height:6px; overflow:hidden; margin-bottom:8px; }
+  .progress-bar { height:100%; border-radius:4px; transition:width .5s ease; }
+  .progress-bar.green { background:var(--green); }
+  .progress-bar.yellow { background:var(--yellow); }
+  .progress-bar.orange { background:var(--orange); }
+  .progress-bar.red { background:var(--red); }
+
+  .progress-labels { display:flex; justify-content:space-between; font-size:10px; color:var(--text3); margin-bottom:6px; }
+
+  /* Linear Info */
+  .linear-info { background:var(--bg); border-radius:4px; padding:8px 10px; font-size:11px; margin-top:6px; }
+  .linear-state { display:inline-block; padding:1px 6px; border-radius:3px; font-size:10px; font-weight:600; margin-right:6px; }
+  .linear-comment { color:var(--text3); margin-top:4px; font-style:italic; }
+
+  /* Agent Controls */
+  .agent-controls { display:flex; gap:6px; margin-top:8px; }
+  .ctrl-btn { background:var(--bg); border:1px solid var(--border); color:var(--text3); padding:3px 10px; border-radius:4px; cursor:pointer; font-size:10px; font-family:inherit; }
+  .ctrl-btn:hover { color:var(--text); border-color:var(--text3); }
+  .ctrl-btn.danger:hover { color:var(--red); border-color:var(--red); }
+
+  /* Alerts Panel */
+  .alert-item { padding:8px 10px; border-radius:4px; margin-bottom:6px; font-size:11px; }
+  .alert-item.CRITICAL { background:var(--red-bg); border-left:3px solid var(--red); color:var(--red); }
+  .alert-item.WARNING { background:var(--yellow-bg); border-left:3px solid var(--orange); color:var(--orange); }
+  .alert-time { font-size:10px; color:var(--text3); margin-top:2px; }
+
+  /* Recent Completions */
+  .recent-item { display:flex; align-items:center; gap:8px; padding:8px 0; border-bottom:1px solid var(--border); font-size:11px; }
+  .recent-item:last-child { border-bottom:none; }
+  .recent-icon { font-size:14px; }
+  .recent-details { flex:1; }
+  .recent-label { color:var(--text); font-weight:500; }
+  .recent-meta { color:var(--text3); font-size:10px; }
+
+  /* Langfuse Section */
+  .langfuse-card { background:var(--bg); border:1px solid var(--border); border-radius:6px; padding:10px 12px; margin-bottom:8px; }
+  .langfuse-title { font-size:11px; font-weight:600; color:var(--purple); margin-bottom:6px; }
+  .langfuse-metric { display:flex; justify-content:space-between; font-size:11px; padding:2px 0; }
+  .langfuse-metric .label { color:var(--text3); }
+  .langfuse-metric .value { color:var(--text2); }
+
+  /* Modal */
+  .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:200; align-items:center; justify-content:center; }
+  .modal-overlay.active { display:flex; }
+  .modal { background:var(--bg2); border:1px solid var(--border); border-radius:8px; padding:20px; width:400px; max-width:90vw; }
+  .modal h3 { margin-bottom:12px; font-size:14px; }
+  .modal textarea { width:100%; background:var(--bg); border:1px solid var(--border); color:var(--text); padding:8px; border-radius:4px; font-family:inherit; font-size:12px; resize:vertical; min-height:80px; }
+  .modal-actions { display:flex; gap:8px; margin-top:12px; justify-content:flex-end; }
+  .modal-btn { padding:6px 16px; border-radius:4px; border:1px solid var(--border); background:var(--bg3); color:var(--text); cursor:pointer; font-family:inherit; font-size:12px; }
+  .modal-btn.primary { background:var(--blue); border-color:var(--blue); }
+
+  /* Responsive */
+  @media(max-width:900px) {
+    .main { grid-template-columns:1fr; }
+    .main-right { border-left:none; border-top:1px solid var(--border); }
+  }
+
+  /* Empty state */
+  .empty-state { text-align:center; padding:40px; color:var(--text3); }
+  .empty-state .icon { font-size:32px; margin-bottom:8px; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width:6px; }
+  ::-webkit-scrollbar-track { background:var(--bg); }
+  ::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <div class="header-left">
+    <span class="logo">🦞</span>
+    <div>
+      <div class="title">Anton Cockpit</div>
+      <div class="subtitle">Subagent Orchestration Dashboard</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <span class="status-dot live" id="wsStatus"></span>
+    <span class="last-updated" id="lastUpdated">Connecting...</span>
+    <button class="refresh-btn" onclick="sendAction('refresh')">⟳ Refresh</button>
+  </div>
+</div>
+
+<!-- Stats Bar -->
+<div class="stats-bar" id="statsBar">
+  <div class="stat-card"><div class="stat-label">Active Agents</div><div class="stat-value green" id="statActive">-</div></div>
+  <div class="stat-card"><div class="stat-label">Completed (session)</div><div class="stat-value blue" id="statCompleted">-</div></div>
+  <div class="stat-card"><div class="stat-label">Failed</div><div class="stat-value red" id="statFailed">-</div></div>
+  <div class="stat-card"><div class="stat-label">Total Tokens</div><div class="stat-value purple" id="statTokens">-</div><div class="stat-sub" id="statTokensSub"></div></div>
+  <div class="stat-card"><div class="stat-label">Est. Cost</div><div class="stat-value cyan" id="statCost">-</div></div>
+  <div class="stat-card"><div class="stat-label">Avg Runtime</div><div class="stat-value yellow" id="statAvgRuntime">-</div></div>
+</div>
+
+<!-- Main Content -->
+<div class="main">
+  <div class="main-left">
+    <!-- Alerts -->
+    <div class="section" id="alertsSection" style="display:none">
+      <div class="section-title">⚠️ Alerts <span class="count" id="alertCount">0</span></div>
+      <div id="alertsList"></div>
+    </div>
+
+    <!-- Active Agents -->
+    <div class="section">
+      <div class="section-title">🟢 Active Agents <span class="count" id="activeCount">0</span></div>
+      <div id="activeAgents">
+        <div class="empty-state"><div class="icon">😴</div>No active agents</div>
+      </div>
+    </div>
+
+    <!-- Recent Completions -->
+    <div class="section">
+      <div class="section-title">📋 Recent Completions <span class="count" id="recentCount">0</span></div>
+      <div id="recentAgents">
+        <div class="empty-state"><div class="icon">📭</div>No recent completions</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right Panel -->
+  <div class="main-right">
+    <!-- Langfuse Metrics -->
+    <div class="section">
+      <div class="section-title">🔮 Langfuse Traces</div>
+      <div id="langfusePanel">
+        <div class="langfuse-card">
+          <div class="langfuse-title">Loading...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Agent Logs -->
+    <div class="section" style="margin-top:16px">
+      <div class="section-title">📝 Latest Linear Logs</div>
+      <div id="linearLogs">
+        <div style="font-size:11px;color:var(--text3)">Select an agent to view logs</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Steer Modal -->
+<div class="modal-overlay" id="steerModal">
+  <div class="modal">
+    <h3>🔄 Steer Agent</h3>
+    <div style="font-size:11px;color:var(--text3);margin-bottom:8px" id="steerTarget"></div>
+    <textarea id="steerMessage" placeholder="Enter steering message..."></textarea>
+    <div class="modal-actions">
+      <button class="modal-btn" onclick="closeModal()">Cancel</button>
+      <button class="modal-btn primary" onclick="submitSteer()">Send</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// --- WebSocket ---
+let ws;
+let steerSessionKey = null;
+
+function connect() {
+  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  ws = new WebSocket(`${proto}//${location.host}`);
+
+  ws.onopen = () => {
+    document.getElementById('wsStatus').className = 'status-dot live';
+    document.getElementById('lastUpdated').textContent = 'Connected';
+  };
+
+  ws.onmessage = (e) => {
+    const msg = JSON.parse(e.data);
+    if (msg.type === 'update') render(msg.data);
+  };
+
+  ws.onclose = () => {
+    document.getElementById('wsStatus').className = 'status-dot';
+    document.getElementById('lastUpdated').textContent = 'Disconnected — reconnecting...';
+    setTimeout(connect, 3000);
+  };
+
+  ws.onerror = () => ws.close();
+}
+
+function sendAction(action, extra = {}) {
+  if (ws?.readyState === 1) ws.send(JSON.stringify({ action, ...extra }));
+}
+
+// --- Rendering ---
+function render(data) {
+  if (!data) return;
+  const now = data.lastUpdated ? new Date(data.lastUpdated) : new Date();
+  document.getElementById('lastUpdated').textContent = `Updated ${now.toLocaleTimeString()}`;
+
+  // Stats
+  const s = data.stats || {};
+  document.getElementById('statActive').textContent = s.totalActive || 0;
+  document.getElementById('statCompleted').textContent = s.completedToday || 0;
+  document.getElementById('statFailed').textContent = s.failedToday || 0;
+  document.getElementById('statTokens').textContent = formatTokens(s.totalTokensToday || 0);
+  document.getElementById('statTokensSub').textContent = `${(s.totalTokensToday||0).toLocaleString()} tokens`;
+  document.getElementById('statCost').textContent = `$${s.estimatedCostToday || '0.00'}`;
+  document.getElementById('statAvgRuntime').textContent = `${s.avgRuntimeMin || 0}m`;
+
+  // Alerts
+  const alerts = data.alerts || [];
+  const alertsSection = document.getElementById('alertsSection');
+  const alertsList = document.getElementById('alertsList');
+  document.getElementById('alertCount').textContent = alerts.length;
+  if (alerts.length > 0) {
+    alertsSection.style.display = 'block';
+    alertsList.innerHTML = alerts.map(a => `
+      <div class="alert-item ${a.level}">
+        <strong>${a.level}:</strong> ${a.message} — <span style="color:var(--text)">${a.agent}</span>
+        <div class="alert-time">${new Date(a.timestamp).toLocaleTimeString()}</div>
+      </div>
+    `).join('');
+  } else {
+    alertsSection.style.display = 'none';
+  }
+
+  // Active agents
+  const active = data.active || [];
+  document.getElementById('activeCount').textContent = active.length;
+  if (active.length === 0) {
+    document.getElementById('activeAgents').innerHTML = '<div class="empty-state"><div class="icon">😴</div>No active agents</div>';
+  } else {
+    document.getElementById('activeAgents').innerHTML = active.map(renderActiveAgent).join('');
+  }
+
+  // Recent
+  const recent = data.recent || [];
+  document.getElementById('recentCount').textContent = recent.length;
+  if (recent.length === 0) {
+    document.getElementById('recentAgents').innerHTML = '<div class="empty-state"><div class="icon">📭</div>No recent completions</div>';
+  } else {
+    document.getElementById('recentAgents').innerHTML = recent.map(renderRecentAgent).join('');
+  }
+
+  // Langfuse
+  renderLangfuse(data);
+
+  // Linear Logs
+  renderLinearLogs(data);
+}
+
+function renderActiveAgent(a) {
+  const h = a.health || {};
+  const progressColor = h.color || 'green';
+  const taskIdHtml = a.taskId ? `<span class="agent-task-id">${a.taskId}</span> · ` : '';
+
+  let linearHtml = '';
+  if (a.linear) {
+    const stateStyle = a.linear.stateColor ? `background:${a.linear.stateColor}22;color:${a.linear.stateColor}` : '';
+    linearHtml = `
+      <div class="linear-info">
+        <span class="linear-state" style="${stateStyle}">${a.linear.state || '?'}</span>
+        ${a.linear.title || ''}
+        ${a.linear.lastCommentPreview ? `<div class="linear-comment">"${a.linear.lastCommentPreview}..."</div>` : ''}
+      </div>`;
+  }
+
+  return `
+    <div class="agent-card ${h.status || ''}">
+      <div class="agent-header">
+        <div>
+          <div class="agent-label">${taskIdHtml}${a.label || 'unnamed'}</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:2px">${a.model || ''}</div>
+        </div>
+        <div class="agent-status">
+          <span class="health-badge ${h.color || 'green'}">${h.status || 'unknown'}</span>
+        </div>
+      </div>
+
+      <div class="progress-labels">
+        <span>${a.runtimeMin}m elapsed</span>
+        <span>ETA ~${a.etaMin}m (timeout: ${a.timeoutMin}m)</span>
+      </div>
+      <div class="progress-container">
+        <div class="progress-bar ${progressColor}" style="width:${a.progress || 0}%"></div>
+      </div>
+
+      <div class="agent-meta">
+        <div class="meta-item">🔤 Tokens: <span>${formatTokens(a.totalTokens || 0)}</span></div>
+        <div class="meta-item">💰 Cost: <span>$${a.cost || '0'}</span></div>
+        <div class="meta-item">🔑 <span>${(a.sessionKey || '').split(':').pop().substring(0,8)}...</span></div>
+      </div>
+
+      ${linearHtml}
+
+      <div class="agent-controls">
+        <button class="ctrl-btn" onclick="openSteer('${a.sessionKey}','${(a.label||'').replace(/'/g,"\\'")}')">🔄 Steer</button>
+        <button class="ctrl-btn danger" onclick="if(confirm('Kill ${(a.label||'agent').replace(/'/g,"\\'")}?'))sendAction('kill',{sessionKey:'${a.sessionKey}'})">💀 Kill</button>
+      </div>
+    </div>`;
+}
+
+function renderRecentAgent(a) {
+  const icon = a.status === 'done' ? '✅' : a.status === 'error' ? '❌' : '⏱️';
+  const taskIdHtml = a.taskId ? `<span class="agent-task-id">${a.taskId}</span> · ` : '';
+
+  return `
+    <div class="recent-item">
+      <span class="recent-icon">${icon}</span>
+      <div class="recent-details">
+        <div class="recent-label">${taskIdHtml}${a.label || 'unnamed'}</div>
+        <div class="recent-meta">
+          ${a.runtimeMin}m · ${formatTokens(a.totalTokens || 0)} tokens · $${a.cost || '0'} · ${a.model || ''}
+        </div>
+      </div>
+    </div>`;
+}
+
+function renderLangfuse(data) {
+  const panel = document.getElementById('langfusePanel');
+  const allAgents = [...(data.active||[]), ...(data.recent||[])];
+
+  if (data.langfuse) {
+    const lf = data.langfuse;
+    panel.innerHTML = `
+      <div class="langfuse-card">
+        <div class="langfuse-title">📊 Session Metrics</div>
+        ${lf.totalTraces !== undefined ? `<div class="langfuse-metric"><span class="label">Total Traces</span><span class="value">${lf.totalTraces}</span></div>` : ''}
+        ${lf.avgLatency !== undefined ? `<div class="langfuse-metric"><span class="label">Avg Latency</span><span class="value">${lf.avgLatency}ms</span></div>` : ''}
+        ${lf.errorRate !== undefined ? `<div class="langfuse-metric"><span class="label">Error Rate</span><span class="value">${lf.errorRate}%</span></div>` : ''}
+        ${lf.totalCost !== undefined ? `<div class="langfuse-metric"><span class="label">Total Cost</span><span class="value">$${lf.totalCost}</span></div>` : ''}
+      </div>
+      ${(lf.recentTraces||[]).map(t => `
+        <div class="langfuse-card">
+          <div class="langfuse-title">${t.name || 'trace'}</div>
+          <div class="langfuse-metric"><span class="label">Latency</span><span class="value">${t.latency || '?'}ms</span></div>
+          <div class="langfuse-metric"><span class="label">Tokens</span><span class="value">${formatTokens(t.totalTokens||0)}</span></div>
+          <div class="langfuse-metric"><span class="label">Status</span><span class="value">${t.status || '?'}</span></div>
+        </div>
+      `).join('')}
+    `;
+  } else {
+    panel.innerHTML = `
+      <div class="langfuse-card">
+        <div class="langfuse-title">📊 Agent Overview</div>
+        <div class="langfuse-metric"><span class="label">Active</span><span class="value">${allAgents.filter(a=>a.status==='running').length}</span></div>
+        <div class="langfuse-metric"><span class="label">Completed</span><span class="value">${allAgents.filter(a=>a.status==='done').length}</span></div>
+        <div class="langfuse-metric"><span class="label">Total Tokens</span><span class="value">${formatTokens(allAgents.reduce((s,a)=>s+(a.totalTokens||0),0))}</span></div>
+        <div class="langfuse-metric"><span class="label">Models Used</span><span class="value">${[...new Set(allAgents.map(a=>a.model).filter(Boolean))].length}</span></div>
+      </div>
+      <div style="font-size:10px;color:var(--text3);padding:4px 0;">Langfuse trace linking available when agents report trace IDs</div>
+    `;
+  }
+}
+
+function renderLinearLogs(data) {
+  const panel = document.getElementById('linearLogs');
+  const allAgents = [...(data.active||[]), ...(data.recent||[])];
+  const withLinear = allAgents.filter(a => a.linear?.lastCommentPreview);
+
+  if (withLinear.length === 0) {
+    panel.innerHTML = '<div style="font-size:11px;color:var(--text3)">No Linear logs available</div>';
+    return;
+  }
+
+  panel.innerHTML = withLinear.slice(0, 5).map(a => `
+    <div style="margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border)">
+      <div style="font-size:11px;font-weight:600;color:var(--blue)">${a.taskId || '?'}</div>
+      <div style="font-size:11px;color:var(--text3);font-style:italic;margin-top:2px">${a.linear.lastCommentPreview || ''}</div>
+      <div style="font-size:10px;color:var(--text3);margin-top:2px">${a.linear.lastCommentAt ? timeAgo(new Date(a.linear.lastCommentAt)) : ''}</div>
+    </div>
+  `).join('');
+}
+
+// --- Helpers ---
+function formatTokens(n) {
+  if (n >= 1000000) return (n/1000000).toFixed(1) + 'M';
+  if (n >= 1000) return (n/1000).toFixed(1) + 'K';
+  return n.toString();
+}
+
+function timeAgo(date) {
+  const s = Math.floor((Date.now() - date.getTime()) / 1000);
+  if (s < 60) return `${s}s ago`;
+  if (s < 3600) return `${Math.floor(s/60)}m ago`;
+  return `${Math.floor(s/3600)}h ago`;
+}
+
+// --- Modal ---
+function openSteer(sessionKey, label) {
+  steerSessionKey = sessionKey;
+  document.getElementById('steerTarget').textContent = label;
+  document.getElementById('steerMessage').value = '';
+  document.getElementById('steerModal').classList.add('active');
+  document.getElementById('steerMessage').focus();
+}
+
+function closeModal() {
+  document.getElementById('steerModal').classList.remove('active');
+  steerSessionKey = null;
+}
+
+function submitSteer() {
+  const msg = document.getElementById('steerMessage').value.trim();
+  if (msg && steerSessionKey) {
+    sendAction('steer', { sessionKey: steerSessionKey, message: msg });
+    closeModal();
+  }
+}
+
+// Close modal on Escape
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeModal();
+});
+
+// --- Init ---
+connect();
+</script>
+</body>
+</html>

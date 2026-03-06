@@ -1,0 +1,11 @@
+{
+  "generated_at": "2026-03-06T01:46:09Z",
+  "metrics": {
+    "hypothesis_hit_rate": 0,
+    "deployment_success_rate": 0,
+    "improvement_velocity_pp_per_week": 0,
+    "cost_efficiency_pp_per_dollar": 0
+  },
+  "best_hypothesis_sources": [],
+  "compound_effects": []
+}

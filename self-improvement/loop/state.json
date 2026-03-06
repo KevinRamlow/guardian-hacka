@@ -1,0 +1,12 @@
+{
+  "last_observe": "2026-03-06T01:45:09Z",
+  "last_analyze": null,
+  "last_experiment_eval": null,
+  "last_meta": null,
+  "total_improvements_deployed": 0,
+  "total_pp_gained": 0.0,
+  "total_cost": 0.0,
+  "active_experiments": 0,
+  "active_probations": 0,
+  "version": 1
+}

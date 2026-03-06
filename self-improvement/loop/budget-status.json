@@ -1,0 +1,12 @@
+{
+  "daily_spend": 0.0,
+  "weekly_spend": 0.0,
+  "monthly_spend": 0.0,
+  "daily_limit": 50.0,
+  "weekly_limit": 200.0,
+  "monthly_limit": 500.0,
+  "last_reset_daily": null,
+  "last_reset_weekly": null,
+  "last_reset_monthly": null,
+  "status": "ok"
+}

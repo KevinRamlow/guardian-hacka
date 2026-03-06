@@ -1,0 +1,4 @@
+#!/bin/bash
+# Quick shortcut to view Anton's active tasks
+
+cat /root/.openclaw/tasks/active.md

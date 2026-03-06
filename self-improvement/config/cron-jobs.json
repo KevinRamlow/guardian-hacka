@@ -1,0 +1,32 @@
+{
+  "description": "Cron jobs for Self-Improvement Observation Engine",
+  "note": "These are DOCUMENTATION ONLY. Create actual cron jobs manually via OpenClaw cron interface.",
+  "jobs": [
+    {
+      "name": "daily-observers",
+      "schedule": "50 23 * * *",
+      "schedule_description": "Daily at 23:50 UTC",
+      "command": "bash /root/.openclaw/workspace/self-improvement/run-observers.sh",
+      "purpose": "Run all observers (conversation scorer, task tracker, cost tracker, aggregator) and generate daily scorecard",
+      "timeout": "10m",
+      "notify_on_failure": true
+    },
+    {
+      "name": "weekly-improvement-report",
+      "schedule": "55 23 * * 0",
+      "schedule_description": "Weekly on Sunday at 23:55 UTC",
+      "command": "bash /root/.openclaw/workspace/self-improvement/scripts/weekly-report.sh",
+      "purpose": "Generate weekly improvement summary report and suggestions for SOUL.md/MEMORY.md updates",
+      "timeout": "15m",
+      "notify_on_failure": true,
+      "note": "weekly-report.sh not yet implemented - Phase 2"
+    }
+  ],
+  "setup_instructions": [
+    "To create these cron jobs in OpenClaw:",
+    "1. Access OpenClaw cron management interface",
+    "2. Create new cron job with the schedule and command specified above",
+    "3. Set appropriate timeout and notification preferences",
+    "4. Test by running manually first: bash /root/.openclaw/workspace/self-improvement/run-observers.sh"
+  ]
+}

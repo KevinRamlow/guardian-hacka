@@ -1,0 +1,31 @@
+{
+  "observe_daily": {
+    "schedule": "50 23 * * *",
+    "command": "cd /root/.openclaw/workspace/self-improvement && bash loop/improvement-loop.sh observe",
+    "description": "Daily observation scoring - runs all observers to capture conversation quality metrics"
+  },
+  "analyze_weekly": {
+    "schedule": "55 23 * * 0",
+    "command": "cd /root/.openclaw/workspace/self-improvement && bash loop/improvement-loop.sh analyze",
+    "description": "Weekly failure analysis + hypothesis generation - analyzes accumulated observations to identify patterns"
+  },
+  "experiment_daily": {
+    "schedule": "0 12 * * *",
+    "command": "cd /root/.openclaw/workspace/self-improvement && bash loop/improvement-loop.sh experiment",
+    "description": "Daily experiment evaluation + deployment - evaluates active experiments and deploys winners"
+  },
+  "meta_monthly": {
+    "schedule": "0 0 1 * *",
+    "command": "cd /root/.openclaw/workspace/self-improvement && bash loop/improvement-loop.sh meta",
+    "description": "Monthly meta-learning review - analyzes the improvement process itself"
+  },
+  "full_weekly": {
+    "schedule": "0 0 * * 1",
+    "command": "cd /root/.openclaw/workspace/self-improvement && bash loop/improvement-loop.sh full",
+    "description": "Full loop every Monday midnight - complete improvement cycle"
+  },
+  "installation_instructions": {
+    "note": "To install these cron jobs, run: crontab -e and add the schedule lines above with their corresponding commands",
+    "example": "50 23 * * * cd /root/.openclaw/workspace/self-improvement && bash loop/improvement-loop.sh observe >> /var/log/self-improvement.log 2>&1"
+  }
+}

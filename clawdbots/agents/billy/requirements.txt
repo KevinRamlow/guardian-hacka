@@ -1,0 +1,3 @@
+# Billy Agent Dependencies
+python-pptx>=1.0.0          # PowerPoint generation
+google-generativeai>=0.8.0  # Gemini AI (optional — for AI-enhanced narratives)

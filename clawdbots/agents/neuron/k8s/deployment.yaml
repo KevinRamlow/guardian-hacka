@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: clawdbot-neuron
+  namespace: clawdbots-dev
+  labels:
+    app: clawdbot-neuron
+    platform: clawdbots
+    agent: "neuron"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: clawdbot-neuron
+  template:
+    metadata:
+      labels:
+        app: clawdbot-neuron
+        platform: clawdbots
+    spec:
+      serviceAccountName: clawdbot-neuron
+      containers:
+        # Main agent container
+        - name: agent
+          image: us-east1-docker.pkg.dev/brandlovers-prod/clawdbots/clawdbot-neuron:latest
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "512Mi"
+            limits:
+              cpu: "1000m"
+              memory: "1Gi"
+          envFrom:
+            - secretRef:
+                name: clawdbot-neuron-secrets
+          env:
+            - name: AGENT_NAME
+              value: "neuron"
+            - name: NODE_ENV
+              value: "production"
+            - name: MYSQL_HOST
+              value: "127.0.0.1"
+            - name: MYSQL_PORT
+              value: "3306"
+            - name: MYSQL_DATABASE
+              value: "db-maestro-prod"
+            - name: GOOGLE_CLOUD_PROJECT
+              value: "brandlovers-prod"
+
+        # Cloud SQL Auth Proxy sidecar
+        - name: cloud-sql-proxy
+          image: gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.8.2
+          args:
+            - "--structured-logs"
+            - "--auto-iam-authn"
+            - "brandlovers-prod:us-east1:brandlovers-prod"
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "200m"
+              memory: "256Mi"
+          securityContext:
+            runAsNonRoot: true
+
+      restartPolicy: Always

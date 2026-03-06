@@ -21,3 +21,13 @@ __pycache__/
 
 # OpenClaw internal
 .openclaw/
+
+# Cloned repos (have their own git)
+backoffice/
+campaign-manager-api/
+creator-ads/
+guardian-ads-treatment/
+guardian-agents-api/
+guardian-api/
+user-management-api/
+clawdbots/
