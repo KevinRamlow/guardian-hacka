@@ -1,9 +1,9 @@
 {
   "date": "2026-03-06",
-  "completedToday": 1612,
+  "completedToday": 2620,
   "failedToday": 0,
-  "totalTokensToday": 46058500,
-  "estimatedCostToday": 690877.5000000066,
+  "totalTokensToday": 68035476,
+  "estimatedCostToday": 1020532.1400000165,
   "recentAgents": [
     {
       "sessionKey": "agent:claude:acp:52efb1eb-0815-4f4c-903f-ca1f6d644f14",
@@ -11,7 +11,7 @@
       "label": "CAI-93",
       "model": "unknown",
       "totalTokens": 0,
-      "runtimeMs": 773694,
+      "runtimeMs": 1670472,
       "agentId": "claude",
       "task": "CAI-93",
       "status": "done"
@@ -22,7 +22,7 @@
       "label": "CAI-113-restart-scripts-r2",
       "model": "unknown",
       "totalTokens": 0,
-      "runtimeMs": 1336689,
+      "runtimeMs": 2233467,
       "agentId": "claude",
       "task": "CAI-113-restart-scripts-r2",
       "status": "done"
@@ -33,7 +33,7 @@
       "label": "CAI-68-max-tokens-r2",
       "model": "unknown",
       "totalTokens": 0,
-      "runtimeMs": 1347730,
+      "runtimeMs": 2244508,
       "agentId": "claude",
       "task": "CAI-68-max-tokens-r2",
       "status": "done"
@@ -44,7 +44,7 @@
       "label": "CAI-133-e2e-test",
       "model": "unknown",
       "totalTokens": 0,
-      "runtimeMs": 1873731,
+      "runtimeMs": 2770509,
       "agentId": "claude",
       "task": "CAI-133-e2e-test",
       "status": "done"
@@ -55,7 +55,7 @@
       "label": "CAI-129-130-121-guards",
       "model": "unknown",
       "totalTokens": 0,
-      "runtimeMs": 1901422,
+      "runtimeMs": 2798200,
       "agentId": "claude",
       "task": "CAI-129-130-121-guards",
       "status": "done"
@@ -66,7 +66,7 @@
       "label": "CAI-116-117-systemd",
       "model": "unknown",
       "totalTokens": 0,
-      "runtimeMs": 1942251,
+      "runtimeMs": 2839029,
       "agentId": "claude",
       "task": "CAI-116-117-systemd",
       "status": "done"
@@ -77,7 +77,7 @@
       "label": "CAI-114-auto-retry",
       "model": "unknown",
       "totalTokens": 0,
-      "runtimeMs": 2170342,
+      "runtimeMs": 3067120,
       "agentId": "claude",
       "task": "CAI-114-auto-retry",
       "status": "done"
@@ -88,7 +88,7 @@
       "label": "CAI-113-gateway-resilience",
       "model": "unknown",
       "totalTokens": 0,
-      "runtimeMs": 2319718,
+      "runtimeMs": 3216496,
       "agentId": "claude",
       "task": "CAI-113-gateway-resilience",
       "status": "done"
@@ -99,7 +99,7 @@
       "label": "auto-queue-pipeline",
       "model": "unknown",
       "totalTokens": 0,
-      "runtimeMs": 2661951,
+      "runtimeMs": 3558729,
       "agentId": "claude",
       "task": "auto-queue-pipeline",
       "status": "done"
@@ -110,7 +110,7 @@
       "label": "CAI-68-max-tokens",
       "model": "unknown",
       "totalTokens": 0,
-      "runtimeMs": 2682445,
+      "runtimeMs": 3579223,
       "agentId": "claude",
       "task": "CAI-68-max-tokens",
       "status": "done"
@@ -121,7 +121,7 @@
       "label": "CAI-88-metabase-queries",
       "model": "unknown",
       "totalTokens": 0,
-      "runtimeMs": 2748661,
+      "runtimeMs": 3645439,
       "agentId": "claude",
       "task": "CAI-88-metabase-queries",
       "status": "done"
@@ -132,7 +132,7 @@
       "label": "CAI-76-campaign-content",
       "model": "unknown",
       "totalTokens": 0,
-      "runtimeMs": 4854484,
+      "runtimeMs": 5751262,
       "agentId": "claude",
       "task": "CAI-76-campaign-content",
       "status": "done"
@@ -143,7 +143,7 @@
       "label": "CAI-77-boost-spreadsheet",
       "model": "unknown",
       "totalTokens": 0,
-      "runtimeMs": 22657519,
+      "runtimeMs": 23554297,
       "agentId": "claude",
       "task": "CAI-77-boost-spreadsheet",
       "status": "done"
@@ -154,7 +154,7 @@
       "label": "CAI-88-metabase-replacement",
       "model": "unknown",
       "totalTokens": 0,
-      "runtimeMs": 22666061,
+      "runtimeMs": 23562839,
       "agentId": "claude",
       "task": "CAI-88-metabase-replacement",
       "status": "done"
@@ -165,7 +165,7 @@
       "label": "CAI-93-sheets-export",
       "model": "unknown",
       "totalTokens": 0,
-      "runtimeMs": 22680276,
+      "runtimeMs": 23577054,
       "agentId": "claude",
       "task": "CAI-93-sheets-export",
       "status": "done"
@@ -176,7 +176,7 @@
       "label": "CAI-108-llm-judge",
       "model": "unknown",
       "totalTokens": 0,
-      "runtimeMs": 24413651,
+      "runtimeMs": 25310429,
       "agentId": "claude",
       "task": "CAI-108-llm-judge",
       "status": "done"
@@ -187,7 +187,7 @@
       "label": "CAI-109-memory-tuning",
       "model": "unknown",
       "totalTokens": 0,
-      "runtimeMs": 24603517,
+      "runtimeMs": 25500295,
       "agentId": "claude",
       "task": "CAI-109-memory-tuning",
       "status": "done"
@@ -198,7 +198,7 @@
       "label": "CAI-110-time-constraints",
       "model": "unknown",
       "totalTokens": 0,
-      "runtimeMs": 24651050,
+      "runtimeMs": 25547828,
       "agentId": "claude",
       "task": "CAI-110-time-constraints",
       "status": "done"
@@ -209,7 +209,7 @@
       "label": "pipeline-cai-106-r1",
       "model": "unknown",
       "totalTokens": 0,
-      "runtimeMs": 34942149,
+      "runtimeMs": 35838927,
       "agentId": "claude",
       "task": "pipeline-cai-106-r1",
       "status": "done"
@@ -220,7 +220,7 @@
       "label": "pipeline-cai-110",
       "model": "unknown",
       "totalTokens": 0,
-      "runtimeMs": 35198494,
+      "runtimeMs": 36095272,
       "agentId": "claude",
       "task": "pipeline-cai-110",
       "status": "done"
