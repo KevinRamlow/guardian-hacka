@@ -3,10 +3,12 @@ const { WebSocketServer } = require('ws');
 const { execSync, exec } = require('child_process');
 const http = require('http');
 const path = require('path');
+const fs = require('fs');
 
 const PORT = 8765;
 const POLL_INTERVAL = 8000; // 8s
 const LINEAR_API_KEY = '[REDACTED]';
+const STATS_FILE = '/root/.openclaw/workspace/dashboard/stats-history.json';
 
 // Langfuse config
 const LANGFUSE_HOST = 'https://us.cloud.langfuse.com';
@@ -22,14 +24,70 @@ const wss = new WebSocketServer({ server });
 let dashboardState = {
   active: [],
   recent: [],
-  stats: { totalActive: 0, completedToday: 0, totalTokensToday: 0, estimatedCostToday: 0 },
+  stats: { totalActive: 0, completedToday: 0, failedToday: 0, totalTokensToday: 0, estimatedCostToday: 0 },
   alerts: [],
   lastUpdated: null,
+};
+
+// Persistent stats structure
+let persistentStats = {
+  date: new Date().toISOString().split('T')[0], // YYYY-MM-DD
+  completedToday: 0,
+  failedToday: 0,
+  totalTokensToday: 0,
+  estimatedCostToday: 0,
+  recentAgents: [], // Last 20 completed agents
 };
 
 // Track historical token data per session
 const tokenHistory = new Map();
 const toolCallHistory = new Map();
+
+// --- Persistence Helpers ---
+function loadStatsFromDisk() {
+  try {
+    if (fs.existsSync(STATS_FILE)) {
+      const data = JSON.parse(fs.readFileSync(STATS_FILE, 'utf-8'));
+      const today = new Date().toISOString().split('T')[0];
+      
+      // If date matches, restore stats. Otherwise, reset for new day.
+      if (data.date === today) {
+        persistentStats = data;
+        console.log('📂 Loaded stats from disk:', data.date);
+      } else {
+        console.log('📅 New day detected — resetting stats');
+        persistentStats.date = today;
+        saveStatsToDisk();
+      }
+    }
+  } catch (e) {
+    console.error('⚠️ Failed to load stats:', e.message);
+  }
+}
+
+function saveStatsToDisk() {
+  try {
+    fs.writeFileSync(STATS_FILE, JSON.stringify(persistentStats, null, 2));
+  } catch (e) {
+    console.error('⚠️ Failed to save stats:', e.message);
+  }
+}
+
+function checkMidnightReset() {
+  const today = new Date().toISOString().split('T')[0];
+  if (persistentStats.date !== today) {
+    console.log('🌅 Midnight UTC passed — resetting daily stats');
+    persistentStats = {
+      date: today,
+      completedToday: 0,
+      failedToday: 0,
+      totalTokensToday: 0,
+      estimatedCostToday: 0,
+      recentAgents: persistentStats.recentAgents, // Keep recent agents across days
+    };
+    saveStatsToDisk();
+  }
+}
 
 // --- Helpers ---
 function safeExecSync(cmd, timeout = 15000) {
@@ -129,9 +187,9 @@ async function fetchLangfuseMetrics() {
   }
 
   try {
-    // Fetch recent traces (last 1h)
-    const since = new Date(Date.now() - 3600000).toISOString();
-    const url = `${LANGFUSE_HOST}/api/public/traces?limit=20&orderBy=timestamp.desc`;
+    // ✅ Query GENERATIONS (LLM calls) instead of traces for better Guardian data
+    // Fetch recent generations (last 24h) to capture Guardian LLM activity
+    const url = `${LANGFUSE_HOST}/api/public/observations?limit=100&type=GENERATION`;
 
     const resp = await fetch(url, {
       headers: { 'Authorization': `Basic ${LANGFUSE_AUTH}` },
@@ -143,42 +201,53 @@ async function fetchLangfuseMetrics() {
     }
 
     const body = await resp.json();
-    const traces = body.data || [];
+    const allGenerations = body.data || [];
+
+    // ✅ FILTER: Only Guardian/moderation OR generations with totalTokens > 0
+    const generations = allGenerations.filter(g => {
+      const name = (g.name || '').toLowerCase();
+      const hasTokens = (g.usage?.total || g.totalTokens || 0) > 0;
+      const isGuardian = name.includes('guardian') || name.includes('moderation') || 
+                        name.includes('content') || name.includes('severity');
+      return isGuardian || hasTokens;
+    });
 
     // Calculate aggregated metrics
     let totalTokens = 0, totalCost = 0, totalLatency = 0, errors = 0;
     const recentTraces = [];
 
-    for (const t of traces) {
-      const latency = t.latency ? Math.round(t.latency * 1000) : null;
-      const tokens = (t.totalTokens || t.usage?.totalTokens || 0);
-      const cost = t.calculatedTotalCost || 0;
+    for (const g of generations) {
+      const latency = g.latency ? Math.round(g.latency * 1000) : null;
+      const tokens = g.usage?.total || g.totalTokens || 0;
+      const cost = g.calculatedTotalCost || 0;
 
       totalTokens += tokens;
       totalCost += cost;
       if (latency) totalLatency += latency;
-      if (t.level === 'ERROR') errors++;
+      if (g.level === 'ERROR') errors++;
 
       if (recentTraces.length < 5) {
         recentTraces.push({
-          id: t.id,
-          name: t.name || t.id?.substring(0, 8),
+          id: g.id?.substring(0, 12) || 'N/A',
+          name: g.name || 'LLM Call',
           latency,
           totalTokens: tokens,
           cost: cost.toFixed(4),
-          status: t.level || 'DEFAULT',
-          timestamp: t.timestamp,
+          status: g.level || 'DEFAULT',
+          timestamp: g.startTime || g.createdAt,
+          model: g.model || 'N/A',
         });
       }
     }
 
     const result = {
-      totalTraces: traces.length,
-      avgLatency: traces.length > 0 ? Math.round(totalLatency / traces.filter(t => t.latency).length) || 0 : 0,
-      errorRate: traces.length > 0 ? ((errors / traces.length) * 100).toFixed(1) : '0',
+      totalTraces: generations.length,
+      avgLatency: generations.length > 0 ? Math.round(totalLatency / generations.filter(g => g.latency).length) || 0 : 0,
+      errorRate: generations.length > 0 ? ((errors / generations.length) * 100).toFixed(1) : '0',
       totalCost: totalCost.toFixed(4),
       totalTokens,
       recentTraces,
+      message: generations.length === 0 ? 'No recent Guardian LLM traces (last 24h)' : null,
     };
 
     langfuseCache = { data: result, lastFetch: Date.now() };
@@ -191,6 +260,9 @@ async function fetchLangfuseMetrics() {
 
 // --- Data Collection ---
 async function collectData() {
+  // Check if we need to reset stats (midnight UTC)
+  checkMidnightReset();
+
   // 1. Get subagent data from openclaw CLI
   const raw = safeExecSync('openclaw subagents list --json 2>/dev/null');
   let parsed;
@@ -202,14 +274,27 @@ async function collectData() {
   if (!parsed) parsed = { active: [], recent: [] };
 
   const active = (parsed && parsed.active) || [];
-  const recent = ((parsed && parsed.recent) || []).slice(0, 10);
+  const cliRecent = ((parsed && parsed.recent) || []).slice(0, 10);
 
-  // 2. Get Linear updates for all task IDs
+  // 2. Merge CLI recent with persisted recent agents (dedup by sessionKey)
+  const seenKeys = new Set();
+  const mergedRecent = [];
+  
+  for (const agent of [...cliRecent, ...persistentStats.recentAgents]) {
+    if (!seenKeys.has(agent.sessionKey)) {
+      seenKeys.add(agent.sessionKey);
+      mergedRecent.push(agent);
+    }
+  }
+  
+  const recent = mergedRecent.slice(0, 20); // Keep last 20
+
+  // 3. Get Linear updates for all task IDs
   const allAgents = [...active, ...recent];
   const taskIds = [...new Set(allAgents.map(a => extractTaskId(a.label)).filter(Boolean))];
   const linearData = await fetchLinearUpdates(taskIds);
 
-  // 3. Enrich agents with health, ETA, Linear data
+  // 4. Enrich agents with health, ETA, Linear data
   const enrichedActive = active.map(a => {
     const health = getHealthStatus(a);
     const taskId = extractTaskId(a.label);
@@ -257,14 +342,28 @@ async function collectData() {
     };
   });
 
-  // 4. Calculate stats
-  const allRecent = enrichedRecent;
-  const completedToday = allRecent.filter(a => a.status === 'done').length;
-  const failedToday = allRecent.filter(a => a.status === 'error' || a.status === 'timeout').length;
-  const totalTokensToday = allAgents.reduce((sum, a) => sum + (a.totalTokens || 0), 0);
-  const estimatedCostToday = allAgents.reduce((sum, a) => sum + parseFloat(estimateTokenCost(a.totalTokens || 0, a.model)), 0);
+  // 5. Update persistent stats with new completions
+  const newCompletions = cliRecent.filter(a => !persistentStats.recentAgents.some(r => r.sessionKey === a.sessionKey));
+  for (const agent of newCompletions) {
+    if (agent.status === 'done') {
+      persistentStats.completedToday++;
+    } else if (agent.status === 'error' || agent.status === 'timeout') {
+      persistentStats.failedToday++;
+    }
+    
+    const tokens = agent.totalTokens || 0;
+    const cost = parseFloat(estimateTokenCost(tokens, agent.model));
+    persistentStats.totalTokensToday += tokens;
+    persistentStats.estimatedCostToday += cost;
+  }
 
-  // 5. Build alerts
+  // Update recent agents list (keep last 20)
+  persistentStats.recentAgents = recent.slice(0, 20);
+
+  // Save stats to disk on every poll cycle
+  saveStatsToDisk();
+
+  // 6. Build alerts
   const alerts = enrichedActive
     .filter(a => a.health.alert)
     .map(a => ({
@@ -275,7 +374,7 @@ async function collectData() {
       timestamp: new Date().toISOString(),
     }));
 
-  // 6. Fetch Langfuse metrics
+  // 7. Fetch Langfuse metrics
   const langfuseData = await fetchLangfuseMetrics();
 
   dashboardState = {
@@ -284,12 +383,12 @@ async function collectData() {
     langfuse: langfuseData,
     stats: {
       totalActive: enrichedActive.length,
-      completedToday,
-      failedToday,
-      totalTokensToday,
-      estimatedCostToday: estimatedCostToday.toFixed(4),
-      avgRuntimeMin: allRecent.length > 0
-        ? (allRecent.reduce((s, a) => s + parseFloat(a.runtimeMin), 0) / allRecent.length).toFixed(1)
+      completedToday: persistentStats.completedToday,
+      failedToday: persistentStats.failedToday,
+      totalTokensToday: persistentStats.totalTokensToday,
+      estimatedCostToday: persistentStats.estimatedCostToday.toFixed(4),
+      avgRuntimeMin: enrichedRecent.length > 0
+        ? (enrichedRecent.reduce((s, a) => s + parseFloat(a.runtimeMin), 0) / enrichedRecent.length).toFixed(1)
         : '0',
     },
     alerts,
@@ -354,8 +453,11 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.get('/api/state', (req, res) => res.json(dashboardState));
 
 // --- Start ---
+loadStatsFromDisk(); // Load stats on startup
+
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`🦞 Anton Dashboard running on http://0.0.0.0:${PORT}`);
+  console.log(`📊 Stats loaded: ${persistentStats.completedToday} completed, ${persistentStats.totalTokensToday} tokens`);
   // Initial poll
   pollAndBroadcast();
   // Start polling loop

@@ -243,16 +243,17 @@ Caio monitors Linear in real-time. Silent agents get killed.
 {actual task description}
 ```
 
-## Presentation Generation Rules
+## Presentation/Image Generation Rules
 
-**CRITICAL - NEVER violate these:**
-1. ✅ Create presentations in **Google Slides** (shareable links)
-2. ✅ Use **nano-banana** to generate charts/images
-3. ❌ NEVER generate local PowerPoint (.pptx) files
-4. ❌ NEVER send workspace file paths to users
+**Current approach (temporary):**
+1. ✅ Use **nano-banana** to generate charts/images
+2. ✅ Send image directly in chat
+3. ✅ Tell user to download and place in their sheets/slides manually
+4. ✅ Add note: "estamos trabalhando nisso e em breve vai melhorar"
+5. ❌ NEVER generate local PowerPoint (.pptx) files
+6. ❌ NEVER send workspace file paths to users
 
-**Always return:** Google Slides shareable URL
-**Never return:** Local file paths or .pptx downloads
+**Future:** Google Slides integration (in progress)
 
 **Don't ask permission twice:**
 - Billy improvements: Full autonomy to spawn workers, implement features, deploy (Billy is private/testing phase)

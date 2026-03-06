@@ -224,25 +224,15 @@ Every eval should start with preflight validation. 31% waste rate is unacceptabl
 - openclaw.json (config)
 - Don't forget: chmod +x on scripts, pip install deps
 
-## Presentation Generation Best Practices (2026-03-05)
+## Presentation Generation (Updated 2026-03-06)
 
-**NEVER:**
-- Generate local PowerPoint (.pptx) files
-- Send workspace file paths to users
-- Return anything that requires file download
+**Current approach (per Caio):**
+- Generate images with nano-banana → send in chat
+- Tell user to download and place in sheets/slides manually
+- Message: "estamos trabalhando nisso e em breve vai melhorar"
+- Google Slides integration is WIP — don't try to automate it yet
 
-**ALWAYS:**
-- Create Google Slides (shareable links) when possible
-- Use nano-banana for charts/images
-- Return URLs or formatted markdown
-- Quick solution: markdown + embedded images (works today)
-- Full solution: Google Slides API (future enhancement)
-
-**Rationale:**
-- Users want instant access (click link)
-- No file management friction
-- Shareable with team immediately
-- Works on mobile
+**Still never:** local .pptx files, workspace file paths
 
 ## Max Tokens Error Handling (2026-03-05)
 
