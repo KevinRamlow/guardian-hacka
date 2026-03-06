@@ -18,7 +18,7 @@ if (fs.existsSync(envPath)) {
 }
 
 const PORT = 8765;
-const BIND = '127.0.0.1'; // localhost only — never expose
+const BIND = '0.0.0.0'; // protected by token auth
 const POLL_INTERVAL = 8000; // 8s
 const LINEAR_API_KEY = process.env.LINEAR_API_KEY || '';
 const STATS_FILE = path.join(__dirname, 'stats-history.json');
@@ -29,7 +29,27 @@ const LANGFUSE_PUBLIC_KEY = process.env.LANGFUSE_PUBLIC_KEY || '';
 const LANGFUSE_SECRET_KEY = process.env.LANGFUSE_SECRET_KEY || '';
 const LANGFUSE_AUTH = Buffer.from(`${LANGFUSE_PUBLIC_KEY}:${LANGFUSE_SECRET_KEY}`).toString('base64');
 
+const DASHBOARD_TOKEN = process.env.DASHBOARD_TOKEN || 'anton-dash-2026';
+
 const app = express();
+
+// Auth middleware
+app.use((req, res, next) => {
+  // Allow static files if token is in query param
+  const token = req.query.token || req.headers['x-dashboard-token'] || 
+    (req.headers.authorization || '').replace('Bearer ', '');
+  if (token === DASHBOARD_TOKEN || req.path === '/login') {
+    return next();
+  }
+  // Serve login page
+  res.send(`<html><body style="background:#0a0e17;color:#e2e8f0;font-family:monospace;display:flex;align-items:center;justify-content:center;height:100vh">
+    <form onsubmit="location.href='/?token='+document.getElementById('t').value;return false">
+      <h2>🦞 Anton Cockpit</h2>
+      <input id="t" type="password" placeholder="Token" style="padding:8px;background:#111827;color:#e2e8f0;border:1px solid #333;border-radius:4px;width:250px">
+      <button style="padding:8px 16px;background:#3b82f6;color:white;border:none;border-radius:4px;cursor:pointer;margin-left:8px">Enter</button>
+    </form></body></html>`);
+});
+
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
 
