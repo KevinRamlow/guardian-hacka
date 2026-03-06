@@ -1,0 +1,10 @@
+{
+  "maxConcurrent": 3,
+  "teamKey": "CAI",
+  "checkIntervalMin": 5,
+  "agentTimeoutMin": 30,
+  "enabled": true,
+  "priorityOrder": ["In Progress", "Todo", "Backlog"],
+  "skipLabels": ["blocked", "waiting"],
+  "notifySlack": true
+}
