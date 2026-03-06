@@ -5,15 +5,28 @@ const http = require('http');
 const path = require('path');
 const fs = require('fs');
 
+// Load .env file
+const envPath = path.join(__dirname, '.env');
+if (fs.existsSync(envPath)) {
+  for (const line of fs.readFileSync(envPath, 'utf-8').split('\n')) {
+    const trimmed = line.trim();
+    if (trimmed && !trimmed.startsWith('#')) {
+      const [key, ...rest] = trimmed.split('=');
+      if (key && rest.length) process.env[key.trim()] = rest.join('=').trim();
+    }
+  }
+}
+
 const PORT = 8765;
+const BIND = '127.0.0.1'; // localhost only — never expose
 const POLL_INTERVAL = 8000; // 8s
-const LINEAR_API_KEY = '[REDACTED]';
-const STATS_FILE = '/root/.openclaw/workspace/dashboard/stats-history.json';
+const LINEAR_API_KEY = process.env.LINEAR_API_KEY || '';
+const STATS_FILE = path.join(__dirname, 'stats-history.json');
 
 // Langfuse config
 const LANGFUSE_HOST = 'https://us.cloud.langfuse.com';
-const LANGFUSE_PUBLIC_KEY = '[REDACTED]';
-const LANGFUSE_SECRET_KEY = '[REDACTED]';
+const LANGFUSE_PUBLIC_KEY = process.env.LANGFUSE_PUBLIC_KEY || '';
+const LANGFUSE_SECRET_KEY = process.env.LANGFUSE_SECRET_KEY || '';
 const LANGFUSE_AUTH = Buffer.from(`${LANGFUSE_PUBLIC_KEY}:${LANGFUSE_SECRET_KEY}`).toString('base64');
 
 const app = express();
@@ -260,121 +273,112 @@ async function fetchLangfuseMetrics() {
 
 // --- Data Collection ---
 async function collectData() {
-  // Check if we need to reset stats (midnight UTC)
   checkMidnightReset();
 
-  // 1. Get subagent data from openclaw CLI
-  const raw = safeExecSync('openclaw subagents list --json 2>/dev/null');
-  let parsed;
+  // 1. Get session data from openclaw CLI (the correct command)
+  const raw = safeExecSync('openclaw sessions --active 120 --json --all-agents 2>/dev/null');
+  let sessions = [];
   try {
-    parsed = raw ? JSON.parse(raw) : { active: [], recent: [] };
-  } catch {
-    parsed = { active: [], recent: [] };
-  }
-  if (!parsed) parsed = { active: [], recent: [] };
+    const parsed = raw ? JSON.parse(raw) : {};
+    sessions = (parsed.sessions || []);
+  } catch { sessions = []; }
 
-  const active = (parsed && parsed.active) || [];
-  const cliRecent = ((parsed && parsed.recent) || []).slice(0, 10);
+  // Classify sessions: active subagents vs recent completed vs cron/main
+  const now = Date.now();
+  const active = [];
+  const recent = [];
 
-  // 2. Merge CLI recent with persisted recent agents (dedup by sessionKey)
-  const seenKeys = new Set();
-  const mergedRecent = [];
-  
-  for (const agent of [...cliRecent, ...persistentStats.recentAgents]) {
-    if (!seenKeys.has(agent.sessionKey)) {
-      seenKeys.add(agent.sessionKey);
-      mergedRecent.push(agent);
+  for (const s of sessions) {
+    // Skip main session and cron sessions
+    if (s.key === 'agent:main:main' || s.kind === 'direct') continue;
+    
+    const runtimeMs = s.ageMs ? (now - (s.updatedAt - s.ageMs)) : 0;
+    const isSubagent = s.kind === 'subagent' || s.kind === 'acp' || s.key.includes('spawn');
+    const isCron = s.key.includes('cron');
+    
+    if (isCron && !isSubagent) continue; // Skip pure cron sessions
+    
+    const agent = {
+      sessionKey: s.key,
+      sessionId: s.sessionId,
+      label: s.label || s.key.split(':').pop() || 'unnamed',
+      model: s.model || 'unknown',
+      status: s.abortedLastRun ? 'error' : (s.ageMs < 60000 ? 'running' : 'done'),
+      totalTokens: s.totalTokens || 0,
+      runtimeMs: s.ageMs || 0,
+      kind: s.kind,
+      task: s.label || '',
+    };
+
+    // Sessions updated in last 5 min are likely still active
+    if (s.ageMs < 300000 && !s.abortedLastRun) {
+      agent.status = 'running';
+      active.push(agent);
+    } else {
+      agent.status = s.abortedLastRun ? 'error' : 'done';
+      recent.push(agent);
     }
   }
-  
-  const recent = mergedRecent.slice(0, 20); // Keep last 20
+
+  // 2. Merge with persisted recent agents
+  const seenKeys = new Set();
+  const mergedRecent = [];
+  for (const a of [...recent, ...persistentStats.recentAgents]) {
+    if (!seenKeys.has(a.sessionKey)) {
+      seenKeys.add(a.sessionKey);
+      mergedRecent.push(a);
+    }
+  }
+  const finalRecent = mergedRecent.slice(0, 20);
 
   // 3. Get Linear updates for all task IDs
-  const allAgents = [...active, ...recent];
+  const allAgents = [...active, ...finalRecent];
   const taskIds = [...new Set(allAgents.map(a => extractTaskId(a.label)).filter(Boolean))];
   const linearData = await fetchLinearUpdates(taskIds);
 
-  // 4. Enrich agents with health, ETA, Linear data
+  // 4. Enrich active agents
   const enrichedActive = active.map(a => {
     const health = getHealthStatus(a);
     const taskId = extractTaskId(a.label);
     const linear = taskId ? linearData[taskId] : null;
     const runtimeMin = (a.runtimeMs || 0) / 60000;
-
-    // Parse timeout from task description
-    let timeoutMin = 25; // default
+    let timeoutMin = 25;
     const timeoutMatch = (a.task || '').match(/Timeout:\s*(\d+)\s*min/i);
     if (timeoutMatch) timeoutMin = parseInt(timeoutMatch[1]);
-
     const etaMin = Math.max(0, timeoutMin - runtimeMin);
     const progress = Math.min(100, (runtimeMin / timeoutMin) * 100);
-
-    // Token tracking
     const cost = estimateTokenCost(a.totalTokens || 0, a.model);
 
-    return {
-      ...a,
-      health,
-      taskId,
-      linear,
-      runtimeMin: runtimeMin.toFixed(1),
-      timeoutMin,
-      etaMin: etaMin.toFixed(1),
-      progress: progress.toFixed(0),
-      cost,
-      taskShort: (a.task || '').substring(0, 100),
-    };
+    return { ...a, health, taskId, linear, runtimeMin: runtimeMin.toFixed(1), timeoutMin, etaMin: etaMin.toFixed(1), progress: progress.toFixed(0), cost, taskShort: (a.task || '').substring(0, 100) };
   });
 
-  const enrichedRecent = recent.map(a => {
+  // 5. Enrich recent agents
+  const enrichedRecent = finalRecent.map(a => {
     const taskId = extractTaskId(a.label);
     const linear = taskId ? linearData[taskId] : null;
     const runtimeMin = (a.runtimeMs || 0) / 60000;
     const cost = estimateTokenCost(a.totalTokens || 0, a.model);
-
-    return {
-      ...a,
-      taskId,
-      linear,
-      runtimeMin: runtimeMin.toFixed(1),
-      cost,
-      success: a.status === 'done',
-    };
+    return { ...a, taskId, linear, runtimeMin: runtimeMin.toFixed(1), cost, success: a.status === 'done' };
   });
 
-  // 5. Update persistent stats with new completions
-  const newCompletions = cliRecent.filter(a => !persistentStats.recentAgents.some(r => r.sessionKey === a.sessionKey));
+  // 6. Update persistent stats
+  const newCompletions = recent.filter(a => !persistentStats.recentAgents.some(r => r.sessionKey === a.sessionKey));
   for (const agent of newCompletions) {
-    if (agent.status === 'done') {
-      persistentStats.completedToday++;
-    } else if (agent.status === 'error' || agent.status === 'timeout') {
-      persistentStats.failedToday++;
-    }
-    
+    if (agent.status === 'done') persistentStats.completedToday++;
+    else if (agent.status === 'error') persistentStats.failedToday++;
     const tokens = agent.totalTokens || 0;
-    const cost = parseFloat(estimateTokenCost(tokens, agent.model));
     persistentStats.totalTokensToday += tokens;
-    persistentStats.estimatedCostToday += cost;
+    persistentStats.estimatedCostToday += parseFloat(estimateTokenCost(tokens, agent.model));
   }
-
-  // Update recent agents list (keep last 20)
-  persistentStats.recentAgents = recent.slice(0, 20);
-
-  // Save stats to disk on every poll cycle
+  persistentStats.recentAgents = finalRecent.slice(0, 20);
   saveStatsToDisk();
 
-  // 6. Build alerts
+  // 7. Build alerts
   const alerts = enrichedActive
     .filter(a => a.health.alert)
-    .map(a => ({
-      level: a.health.status === 'frozen' ? 'CRITICAL' : 'WARNING',
-      agent: a.label,
-      taskId: a.taskId,
-      message: a.health.alert,
-      timestamp: new Date().toISOString(),
-    }));
+    .map(a => ({ level: a.health.status === 'frozen' ? 'CRITICAL' : 'WARNING', agent: a.label, taskId: a.taskId, message: a.health.alert, timestamp: new Date().toISOString() }));
 
-  // 7. Fetch Langfuse metrics
+  // 8. Fetch Langfuse metrics
   const langfuseData = await fetchLangfuseMetrics();
 
   dashboardState = {
@@ -387,9 +391,7 @@ async function collectData() {
       failedToday: persistentStats.failedToday,
       totalTokensToday: persistentStats.totalTokensToday,
       estimatedCostToday: persistentStats.estimatedCostToday.toFixed(4),
-      avgRuntimeMin: enrichedRecent.length > 0
-        ? (enrichedRecent.reduce((s, a) => s + parseFloat(a.runtimeMin), 0) / enrichedRecent.length).toFixed(1)
-        : '0',
+      avgRuntimeMin: enrichedRecent.length > 0 ? (enrichedRecent.reduce((s, a) => s + parseFloat(a.runtimeMin), 0) / enrichedRecent.length).toFixed(1) : '0',
     },
     alerts,
     lastUpdated: new Date().toISOString(),
@@ -406,14 +408,17 @@ function broadcast(data) {
   });
 }
 
+// Global error handlers
+process.on('uncaughtException', (e) => { console.error('UNCAUGHT:', e.message); });
+process.on('unhandledRejection', (e) => { console.error('UNHANDLED REJECTION:', e?.message || e); });
+
 // Poll and broadcast
 async function pollAndBroadcast() {
   try {
     const data = await collectData();
     if (data) broadcast({ type: 'update', data });
   } catch (e) {
-    console.error('Poll error:', e.message);
-    // Broadcast last known good state
+    console.error('Poll error:', e.message, e.stack);
     if (dashboardState.lastUpdated) broadcast({ type: 'update', data: dashboardState });
   }
 }
@@ -455,8 +460,8 @@ app.get('/api/state', (req, res) => res.json(dashboardState));
 // --- Start ---
 loadStatsFromDisk(); // Load stats on startup
 
-server.listen(PORT, '0.0.0.0', () => {
-  console.log(`🦞 Anton Dashboard running on http://0.0.0.0:${PORT}`);
+server.listen(PORT, BIND, () => {
+  console.log(`🦞 Anton Dashboard running on http://${BIND}:${PORT}`);
   console.log(`📊 Stats loaded: ${persistentStats.completedToday} completed, ${persistentStats.totalTokensToday} tokens`);
   // Initial poll
   pollAndBroadcast();
