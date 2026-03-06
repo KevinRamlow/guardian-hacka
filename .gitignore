@@ -1,0 +1,23 @@
+# Secrets
+.env*
+auth-profiles.json
+*.key
+*.pem
+.my.cnf
+
+# Runtime
+node_modules/
+__pycache__/
+*.log
+*.pyc
+/data/
+/tmp/
+
+# Large files
+*.png
+*.jpg
+*.mp4
+*.zip
+
+# OpenClaw internal
+.openclaw/

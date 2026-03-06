@@ -1,0 +1,288 @@
+#!/bin/bash
+# Linear Task Sync - Monitor sub-agents and update Linear tasks automatically
+# Handles both OpenClaw subagents (runtime="subagent") and Claude Code agents (runtime="acp")
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+WORKSPACE_DIR="$(dirname "$SCRIPT_DIR")"
+
+# Source Linear config
+if [[ -f "$WORKSPACE_DIR/.env.linear" ]]; then
+  source "$WORKSPACE_DIR/.env.linear"
+else
+  echo "❌ Error: .env.linear not found"
+  exit 1
+fi
+
+# Check API key
+if [[ -z "${LINEAR_API_KEY:-}" ]]; then
+  echo "❌ Error: LINEAR_API_KEY not set"
+  exit 1
+fi
+
+# State file to track last sync
+STATE_FILE="$WORKSPACE_DIR/.linear-sync-state.json"
+
+# Initialize state file if it doesn't exist
+if [[ ! -f "$STATE_FILE" ]]; then
+  echo '{"lastSync": 0, "taskAgents": {}}' > "$STATE_FILE"
+fi
+
+# Function to call Linear GraphQL API
+linear_query() {
+  local query="$1"
+  curl -s -X POST https://api.linear.app/graphql \
+    -H "Authorization: $LINEAR_API_KEY" \
+    -H "Content-Type: application/json" \
+    -d "{\"query\": $(echo "$query" | jq -Rs .)}" | jq -r '.data // .errors'
+}
+
+# Function to update Linear task description
+update_task_description() {
+  local issue_id="$1"
+  local description="$2"
+  
+  # Escape description for JSON
+  local escaped_desc=$(echo "$description" | jq -Rs .)
+  
+  local mutation="mutation {
+    issueUpdate(
+      id: \"$issue_id\"
+      input: {
+        description: $escaped_desc
+      }
+    ) {
+      success
+      issue {
+        id
+        identifier
+      }
+    }
+  }"
+  
+  linear_query "$mutation"
+}
+
+# Function to add comment to Linear task
+add_task_comment() {
+  local issue_id="$1"
+  local comment="$2"
+  
+  # Escape comment for JSON
+  local escaped_comment=$(echo "$comment" | jq -Rs .)
+  
+  local mutation="mutation {
+    commentCreate(
+      input: {
+        issueId: \"$issue_id\"
+        body: $escaped_comment
+      }
+    ) {
+      success
+      comment {
+        id
+      }
+    }
+  }"
+  
+  linear_query "$mutation"
+}
+
+# Function to update task status
+update_task_status() {
+  local issue_id="$1"
+  local status_name="$2"  # "In Progress", "Done", "Blocked", etc.
+  
+  # First, get the workflow state ID for this status name
+  local state_query="{
+    workflowStates(filter: { name: { eq: \"$status_name\" } }) {
+      nodes {
+        id
+        name
+      }
+    }
+  }"
+  
+  local state_id=$(linear_query "$state_query" | jq -r '.workflowStates.nodes[0].id // empty')
+  
+  if [[ -z "$state_id" ]]; then
+    echo "⚠️  Warning: Status '$status_name' not found, skipping status update"
+    return 1
+  fi
+  
+  local mutation="mutation {
+    issueUpdate(
+      id: \"$issue_id\"
+      input: {
+        stateId: \"$state_id\"
+      }
+    ) {
+      success
+      issue {
+        id
+        identifier
+        state { name }
+      }
+    }
+  }"
+  
+  linear_query "$mutation"
+}
+
+# Function to get OpenClaw subagent status
+get_openclaw_subagents() {
+  # Use OpenClaw CLI to list subagents
+  # Output format: JSON with active and recent subagents
+  openclaw sessions-list --requester agent:main:main --json 2>/dev/null || echo '{"active":[],"recent":[]}'
+}
+
+# Function to get Claude Code (ACP) sessions
+get_acp_sessions() {
+  # List ACP runtime sessions from OpenClaw
+  openclaw sessions-list --runtime acp --json 2>/dev/null || echo '{"active":[],"recent":[]}'
+}
+
+# Function to generate status report for a subagent
+generate_subagent_report() {
+  local session_key="$1"
+  local label="$2"
+  local status="$3"
+  local runtime_ms="$4"
+  local model="$5"
+  
+  local runtime_human=$(( runtime_ms / 60000 ))
+  local status_emoji="⏳"
+  
+  case "$status" in
+    running) status_emoji="🔄" ;;
+    done) status_emoji="✅" ;;
+    error) status_emoji="❌" ;;
+  esac
+  
+  cat <<EOF
+**Sub-Agent Status Update** (Auto-generated)
+
+$status_emoji **Status:** $status
+⏱️ **Runtime:** ${runtime_human}m
+🤖 **Model:** $model
+🔑 **Session:** \`$session_key\`
+
+_Last updated: $(date -u '+%Y-%m-%d %H:%M UTC')_
+EOF
+}
+
+# Main sync logic
+sync_tasks() {
+  echo "🔄 Starting Linear task sync..."
+  
+  # Get all CAI team tasks
+  local tasks_query="{
+    issues(filter: { team: { key: { eq: \"CAI\" } }, state: { type: { nin: [\"completed\", \"canceled\"] } } }) {
+      nodes {
+        id
+        identifier
+        title
+        state { name }
+        description
+      }
+    }
+  }"
+  
+  local tasks=$(linear_query "$tasks_query")
+  
+  # Get current subagents
+  local openclaw_agents=$(get_openclaw_subagents)
+  local acp_agents=$(get_acp_sessions)
+  
+  # Process each task
+  echo "$tasks" | jq -c '.issues.nodes[]' | while read -r task; do
+    local task_id=$(echo "$task" | jq -r '.id')
+    local task_identifier=$(echo "$task" | jq -r '.identifier')
+    local task_title=$(echo "$task" | jq -r '.title')
+    local task_description=$(echo "$task" | jq -r '.description // ""')
+    local task_state=$(echo "$task" | jq -r '.state.name')
+    
+    echo "  📋 Checking $task_identifier: $task_title"
+    
+    # Look for session ID in description (flexible patterns)
+    local session_id=$(echo "$task_description" | grep -oP 'Session:\*\* \K[a-f0-9-]{36}|Session: `?\K[a-f0-9-]{36}' | head -1)
+    
+    if [[ -z "$session_id" ]]; then
+      echo "    ⏭️  No session ID found, skipping"
+      continue
+    fi
+    
+    # Check if this session is active in OpenClaw subagents
+    local openclaw_match=$(echo "$openclaw_agents" | jq -r --arg sid "$session_id" \
+      '.active[]? | select(.sessionKey | contains($sid)) // empty' | head -1)
+    
+    # Check if this session is active in ACP agents
+    local acp_match=$(echo "$acp_agents" | jq -r --arg sid "$session_id" \
+      '.active[]? | select(.sessionKey | contains($sid)) // empty' | head -1)
+    
+    if [[ -n "$openclaw_match" ]]; then
+      echo "    🔄 Found active OpenClaw subagent"
+      
+      local status=$(echo "$openclaw_match" | jq -r '.status')
+      local runtime_ms=$(echo "$openclaw_match" | jq -r '.runtimeMs')
+      local model=$(echo "$openclaw_match" | jq -r '.model')
+      local label=$(echo "$openclaw_match" | jq -r '.label')
+      
+      # Generate report
+      local report=$(generate_subagent_report "$session_id" "$label" "$status" "$runtime_ms" "$model")
+      
+      # Check if description needs update (avoid spam)
+      if ! echo "$task_description" | grep -q "Last updated: $(date -u '+%Y-%m-%d')"; then
+        echo "    ✏️  Updating task with latest status"
+        add_task_comment "$task_id" "$report"
+      else
+        echo "    ⏭️  Already updated today"
+      fi
+      
+    elif [[ -n "$acp_match" ]]; then
+      echo "    🔄 Found active ACP (Claude Code) agent"
+      
+      local status=$(echo "$acp_match" | jq -r '.status')
+      local runtime_ms=$(echo "$acp_match" | jq -r '.runtimeMs')
+      local model=$(echo "$acp_match" | jq -r '.model')
+      local label=$(echo "$acp_match" | jq -r '.label')
+      
+      # Generate report
+      local report=$(generate_subagent_report "$session_id" "$label" "$status" "$runtime_ms" "$model")
+      
+      # Check if description needs update
+      if ! echo "$task_description" | grep -q "Last updated: $(date -u '+%Y-%m-%d')"; then
+        echo "    ✏️  Updating task with latest status"
+        add_task_comment "$task_id" "$report"
+      else
+        echo "    ⏭️  Already updated today"
+      fi
+      
+    else
+      # Check recent completed sessions
+      local openclaw_done=$(echo "$openclaw_agents" | jq -r --arg sid "$session_id" \
+        '.recent[]? | select(.sessionKey | contains($sid)) // empty' | head -1)
+      
+      local acp_done=$(echo "$acp_agents" | jq -r --arg sid "$session_id" \
+        '.recent[]? | select(.sessionKey | contains($sid)) // empty' | head -1)
+      
+      if [[ -n "$openclaw_done" || -n "$acp_done" ]]; then
+        local done_match="${openclaw_done:-$acp_done}"
+        local status=$(echo "$done_match" | jq -r '.status')
+        
+        if [[ "$status" == "done" && "$task_state" != "Done" ]]; then
+          echo "    ✅ Sub-agent completed, updating task status"
+          update_task_status "$task_id" "Done"
+        fi
+      else
+        echo "    ⏭️  No active sub-agent found"
+      fi
+    fi
+  done
+  
+  echo "✅ Sync complete"
+}
+
+# Run sync
+sync_tasks

@@ -1,0 +1,97 @@
+name: Code Change
+description: |
+  Standard implement → test → review workflow for code changes.
+  Single pass (no loop).
+version: "1.0"
+loop: false
+
+variables:
+  ticket_id:
+    type: string
+    required: true
+    description: "Linear ticket ID (e.g. GUA-1234)"
+  description:
+    type: string
+    required: true
+    description: "What to implement"
+  repo:
+    type: string
+    default: "guardian-agents-api"
+    description: "Repository name"
+  branch:
+    type: string
+    default: ""
+    description: "Feature branch name"
+  test_command:
+    type: string
+    default: "pytest"
+    description: "Test command to run"
+
+budget:
+  max_iterations: 1
+  max_total_minutes: 60
+  max_agent_spawns: 5
+
+checkpoints:
+  - name: implement
+    kind: task
+    description: "Implement the code change"
+    agent_task: |
+      Implement the following change in {{repo}}:
+
+      **Ticket:** {{ticket_id}}
+      **Description:** {{description}}
+      **Branch:** {{branch}}
+
+      1. Create feature branch if needed
+      2. Implement the change
+      3. Write/update tests
+      4. Ensure code passes linting
+      5. Create a clear commit message referencing {{ticket_id}}
+
+      Output: files changed, commit hash, summary.
+    agent_label: "code-{{ticket_id}}"
+    timeout_min: 20
+    outputs: ["changes_summary", "commit_hash"]
+
+  - name: test
+    kind: hook
+    description: "Run tests"
+    hook_command: "cd /root/.openclaw/workspace/{{repo}} && {{test_command}}"
+    on_failure: retry
+    max_retries: 2
+
+  - name: review
+    kind: decision
+    description: "Review changes before PR"
+    decision_prompt: |
+      ## Code Change Review
+
+      **Ticket:** {{ticket_id}}
+      **Changes:** {{changes_summary}}
+      **Commit:** {{commit_hash}}
+
+      Options:
+      1. **approve** — Open PR
+      2. **revise** — Need changes
+      3. **abort** — Discard
+    decision_options:
+      - approve
+      - revise
+      - abort
+
+  - name: open-pr
+    kind: task
+    description: "Open a pull request"
+    condition: "decision == 'approve'"
+    agent_task: |
+      Open a PR for {{repo}} branch {{branch}}:
+      - Title: [{{ticket_id}}] {{description}}
+      - Description with changes summary
+      - Request review from team
+    agent_label: "pr-{{ticket_id}}"
+    timeout_min: 5
+    outputs: ["pr_url"]
+
+metadata:
+  type: code-change

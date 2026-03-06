@@ -1,0 +1,195 @@
+name: Guardian Experiment
+description: |
+  Iterative hypothesis-driven experiment loop for Guardian accuracy improvement.
+  Implements → evaluates → analyzes → refines until target improvement is met.
+version: "1.0"
+
+# Loop until completion promise is met (or budget exhausted)
+loop: true
+
+variables:
+  baseline_accuracy:
+    type: float
+    required: true
+    description: "Baseline accuracy percentage (e.g. 76.8)"
+  target_improvement:
+    type: float
+    default: 5.0
+    description: "Target improvement in percentage points"
+  hypothesis:
+    type: string
+    default: ""
+    description: "Current hypothesis being tested"
+  current_accuracy:
+    type: float
+    default: 0.0
+    description: "Most recent eval accuracy"
+  improvement:
+    type: float
+    default: 0.0
+    description: "Current improvement over baseline (pp)"
+  experiment_branch:
+    type: string
+    default: ""
+    description: "Git branch for this experiment"
+  eval_dataset:
+    type: string
+    default: "guardian-eval-v2"
+    description: "Evaluation dataset name"
+  last_analysis:
+    type: string
+    default: ""
+    description: "Summary of last analysis"
+
+budget:
+  max_iterations: 5
+  max_total_minutes: 300
+  max_agent_spawns: 25
+
+completion_promise:
+  description: "+{{target_improvement}}pp accuracy improvement over baseline"
+  metric: improvement
+  operator: ">="
+  target: 5.0  # overridden at runtime from target_improvement
+
+hooks:
+  on_start: "echo 'Starting Guardian experiment {{workflow_id}}'"
+  on_complete: "echo '✅ Guardian experiment {{workflow_id}} completed'"
+  on_fail: "echo '❌ Guardian experiment {{workflow_id}} failed'"
+
+checkpoints:
+  - name: preflight
+    kind: hook
+    description: "Validate auth, config, and dataset before starting eval"
+    hook_command: |
+      echo "=== Guardian Eval Pre-Flight Check ==="
+      # 1. Check GCP project config
+      if [ "$GOOGLE_CLOUD_PROJECT" != "brandlovers-prod" ]; then
+        echo "❌ GOOGLE_CLOUD_PROJECT must be brandlovers-prod (got: $GOOGLE_CLOUD_PROJECT)"
+        exit 1
+      fi
+      echo "✅ GOOGLE_CLOUD_PROJECT=brandlovers-prod"
+
+      # 2. Check auth (prefer service account for long runs)
+      if [ -n "$GOOGLE_APPLICATION_CREDENTIALS" ] && [ -f "$GOOGLE_APPLICATION_CREDENTIALS" ]; then
+        echo "✅ Service account: $GOOGLE_APPLICATION_CREDENTIALS"
+      else
+        # Check OAuth token validity
+        TOKEN=$(gcloud auth application-default print-access-token 2>/dev/null)
+        if [ -z "$TOKEN" ]; then
+          echo "❌ No valid auth. Set GOOGLE_APPLICATION_CREDENTIALS or run: gcloud auth application-default login"
+          exit 1
+        fi
+        echo "⚠️ Using OAuth token (may expire on long runs >60 min). Consider service account."
+      fi
+
+      # 3. Check retry config
+      if [ "${AGENTS_RETRY_MAX_ATTEMPTS:-5}" -gt 3 ]; then
+        echo "⚠️ AGENTS_RETRY_MAX_ATTEMPTS=${AGENTS_RETRY_MAX_ATTEMPTS:-5} (recommended: 3)"
+      else
+        echo "✅ AGENTS_RETRY_MAX_ATTEMPTS=${AGENTS_RETRY_MAX_ATTEMPTS:-3}"
+      fi
+
+      # 4. Check progress file is writable
+      touch /tmp/eval-progress.json 2>/dev/null && echo "✅ Progress file writable" || echo "⚠️ Cannot write progress file"
+
+      echo "=== Pre-flight complete ==="
+    on_failure: abort
+
+  - name: implement
+    kind: task
+    description: "Implement changes based on hypothesis"
+    agent_task: |
+      You are working on Guardian accuracy improvement.
+
+      **Hypothesis:** {{hypothesis}}
+      **Baseline accuracy:** {{baseline_accuracy}}%
+      **Current accuracy:** {{current_accuracy}}%
+      **Iteration context:** {{last_analysis}}
+
+      Your task:
+      1. Review the current Guardian agent code in guardian-agents-api
+      2. Implement changes based on the hypothesis
+      3. Create a feature branch if needed: {{experiment_branch}}
+      4. Write clean, tested code
+      5. Document what you changed and why
+
+      Output: Summary of changes made, files modified, and expected impact.
+    agent_label: "gua-implement"
+    timeout_min: 20
+    outputs: ["changes_summary"]
+    on_failure: abort
+
+  - name: run-pipeline
+    kind: hook
+    description: "Run the evaluation pipeline against the dataset"
+    hook_command: |
+      echo "Running eval pipeline for {{eval_dataset}}..."
+      # In production, this would be:
+      # cd /root/.openclaw/workspace/guardian-agents-api && python -m eval.run --dataset {{eval_dataset}} --output /tmp/eval-results.json
+      echo '{"accuracy": 0, "precision": 0, "recall": 0, "f1": 0, "total_samples": 0}'
+    on_failure: retry
+    max_retries: 2
+
+  - name: analyze
+    kind: task
+    description: "Analyze evaluation results and identify patterns"
+    agent_task: |
+      Analyze the Guardian evaluation results from the latest pipeline run.
+
+      **Baseline accuracy:** {{baseline_accuracy}}%
+      **Previous accuracy:** {{current_accuracy}}%
+      **Changes made:** {{changes_summary}}
+
+      Your task:
+      1. Parse the eval results from /tmp/eval-results.json
+      2. Calculate accuracy, precision, recall, F1
+      3. Identify error patterns (FP clusters, FN clusters)
+      4. Compare with baseline and previous iteration
+      5. Identify the top 3 areas for improvement
+      6. Suggest specific changes for the next iteration
+
+      Output your analysis as structured findings with metrics.
+      Set these variables in your output:
+      - current_accuracy: <float>
+      - improvement: <float> (current - baseline)
+      - last_analysis: <summary string>
+    agent_label: "gua-analyze"
+    timeout_min: 15
+    outputs: ["current_accuracy", "improvement", "last_analysis"]
+    on_failure: abort
+
+  - name: eval-gate
+    kind: gate
+    description: "Check if we've regressed"
+    gate_expr: "current_accuracy >= baseline_accuracy - 2.0"
+
+  - name: decide
+    kind: decision
+    description: "Review results and decide next steps"
+    decision_prompt: |
+      ## Iteration {{current_iteration}} Results
+
+      **Baseline:** {{baseline_accuracy}}%
+      **Current:** {{current_accuracy}}%
+      **Improvement:** {{improvement}}pp
+      **Target:** +{{target_improvement}}pp
+
+      **Analysis:**
+      {{last_analysis}}
+
+      **Options:**
+      1. **continue** — Refine hypothesis and iterate
+      2. **ship** — Results good enough, ship it
+      3. **abort** — Approach not working, stop
+      4. **pivot** — Change hypothesis entirely
+    decision_options:
+      - continue
+      - ship
+      - abort
+      - pivot
+
+metadata:
+  team: guardian
+  type: experiment
+  linear_prefix: GUA

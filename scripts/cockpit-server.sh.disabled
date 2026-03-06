@@ -1,0 +1,32 @@
+#!/bin/bash
+# Auto-refreshing cockpit server
+# Regenerates HTML every 30s and serves on port 8765
+
+set -euo pipefail
+
+PORT="${1:-8765}"
+HTML_DIR="/tmp/cockpit-serve"
+mkdir -p "$HTML_DIR"
+
+# Generate dashboard data
+refresh_dashboard() {
+    bash /root/.openclaw/workspace/agent-cockpit.sh --html 2>/dev/null
+    cp /tmp/agent-cockpit.html "$HTML_DIR/agent-cockpit.html" 2>/dev/null || true
+}
+
+# Initial generation
+refresh_dashboard
+
+# Background refresh loop
+(
+    while true; do
+        sleep 30
+        refresh_dashboard
+    done
+) &
+REFRESH_PID=$!
+
+trap "kill $REFRESH_PID 2>/dev/null; exit 0" SIGTERM SIGINT
+
+echo "Cockpit server starting on port $PORT (auto-refresh every 30s)"
+cd "$HTML_DIR" && python3 -m http.server "$PORT" --bind 127.0.0.1
