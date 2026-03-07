@@ -6,45 +6,12 @@
   "estimatedCostToday": 2919.045,
   "recentAgents": [
     {
-      "sessionKey": "agent:main:subagent:0a2bd02e-f93a-473c-818b-4c3c6b64f359",
-      "sessionId": "d8baac04-078e-475c-8f9a-d2628b90e24a",
-      "label": "CAI-76-billy-campaign-download",
-      "model": "claude-sonnet-4-5",
-      "totalTokens": 62117,
-      "runtimeMs": 2696074,
-      "agentId": "main",
-      "task": "CAI-76-billy-campaign-download",
-      "status": "done"
-    },
-    {
-      "sessionKey": "agent:main:subagent:1c3effa3-0675-4da3-b78e-4cc6bf392a66",
-      "sessionId": "309c5a29-9209-4dee-bd13-cd5a58ef84ba",
-      "label": "CAI-88-billy-metabase-replacement",
-      "model": "claude-sonnet-4-5",
-      "totalTokens": 66008,
-      "runtimeMs": 2728904,
-      "agentId": "main",
-      "task": "CAI-88-billy-metabase-replacement",
-      "status": "done"
-    },
-    {
-      "sessionKey": "agent:main:subagent:2edd729f-1e11-4b87-9684-6e5447e1ecaf",
-      "sessionId": "00bd5bf8-d716-4b24-ab1c-b881a93c57e2",
-      "label": "CAI-77-billy-boost-sheets",
-      "model": "claude-sonnet-4-5",
-      "totalTokens": 66478,
-      "runtimeMs": 2759424,
-      "agentId": "main",
-      "task": "CAI-77-billy-boost-sheets",
-      "status": "done"
-    },
-    {
       "sessionKey": "agent:main:subagent:3b314655-98ca-4619-8de3-fb3afa212c35",
       "sessionId": "3bbf1dd5-ca07-40c6-b646-bb911fff8586",
       "label": "CAI-84-billy-weekly-reports",
       "model": "claude-sonnet-4-5",
       "totalTokens": 44281,
-      "runtimeMs": 42242695,
+      "runtimeMs": 43147478,
       "agentId": "main",
       "task": "CAI-84-billy-weekly-reports",
       "status": "done"
@@ -55,7 +22,7 @@
       "label": "CAI-78-billy-screen-time",
       "model": "claude-sonnet-4-5",
       "totalTokens": 37079,
-      "runtimeMs": 42358078,
+      "runtimeMs": 43262861,
       "agentId": "main",
       "task": "CAI-78-billy-screen-time",
       "status": "done"
@@ -66,7 +33,7 @@
       "label": "CAI-80-billy-okr-tracker",
       "model": "claude-sonnet-4-5",
       "totalTokens": 42604,
-      "runtimeMs": 42451192,
+      "runtimeMs": 43355975,
       "agentId": "main",
       "task": "CAI-80-billy-okr-tracker",
       "status": "done"
@@ -77,7 +44,7 @@
       "label": "CAI-81-billy-hubspot",
       "model": "claude-sonnet-4-5",
       "totalTokens": 37714,
-      "runtimeMs": 42542272,
+      "runtimeMs": 43447055,
       "agentId": "main",
       "task": "CAI-81-billy-hubspot",
       "status": "done"
@@ -88,9 +55,42 @@
       "label": "CAI-83-billy-guardian-monitor",
       "model": "claude-sonnet-4-5",
       "totalTokens": 34545,
-      "runtimeMs": 42594631,
+      "runtimeMs": 43499414,
       "agentId": "main",
       "task": "CAI-83-billy-guardian-monitor",
+      "status": "done"
+    },
+    {
+      "sessionKey": "agent:main:subagent:1c3effa3-0675-4da3-b78e-4cc6bf392a66",
+      "sessionId": "309c5a29-9209-4dee-bd13-cd5a58ef84ba",
+      "label": "CAI-88-billy-metabase-replacement",
+      "model": "claude-sonnet-4-5",
+      "totalTokens": 66008,
+      "runtimeMs": 3225340,
+      "agentId": "main",
+      "task": "CAI-88-billy-metabase-replacement",
+      "status": "done"
+    },
+    {
+      "sessionKey": "agent:main:subagent:2edd729f-1e11-4b87-9684-6e5447e1ecaf",
+      "sessionId": "00bd5bf8-d716-4b24-ab1c-b881a93c57e2",
+      "label": "CAI-77-billy-boost-sheets",
+      "model": "claude-sonnet-4-5",
+      "totalTokens": 66478,
+      "runtimeMs": 3255860,
+      "agentId": "main",
+      "task": "CAI-77-billy-boost-sheets",
+      "status": "done"
+    },
+    {
+      "sessionKey": "agent:main:subagent:0a2bd02e-f93a-473c-818b-4c3c6b64f359",
+      "sessionId": "d8baac04-078e-475c-8f9a-d2628b90e24a",
+      "label": "CAI-76-billy-campaign-download",
+      "model": "claude-sonnet-4-5",
+      "totalTokens": 62117,
+      "runtimeMs": 3128451,
+      "agentId": "main",
+      "task": "CAI-76-billy-campaign-download",
       "status": "done"
     },
     {
