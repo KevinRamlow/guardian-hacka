@@ -70,7 +70,7 @@ Claude Code agents (runtime="acp") have instructions to:
 ```
 
 **Linear env:** `/root/.openclaw/workspace/.env.linear`
-- API Key: [REDACTED]
+- API Key: $LINEAR_API_KEY (see .env.secrets)
 - Default team: CAI (caio-tests workspace)
 
 ## Agent Responsibilities

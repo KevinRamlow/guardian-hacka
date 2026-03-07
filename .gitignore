@@ -36,3 +36,4 @@ guardian-agents-api/
 .gcp-access-token
 .gcp-access-token.json
 .gcp-env
+.env.secrets

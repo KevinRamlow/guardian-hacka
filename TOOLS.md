@@ -26,8 +26,8 @@
 - bq CLI available (v2.1.28)
 
 ### Linear
-- **Brandlovers** (READ): [REDACTED] | Teams: GUA, PLT, GTM, SMA, DevOps, CTX
-- **caio-tests** (R/W): [REDACTED] | Team: CAI | Track Anton orchestration
+- **Brandlovers** (READ): $LINEAR_API_KEY_BRANDLOVERS (see .env.secrets) | Teams: GUA, PLT, GTM, SMA, DevOps, CTX
+- **caio-tests** (R/W): $LINEAR_API_KEY (see .env.secrets) | Team: CAI | Track Anton orchestration
 - Config: /root/.openclaw/workspace/.env.linear
 
 ### Task Manager (Anton's Orchestration Tracking)
@@ -61,7 +61,7 @@
 
 ### Langfuse
 - URL: https://us.cloud.langfuse.com | Project: cmhdj3t2z088oad08j6wngqhc
-- Public: [REDACTED]
-- Secret: [REDACTED]
+- Public: $LANGFUSE_PUBLIC_KEY (see .env.secrets)
+- Secret: $LANGFUSE_SECRET_KEY (see .env.secrets)
 - Note: Anton's own project (NOT Guardian's)
 - Usage: Guardian agent trace analysis (256K+ traces)

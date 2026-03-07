@@ -22,7 +22,7 @@ linear() {
     if [ -f "/root/.openclaw/workspace/.env.linear" ]; then
         source /root/.openclaw/workspace/.env.linear
     fi
-    export LINEAR_API_KEY="${LINEAR_API_KEY:-[REDACTED]}"
+    source /root/.openclaw/workspace/.env.secrets 2>/dev/null; export LINEAR_API_KEY="${LINEAR_API_KEY}"
     export LINEAR_DEFAULT_TEAM="${LINEAR_DEFAULT_TEAM:-CAI}"
     "$LINEAR_SCRIPT" "$@"
 }
