@@ -54,6 +54,10 @@ else
   echo "$TASK_TEXT" > "$TASK_PATH"
 fi
 
+# Source all credentials for sub-agents
+[ -f /root/.openclaw/workspace/.env.secrets ] && source /root/.openclaw/workspace/.env.secrets
+[ -f /root/.openclaw/workspace/.env.linear ] && source /root/.openclaw/workspace/.env.linear
+
 # Source GCP credentials if available (for BigQuery/Cloud SQL access)
 GCP_ENV="/root/.openclaw/workspace/.gcp-env"
 [ -f "$GCP_ENV" ] && source "$GCP_ENV"

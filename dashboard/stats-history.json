@@ -1,10 +1,62 @@
 {
   "date": "2026-03-07",
-  "completedToday": 191,
-  "failedToday": 5,
+  "completedToday": 194,
+  "failedToday": 6,
   "totalTokensToday": 194603,
   "estimatedCostToday": 2919.045,
   "recentAgents": [
+    {
+      "sessionKey": "completed:CAI-GUARDIAN-EVAL-5",
+      "label": "guardian-eval-combined-5rows",
+      "model": "claude",
+      "totalTokens": 0,
+      "runtimeMs": 336000,
+      "status": "error",
+      "taskId": "CAI-GUARDIAN-EVAL-5",
+      "source": "manual",
+      "runtimeMin": "5.6",
+      "cost": "0",
+      "success": false
+    },
+    {
+      "sessionKey": "completed:CAI-TEST-ENV2",
+      "label": "CAI-TEST-ENV2",
+      "model": "claude",
+      "totalTokens": 0,
+      "runtimeMs": 12000,
+      "status": "done",
+      "taskId": "CAI-TEST-ENV2",
+      "source": "manual",
+      "runtimeMin": "0.2",
+      "cost": "0",
+      "success": true
+    },
+    {
+      "sessionKey": "completed:CAI-TEST-ENV",
+      "label": "CAI-TEST-ENV",
+      "model": "claude",
+      "totalTokens": 0,
+      "runtimeMs": 18000,
+      "status": "done",
+      "taskId": "CAI-TEST-ENV",
+      "source": "manual",
+      "runtimeMin": "0.3",
+      "cost": "0",
+      "success": true
+    },
+    {
+      "sessionKey": "completed:CAI-TEST-APOSTROPHE",
+      "label": "test-apostrophe's-handling",
+      "model": "claude",
+      "totalTokens": 0,
+      "runtimeMs": 12000,
+      "status": "done",
+      "taskId": "CAI-TEST-APOSTROPHE",
+      "source": "manual",
+      "runtimeMin": "0.2",
+      "cost": "0",
+      "success": true
+    },
     {
       "sessionKey": "completed:CAI-TEST-LF2",
       "label": "CAI-TEST-LF2",
@@ -212,58 +264,6 @@
       "runtimeMin": "4.2",
       "cost": "0",
       "success": true
-    },
-    {
-      "sessionKey": "completed:CAI-290",
-      "label": "CAI-290--analysis-review-recent-guar",
-      "model": "claude",
-      "totalTokens": 0,
-      "runtimeMs": 240000,
-      "status": "done",
-      "taskId": "CAI-290",
-      "source": "auto-queue",
-      "runtimeMin": "4.0",
-      "cost": "0",
-      "success": true
-    },
-    {
-      "sessionKey": "completed:CAI-292",
-      "label": "CAI-292--resilincia-add-health-che",
-      "model": "claude",
-      "totalTokens": 0,
-      "runtimeMs": 126000,
-      "status": "done",
-      "taskId": "CAI-292",
-      "source": "auto-queue",
-      "runtimeMin": "2.1",
-      "cost": "0",
-      "success": true
-    },
-    {
-      "sessionKey": "completed:CAI-140",
-      "label": "CAI-140--review-audit-tonights-comp",
-      "model": "claude",
-      "totalTokens": 0,
-      "runtimeMs": 150000,
-      "status": "done",
-      "taskId": "CAI-140",
-      "source": "auto-queue",
-      "runtimeMin": "2.5",
-      "cost": "0",
-      "success": true
-    },
-    {
-      "sessionKey": "completed:CAI-289",
-      "label": "CAI-289--analysis-guardian-moderatio",
-      "model": "claude",
-      "totalTokens": 0,
-      "runtimeMs": 6000,
-      "status": "error",
-      "taskId": "CAI-289",
-      "source": "auto-queue",
-      "runtimeMin": "0.1",
-      "cost": "0",
-      "success": false
     }
   ]
 }
