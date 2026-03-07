@@ -1,10 +1,23 @@
 {
   "date": "2026-03-07",
-  "completedToday": 55,
+  "completedToday": 56,
   "failedToday": 0,
   "totalTokensToday": 194603,
   "estimatedCostToday": 2919.045,
   "recentAgents": [
+    {
+      "sessionKey": "completed:CAI-172",
+      "label": "CAI-172-🛡️-guardian:-archetype-consist",
+      "model": "claude",
+      "totalTokens": 0,
+      "runtimeMs": 342000,
+      "status": "done",
+      "taskId": "CAI-172",
+      "source": "auto-queue",
+      "runtimeMin": "5.7",
+      "cost": "0",
+      "success": true
+    },
     {
       "sessionKey": "completed:CAI-171",
       "label": "CAI-171-🚀-billy:-deploy-12-ready-skill",
@@ -249,19 +262,6 @@
       "taskId": "CAI-155",
       "source": "auto-queue",
       "runtimeMin": "0.7",
-      "cost": "0",
-      "success": true
-    },
-    {
-      "sessionKey": "completed:CAI-151",
-      "label": "CAI-151-🔍-guardian:-analyze-tolerance-",
-      "model": "claude",
-      "totalTokens": 0,
-      "runtimeMs": 594000,
-      "status": "done",
-      "taskId": "CAI-151",
-      "source": "auto-queue",
-      "runtimeMin": "9.9",
       "cost": "0",
       "success": true
     }
