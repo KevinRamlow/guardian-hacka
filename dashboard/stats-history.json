@@ -1,10 +1,23 @@
 {
   "date": "2026-03-07",
-  "completedToday": 65,
+  "completedToday": 66,
   "failedToday": 0,
   "totalTokensToday": 194603,
   "estimatedCostToday": 2919.045,
   "recentAgents": [
+    {
+      "sessionKey": "completed:CAI-184",
+      "label": "CAI-184-🧹-code-quality-audit:-guardian",
+      "model": "claude",
+      "totalTokens": 0,
+      "runtimeMs": 270000,
+      "status": "done",
+      "taskId": "CAI-184",
+      "source": "auto-queue",
+      "runtimeMin": "4.5",
+      "cost": "0",
+      "success": true
+    },
     {
       "sessionKey": "completed:CAI-183",
       "label": "CAI-183-🔍-execute-guardian-contest-sql",
@@ -249,19 +262,6 @@
       "taskId": "CAI-168",
       "source": "auto-queue",
       "runtimeMin": "1.4",
-      "cost": "0",
-      "success": true
-    },
-    {
-      "sessionKey": "completed:CAI-150",
-      "label": "CAI-150-⚡-billy:-implement-campaign-co",
-      "model": "claude",
-      "totalTokens": 0,
-      "runtimeMs": 1043999.9999999999,
-      "status": "done",
-      "taskId": "CAI-150",
-      "source": "auto-queue",
-      "runtimeMin": "17.4",
       "cost": "0",
       "success": true
     }
