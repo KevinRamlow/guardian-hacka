@@ -1,10 +1,23 @@
 {
   "date": "2026-03-07",
-  "completedToday": 49,
+  "completedToday": 50,
   "failedToday": 0,
   "totalTokensToday": 194603,
   "estimatedCostToday": 2919.045,
   "recentAgents": [
+    {
+      "sessionKey": "completed:CAI-165",
+      "label": "CAI-165-🐛-fix-spawn-agent.sh:-add-perm",
+      "model": "claude",
+      "totalTokens": 0,
+      "runtimeMs": 30000,
+      "status": "done",
+      "taskId": "CAI-165",
+      "source": "auto-queue",
+      "runtimeMin": "0.5",
+      "cost": "0",
+      "success": true
+    },
     {
       "sessionKey": "completed:CAI-161",
       "label": "CAI-161-🛡️-fix:-implement-guardian-dai",
@@ -249,19 +262,6 @@
       "taskId": "CAI-142",
       "source": "auto-queue",
       "runtimeMin": "2.2",
-      "cost": "0",
-      "success": true
-    },
-    {
-      "sessionKey": "completed:CAI-115",
-      "label": "CAI-115-resiliência:-guaranteed-comple",
-      "model": "claude",
-      "totalTokens": 0,
-      "runtimeMs": 228000,
-      "status": "done",
-      "taskId": "CAI-115",
-      "source": "auto-queue",
-      "runtimeMin": "3.8",
       "cost": "0",
       "success": true
     }
