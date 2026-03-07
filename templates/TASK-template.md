@@ -60,7 +60,8 @@ Step-by-step what needs to be done:
 
 ## Validation Commands
 
-Exact commands the orchestrator will run to verify completion:
+Exact commands the orchestrator will run to verify completion.
+**Auto-validated by:** `bash scripts/validate-agent.sh <this-file>`
 
 ```bash
 # Example for bug fix
