@@ -1,17 +1,17 @@
 {
-  "generated_at": "2026-03-07T15:37:42Z",
-  "generated_epoch": 1772897862,
+  "generated_at": "2026-03-07T15:45:09Z",
+  "generated_epoch": 1772898309,
   "window_days": 7,
   "summary": {
     "total_agents": 208,
-    "completed": 199,
+    "completed": 201,
     "timeouts": 0,
     "failed": 6,
-    "unknown": 3,
-    "success_rate_pct": 95.7,
-    "avg_duration_min": 5.7,
+    "unknown": 1,
+    "success_rate_pct": 96.6,
+    "avg_duration_min": 5.6,
     "peak_concurrent": 4,
-    "total_cost_usd": 396.78
+    "total_cost_usd": 1734.11
   },
   "by_task_type": {
     "analysis": {
@@ -39,12 +39,12 @@
       "avg_duration_min": 3.6
     },
     "fix": {
-      "count": 32,
-      "completed": 32,
+      "count": 33,
+      "completed": 33,
       "timeout": 0,
       "failed": 0,
       "success_rate_pct": 100.0,
-      "avg_duration_min": 2.4
+      "avg_duration_min": 2.5
     },
     "guardian": {
       "count": 54,
@@ -71,12 +71,12 @@
       "avg_duration_min": 12.2
     },
     "resil": {
-      "count": 15,
-      "completed": 15,
+      "count": 16,
+      "completed": 16,
       "timeout": 0,
       "failed": 0,
       "success_rate_pct": 100.0,
-      "avg_duration_min": 4.1
+      "avg_duration_min": 4.0
     },
     "test": {
       "count": 5,
@@ -90,11 +90,11 @@
   "daily_trend": [
     {
       "date": "2026-03-07",
-      "completed": 199,
+      "completed": 201,
       "timeout": 0,
       "failed": 6,
       "success_rate_pct": 97.1,
-      "avg_duration_min": 5.7
+      "avg_duration_min": 5.6
     }
   ],
   "alerts": []
