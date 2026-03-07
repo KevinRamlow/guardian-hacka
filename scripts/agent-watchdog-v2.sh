@@ -32,7 +32,7 @@ except Exception:
 
 agents = dict(d.get("agents", {}))
 removals = []
-completions = timeouts = 0
+completions = timeouts = failures = 0
 
 for task_id, a in agents.items():
     pid = a.get("pid", 0)
@@ -48,18 +48,18 @@ for task_id, a in agents.items():
 
     if not alive:
         output_log = f"/root/.openclaw/tasks/agent-logs/{task_id}-output.log"
-        has_output = os.path.exists(output_log) and os.path.getsize(output_log) > 0
+        output_size = os.path.getsize(output_log) if os.path.exists(output_log) else 0
 
-        if has_output:
-            size = os.path.getsize(output_log)
-            print(f"DONE {task_id}: {age_min}min, {size}B output")
-            subprocess.run([LOGGER, task_id, "complete", f"Finished in {age_min}min ({size}B)"], capture_output=True)
+        if output_size > 1:
+            print(f"DONE {task_id}: {age_min}min, {output_size}B output")
+            subprocess.run([LOGGER, task_id, "complete", f"Finished in {age_min}min ({output_size}B)"], capture_output=True)
             subprocess.run([LINEAR_LOG, task_id, f"[{ts}] Agent completed ({age_min}min)", "done"], capture_output=True)
             completions += 1
         else:
-            print(f"DEAD {task_id}: {age_min}min, no output")
-            subprocess.run([LOGGER, task_id, "error", f"Died after {age_min}min, no output"], capture_output=True)
-            subprocess.run([LINEAR_LOG, task_id, f"[{ts}] Agent died ({age_min}min, no output)", "blocked"], capture_output=True)
+            print(f"[FAIL] {task_id}: {age_min}min, {output_size}B output (empty)")
+            subprocess.run([LOGGER, task_id, "error", f"[FAIL] Died after {age_min}min, output={output_size}B (empty/invalid)"], capture_output=True)
+            subprocess.run([LINEAR_LOG, task_id, f"[{ts}] [FAIL] Agent produced {output_size}B output ({age_min}min)", "blocked"], capture_output=True)
+            failures += 1
 
         removals.append(task_id)
         continue
@@ -147,5 +147,5 @@ try:
 except Exception:
     pass
 
-print(f"\n=== Watchdog: running={alive} done={completions} timeout={timeouts} orphans={orphans} ===")
+print(f"\n=== Watchdog: running={alive} done={completions} failed={failures} timeout={timeouts} orphans={orphans} ===")
 PYEOF
