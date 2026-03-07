@@ -9,12 +9,12 @@
 set -euo pipefail
 
 LOCKFILE="/tmp/auto-queue-v2.lock"
-REGISTRY="/root/.openclaw/workspace/scripts/agent-registry.sh"
-SPAWNER="/root/.openclaw/workspace/scripts/spawn-agent.sh"
-CONFIG="/root/.openclaw/workspace/config/auto-queue.json"
+REGISTRY="/Users/fonsecabc/.openclaw/workspace/scripts/agent-registry.sh"
+SPAWNER="/Users/fonsecabc/.openclaw/workspace/scripts/spawn-agent.sh"
+CONFIG="/Users/fonsecabc/.openclaw/workspace/config/auto-queue.json"
 
 # Source Linear API key
-source /root/.openclaw/workspace/.env.linear 2>/dev/null || true
+source /Users/fonsecabc/.openclaw/workspace/.env.linear 2>/dev/null || true
 
 # Lockfile
 exec 200>"$LOCKFILE"
@@ -25,7 +25,7 @@ ENABLED=$(python3 -c "import json; print(json.load(open('$CONFIG'))['enabled'])"
 [ "$ENABLED" = "False" ] && exit 0
 
 # Check budget before spawning
-BUDGET_STATUS=$(python3 -c "import json; print(json.load(open('/root/.openclaw/workspace/self-improvement/loop/budget-status.json')).get('status','ok'))" 2>/dev/null || echo "ok")
+BUDGET_STATUS=$(python3 -c "import json; print(json.load(open('/Users/fonsecabc/.openclaw/workspace/self-improvement/loop/budget-status.json')).get('status','ok'))" 2>/dev/null || echo "ok")
 if [ "$BUDGET_STATUS" = "over_monthly_limit" ] || [ "$BUDGET_STATUS" = "critical" ]; then
   echo "[$(date -u +%H:%M)] Budget $BUDGET_STATUS — skipping spawn"
   exit 0
@@ -67,8 +67,8 @@ slots = $SLOTS
 spawned = 0
 skipped = 0
 
-REGISTRY = '/root/.openclaw/workspace/scripts/agent-registry.sh'
-SPAWNER = '/root/.openclaw/workspace/scripts/spawn-agent.sh'
+REGISTRY = '/Users/fonsecabc/.openclaw/workspace/scripts/agent-registry.sh'
+SPAWNER = '/Users/fonsecabc/.openclaw/workspace/scripts/spawn-agent.sh'
 
 # Spawn criteria heuristics
 def should_spawn(task_id, title, desc, labels):
@@ -151,8 +151,8 @@ for n in nodes:
 '''
 
     # Write task file
-    task_file = f'/root/.openclaw/tasks/spawn-tasks/{task_id}.md'
-    os.makedirs('/root/.openclaw/tasks/spawn-tasks', exist_ok=True)
+    task_file = f'/Users/fonsecabc/.openclaw/tasks/spawn-tasks/{task_id}.md'
+    os.makedirs('/Users/fonsecabc/.openclaw/tasks/spawn-tasks', exist_ok=True)
     with open(task_file, 'w') as f:
         f.write(task_text)
 
@@ -172,7 +172,12 @@ for n in nodes:
         print(f'    OK: {last_line}')
         spawned += 1
     else:
-        print(f'    FAIL: {result.stderr.strip()}')
+        # Log both stdout and stderr for debugging
+        print(f'    FAIL: returncode={result.returncode}')
+        if result.stderr:
+            print(f'      stderr: {result.stderr.strip()[:200]}')
+        if result.stdout:
+            print(f'      stdout: {result.stdout.strip()[:200]}')
 
 print(f'\nSpawned {spawned} agents, skipped {skipped}')
 EOF
