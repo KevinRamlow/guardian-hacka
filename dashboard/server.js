@@ -72,9 +72,6 @@ let persistentStats = {
   recentAgents: [], // Last 20 completed agents
 };
 
-// Track historical token data per session
-const tokenHistory = new Map();
-const toolCallHistory = new Map();
 
 // --- Persistence Helpers ---
 function loadStatsFromDisk() {
@@ -291,136 +288,164 @@ async function fetchLangfuseMetrics() {
   }
 }
 
-// --- Data Collection ---
+// --- Data Collection (v2 — reads from agent-registry.json) ---
+const REGISTRY_FILE = '/root/.openclaw/tasks/agent-registry.json';
+const AGENT_LOGS_DIR = '/root/.openclaw/tasks/agent-logs';
+
+function readRegistry() {
+  try {
+    return JSON.parse(fs.readFileSync(REGISTRY_FILE, 'utf-8'));
+  } catch {
+    return { agents: {}, maxConcurrent: 3 };
+  }
+}
+
+function isProcessAlive(pid) {
+  try { process.kill(pid, 0); return true; } catch { return false; }
+}
+
+function readAgentLog(taskId) {
+  try {
+    const logPath = path.join(AGENT_LOGS_DIR, `${taskId}.log`);
+    if (fs.existsSync(logPath)) return fs.readFileSync(logPath, 'utf-8');
+  } catch {}
+  return '';
+}
+
+function getOutputSize(taskId) {
+  try {
+    const p = path.join(AGENT_LOGS_DIR, `${taskId}-output.log`);
+    if (fs.existsSync(p)) return fs.statSync(p).size;
+  } catch {}
+  return 0;
+}
+
+// Track completed agents across polls (not just registry snapshots)
+const completedAgentsToday = new Map(); // taskId -> { label, runtimeMin, completedAt, outputSize }
+
 async function collectData() {
   checkMidnightReset();
 
-  // 1. Read ALL agent session stores directly
-  const agentsDir = '/root/.openclaw/agents';
-  let sessions = [];
+  const registry = readRegistry();
   const now = Date.now();
-  
-  try {
-    const agents = fs.readdirSync(agentsDir).filter(d => {
-      try { return fs.statSync(`${agentsDir}/${d}/sessions/sessions.json`).isFile(); } catch { return false; }
-    });
-    
-    for (const agentId of agents) {
-      try {
-        const store = JSON.parse(fs.readFileSync(`${agentsDir}/${agentId}/sessions/sessions.json`, 'utf-8'));
-        for (const [key, s] of Object.entries(store)) {
-          sessions.push({ ...s, key, agentId, label: s.label || key });
-        }
-      } catch {}
-    }
-  } catch {}
+  const nowS = Math.floor(now / 1000);
 
-  // Classify sessions
+  // 1. Build active agents from registry
   const active = [];
+  for (const [taskId, a] of Object.entries(registry.agents || {})) {
+    const alive = isProcessAlive(a.pid);
+    const ageMin = (nowS - (a.spawnedEpoch || nowS)) / 60;
+    const timeoutMin = a.timeoutMin || 25;
+    const outputSize = getOutputSize(taskId);
+
+    if (!alive) {
+      // Agent finished — record as completed and skip active
+      if (!completedAgentsToday.has(taskId)) {
+        completedAgentsToday.set(taskId, {
+          taskId,
+          label: a.label || taskId,
+          runtimeMin: ageMin.toFixed(1),
+          completedAt: new Date().toISOString(),
+          outputSize,
+          status: outputSize > 0 ? 'done' : 'error',
+          source: a.source || 'unknown',
+        });
+        if (outputSize > 0) persistentStats.completedToday++;
+        else persistentStats.failedToday++;
+        saveStatsToDisk();
+      }
+      continue;
+    }
+
+    active.push({
+      sessionKey: `registry:${taskId}`,
+      label: a.label || taskId,
+      model: 'claude',
+      totalTokens: 0,
+      runtimeMs: ageMin * 60000,
+      status: 'running',
+      task: a.label || taskId,
+      taskId,
+      pid: a.pid,
+      source: a.source || 'unknown',
+      timeoutMin,
+    });
+  }
+
+  // 2. Build recent completions from tracked map + master log
   const recent = [];
-  const ACTIVE_THRESHOLD = 600000; // 10 min
+  const sortedCompleted = [...completedAgentsToday.values()]
+    .sort((a, b) => new Date(b.completedAt) - new Date(a.completedAt))
+    .slice(0, 20);
 
-  for (const s of sessions) {
-    // Skip non-work sessions
-    const key = s.key || '';
-    const label = s.label || '';
-    if (key === 'agent:main:main') continue;
-    if (key.includes('cron:')) continue;
-    if (key.includes('slack:channel')) continue;
-    if (key === 'agent:billy:main') continue;
-    // Keep: anything with a meaningful label, subagent/acp keys, or pipeline/CAI tasks
-    const isWork = label.match(/CAI-|pipeline|gua-|guardian|billy|experiment/i) || 
-                   key.includes('subagent:') || key.includes('acp:') ||
-                   s.agentId === 'claude' || s.agentId === 'claude-code' || s.agentId === 'code';
-    if (!isWork) continue;
-    
-    const updatedAt = s.updatedAt || 0;
-    const ageMs = now - updatedAt;
-    
-    const agent = {
-      sessionKey: key,
-      sessionId: s.sessionId || '',
-      label: s.label || key.split(':').pop() || 'unnamed',
-      model: s.model || s.modelOverride || 'unknown',
-      totalTokens: s.totalTokens || 0,
-      runtimeMs: ageMs,
-      agentId: s.agentId || 'unknown',
-      task: s.label || '',
-    };
+  for (const c of sortedCompleted) {
+    recent.push({
+      sessionKey: `completed:${c.taskId}`,
+      label: c.label,
+      model: 'claude',
+      totalTokens: 0,
+      runtimeMs: parseFloat(c.runtimeMin) * 60000,
+      status: c.status,
+      taskId: c.taskId,
+      source: c.source,
+    });
+  }
 
-    if (ageMs < ACTIVE_THRESHOLD && !s.abortedLastRun) {
-      agent.status = 'running';
-      active.push(agent);
-    } else {
-      agent.status = s.abortedLastRun ? 'error' : 'done';
-      // Only show recent (last 24h)
-      if (ageMs < 86400000) recent.push(agent);
+  // Also load from persistent stats if we just restarted
+  for (const r of (persistentStats.recentAgents || [])) {
+    if (!completedAgentsToday.has(r.taskId)) {
+      recent.push(r);
     }
   }
-  
-  // Sort recent by most recent first
-  recent.sort((a, b) => a.runtimeMs - b.runtimeMs);
-  console.log(`[collectData] sessions: ${sessions.length}, active: ${active.length}, recent: ${recent.length}`);
 
-  // 2. Merge with persisted recent agents
-  const seenKeys = new Set();
-  const mergedRecent = [];
-  for (const a of [...recent, ...persistentStats.recentAgents]) {
-    if (!seenKeys.has(a.sessionKey)) {
-      seenKeys.add(a.sessionKey);
-      mergedRecent.push(a);
+  // 3. Fetch Linear data for active agents (lightweight, parallel)
+  const taskIds = [...new Set([...active, ...recent].map(a => extractTaskId(a.label) || a.taskId).filter(Boolean))];
+  let linearData = {};
+  if (LINEAR_API_KEY && taskIds.length > 0 && taskIds.length <= 10) {
+    try { linearData = await fetchLinearUpdates(taskIds); } catch {}
+  }
+
+  // 4. Enrich active agents
+  const enrichedActive = active.map(a => {
+    try {
+      const health = getHealthStatus(a);
+      const taskId = a.taskId || extractTaskId(a.label);
+      const linear = taskId ? linearData[taskId] : null;
+      const runtimeMin = (a.runtimeMs || 0) / 60000;
+      const timeoutMin = a.timeoutMin || 25;
+      const etaMin = Math.max(0, timeoutMin - runtimeMin);
+      const progress = Math.min(100, (runtimeMin / timeoutMin) * 100);
+
+      return { ...a, health, taskId, linear, runtimeMin: runtimeMin.toFixed(1), timeoutMin, etaMin: etaMin.toFixed(1), progress: progress.toFixed(0), cost: '0' };
+    } catch {
+      return { ...a, health: { status: 'unknown', color: 'gray' }, runtimeMin: '0', cost: '0' };
     }
-  }
-  const finalRecent = mergedRecent.slice(0, 20);
+  });
 
-  // 3. Linear updates DISABLED (causing crashes)
-  const allAgents = [...active, ...finalRecent];
-  const linearData = {};
+  // 5. Enrich recent
+  const enrichedRecent = recent.slice(0, 20).map(a => {
+    try {
+      const taskId = a.taskId || extractTaskId(a.label);
+      const linear = taskId ? linearData[taskId] : null;
+      const runtimeMin = (a.runtimeMs || 0) / 60000;
+      return { ...a, taskId, linear, runtimeMin: runtimeMin.toFixed(1), cost: '0', success: a.status === 'done' };
+    } catch {
+      return { ...a, runtimeMin: '0', cost: '0' };
+    }
+  });
 
-  // 4. Enrich active agents (safe)
-  const enrichedActive = active.map(a => { try {
-    const health = getHealthStatus(a);
-    const taskId = extractTaskId(a.label);
-    const linear = taskId ? linearData[taskId] : null;
-    const runtimeMin = (a.runtimeMs || 0) / 60000;
-    let timeoutMin = 25;
-    const timeoutMatch = (a.task || '').match(/Timeout:\s*(\d+)\s*min/i);
-    if (timeoutMatch) timeoutMin = parseInt(timeoutMatch[1]);
-    const etaMin = Math.max(0, timeoutMin - runtimeMin);
-    const progress = Math.min(100, (runtimeMin / timeoutMin) * 100);
-    const cost = estimateTokenCost(a.totalTokens || 0, a.model);
-
-    return { ...a, health, taskId, linear, runtimeMin: runtimeMin.toFixed(1), timeoutMin, etaMin: etaMin.toFixed(1), progress: progress.toFixed(0), cost, taskShort: (a.task || '').substring(0, 100) };
-  } catch(e) { return { ...a, health: { status: 'unknown', color: 'gray' }, runtimeMin: '0', cost: '0' }; } });
-
-  // 5. Enrich recent agents
-  const enrichedRecent = finalRecent.map(a => { try {
-    const taskId = extractTaskId(a.label);
-    const linear = taskId ? linearData[taskId] : null;
-    const runtimeMin = (a.runtimeMs || 0) / 60000;
-    const cost = estimateTokenCost(a.totalTokens || 0, a.model);
-    return { ...a, taskId, linear, runtimeMin: runtimeMin.toFixed(1), cost, success: a.status === 'done' };
-  } catch(e) { return { ...a, runtimeMin: '0', cost: '0' }; } });
-
-  // 6. Update persistent stats
-  const newCompletions = recent.filter(a => !persistentStats.recentAgents.some(r => r.sessionKey === a.sessionKey));
-  for (const agent of newCompletions) {
-    if (agent.status === 'done') persistentStats.completedToday++;
-    else if (agent.status === 'error') persistentStats.failedToday++;
-    const tokens = agent.totalTokens || 0;
-    persistentStats.totalTokensToday += tokens;
-    persistentStats.estimatedCostToday += parseFloat(estimateTokenCost(tokens, agent.model));
-  }
-  persistentStats.recentAgents = finalRecent.slice(0, 20);
+  // Save recent agents for persistence across restarts
+  persistentStats.recentAgents = enrichedRecent.slice(0, 20);
   saveStatsToDisk();
 
-  // 7. Build alerts
+  // 6. Alerts
   const alerts = enrichedActive
-    .filter(a => a.health.alert)
+    .filter(a => a.health?.alert)
     .map(a => ({ level: a.health.status === 'frozen' ? 'CRITICAL' : 'WARNING', agent: a.label, taskId: a.taskId, message: a.health.alert, timestamp: new Date().toISOString() }));
 
-  // 8. Langfuse metrics DISABLED for stability test
-  let langfuseData = langfuseCache.data || null;
+  // 7. Langfuse metrics (re-enabled)
+  let langfuseData = null;
+  try { langfuseData = await fetchLangfuseMetrics(); } catch {}
 
   dashboardState = {
     active: enrichedActive,
@@ -428,11 +453,12 @@ async function collectData() {
     langfuse: langfuseData,
     stats: {
       totalActive: enrichedActive.length,
+      maxConcurrent: registry.maxConcurrent || 3,
       completedToday: persistentStats.completedToday,
       failedToday: persistentStats.failedToday,
       totalTokensToday: persistentStats.totalTokensToday,
       estimatedCostToday: persistentStats.estimatedCostToday.toFixed(4),
-      avgRuntimeMin: enrichedRecent.length > 0 ? (enrichedRecent.reduce((s, a) => s + parseFloat(a.runtimeMin), 0) / enrichedRecent.length).toFixed(1) : '0',
+      avgRuntimeMin: enrichedRecent.length > 0 ? (enrichedRecent.reduce((s, a) => s + parseFloat(a.runtimeMin || 0), 0) / enrichedRecent.length).toFixed(1) : '0',
     },
     alerts,
     lastUpdated: new Date().toISOString(),
@@ -474,12 +500,21 @@ wss.on('connection', (ws) => {
       const msg = JSON.parse(raw);
 
       if (msg.action === 'kill' && msg.sessionKey) {
-        safeExecSync(`openclaw subagents kill "${msg.sessionKey}" 2>/dev/null`);
+        // Extract taskId from sessionKey (format: registry:CAI-XX)
+        const taskId = msg.sessionKey.replace('registry:', '').replace('completed:', '');
+        const reg = readRegistry();
+        const agent = reg.agents?.[taskId];
+        if (agent?.pid) {
+          try { process.kill(agent.pid, 9); } catch {}
+        }
+        safeExecSync(`bash /root/.openclaw/workspace/scripts/agent-registry.sh remove "${taskId}" 2>/dev/null`);
         await pollAndBroadcast();
       }
 
       if (msg.action === 'steer' && msg.sessionKey && msg.message) {
-        safeExecSync(`openclaw subagents steer "${msg.sessionKey}" "${msg.message.replace(/"/g, '\\"')}" 2>/dev/null`);
+        // Steer not supported for direct CLI agents — log the message instead
+        const taskId = msg.sessionKey.replace('registry:', '');
+        safeExecSync(`bash /root/.openclaw/workspace/skills/task-manager/scripts/linear-log.sh "${taskId}" "Steer: ${msg.message.replace(/"/g, '\\"')}" 2>/dev/null`);
         await pollAndBroadcast();
       }
 
