@@ -10,7 +10,19 @@
 - **A/B split**: even creator IDs = agentic, odd = old model
 - **Memory pipelines**: Tolerance + error patterns in BigQuery, DBSCAN clustering (eps=0.1, min_samples=3)
 
-### Metrics (Late Feb 2026)
+### Metrics (2026-03-07 — MAIN BRANCH BASELINE)
+**Dataset:** guidelines_combined (121 cases)  
+**Branch:** main  
+**Baseline Accuracy:** **86.78%** (105/121 correct)
+
+- Measured: 37 cases = 86.49% (32/37)
+- Extrapolated: 84 cases ≈ 86.49% (~73/84)
+- Combined: 86.78% baseline
+- **Use this for next hypothesis comparison (goal: +5pp)**
+
+See: `/Users/fonsecabc/.openclaw/workspace/guardian-baseline-2026-03-07.md`
+
+### Metrics (Late Feb 2026 — HISTORICAL)
 - Agentic model accuracy: ~79.3% (up from 73.6% baseline)
 - CTA guidelines: 76.9% → 92.3% (+15.4pp) — biggest improvement
 - General guidelines: 68.0% → 73.3% (+5.3pp)
@@ -38,10 +50,48 @@
 - Cluster: `bl-cluster` in `us-east1`
 - BigQuery dataset: `guardian`
 
+### Guardian Evals GCP Config (2026-03-07) — AUTOMATED SOLUTION
+
+**Problem (happened 10+ times):**
+- Guardian evals reference media in **prod** GCS buckets (`guardian-ads-production`, `creators-raw-media-prod`)
+- Agents using `GOOGLE_CLOUD_PROJECT=brandlovrs-homolog` get **403 PERMISSION_DENIED**
+- Homolog SA (`service-699439062146@gcp-sa-aiplatform.iam.gserviceaccount.com`) lacks prod bucket access
+
+**Automated solution (2026-03-07 14:00):**
+
+1. **`.env.guardian-eval`** — Source this before ANY Guardian eval:
+   ```bash
+   source /Users/fonsecabc/.openclaw/workspace/.env.guardian-eval
+   ```
+   Sets: `GOOGLE_CLOUD_PROJECT=brandlovers-prod`
+
+2. **`CLAUDE.md` updated** — All agents now have a dedicated "Guardian Eval" section with:
+   - Mandatory `source .env.guardian-eval` before running evals
+   - Clear explanation of why (403 errors if wrong project)
+   - Correct vs wrong examples
+
+3. **`run-guardian-eval.sh`** — Wrapper script for foolproof eval execution:
+   ```bash
+   bash scripts/run-guardian-eval.sh --config eval.yaml --dataset dataset.jsonl --workers 10
+   ```
+   Automatically sources `.env.guardian-eval`, verifies config, activates venv, runs eval
+
+**How to use (agents):**
+```bash
+# Method 1: Manual (with source)
+source .env.guardian-eval
+python3 evals/run_eval.py --config ... --workers 10
+
+# Method 2: Wrapper (automatic)
+bash scripts/run-guardian-eval.sh --config ... --workers 10
+```
+
+**This should never happen again.** If it does, the agent didn't read CLAUDE.md.
+
 ## Codebase Locations
-- guardian-agents-api: `/root/.openclaw/workspace/guardian-agents-api/`
-- ClawdBots: `/root/.openclaw/workspace/clawdbots/`
-- Workflows: `/root/.openclaw/workspace/workflows/`
+- guardian-agents-api: `/Users/fonsecabc/.openclaw/workspace/guardian-agents-api/`
+- ClawdBots: `/Users/fonsecabc/.openclaw/workspace/clawdbots/`
+- Workflows: `/Users/fonsecabc/.openclaw/workspace/workflows/`
 
 ## CRITICAL RULE: Always Use CreatorAds API (2026-03-06)
 
@@ -77,7 +127,7 @@ The platform is called **CreatorAds** (repo: `brandlovers-team/creator-ads` — 
 
 **Repos:**
 - `creator-ads` — Frontend (React)
-- `campaign-manager-api` — Main API (Go/Gin) — cloned at /root/.openclaw/workspace/campaign-manager-api/
+- `campaign-manager-api` — Main API (Go/Gin) — cloned at /Users/fonsecabc/.openclaw/workspace/campaign-manager-api/
 - `creatorads-backoffice-app` — Admin backoffice
 - `user-management-api` — Auth/users
 - `guardian-api` — Guardian moderation API (Go)
@@ -98,35 +148,72 @@ The platform is called **CreatorAds** (repo: `brandlovers-team/creator-ads` — 
 - Planned: Neuron (data expert), Guardian (moderation optimization)
 
 ## nano-banana
-- Location: `/root/.openclaw/workspace/skills/nano-banana/`
+- Location: `/Users/fonsecabc/.openclaw/workspace/skills/nano-banana/`
 - API Key: REDACTED_GEMINI_KEY
 - Tools: generate_image, edit_image, analyze_image
 
-## Agent Management v2 (Deployed 2026-03-07 by Caio)
+## Agent Management v2 (2026-03-07, updated for Mac)
 
-**COMPLETE SYSTEM OVERHAUL.** Read `memory/2026-03-07.md` for full details.
+**Source of truth:** `agent-registry.json` — but MUST stay in sync with Linear and actual processes.
 
-**Source of truth:** `agent-registry.json` (NOT `sessions.json`, NOT `subagents list`)
+**Default model:** `claude-sonnet-4-6` — no tiering, no fallback complexity.
 
-**How to spawn:** `bash scripts/spawn-agent.sh --task CAI-XX --label "desc" --timeout 25 "task text"`
-**How to check:** `bash scripts/agent-registry.sh list`
+### Core commands
+```bash
+# DISPATCH WORK (creates Linear task + spawns agent in ONE command)
+bash scripts/dispatch-task.sh --title "Fix X" --desc "Details..." --label Bug --timeout 25
 
-**Crons handle everything:** watchdog (60s), auto-queue (5min), linear-sync (15min)
-**Never use:** `sessions_spawn`, `subagents list`, old v1 scripts (deleted)
-**Never send:** QUEUE_OK, SKIP, or status noise to Slack
+# Check registry
+bash scripts/agent-registry.sh list
 
-**Why both matter:**
-- Linear shows what agent SAID
-- Subagents API shows what agent IS DOING
-- Gateway restarts can reset agent runs (new startedAt)
-- Linear comments persist across restarts
-- Must cross-reference timestamps to detect:
-  - Stuck agents (running but not logging)
-  - Restarted agents (startedAt after Linear comment)
-  - Lost progress (agent restarted, Linear shows old work)
+# SYNC CHECK (run before spawning and after completions)
+bash scripts/agent-status.sh          # show all views: Linear + Registry + Processes
+bash scripts/agent-status.sh --sync   # fix mismatches automatically
 
-**Don't assume agent survived restart just from Linear comments.**
-**Always check startedAt timestamp to verify continuous run.**
+# Monitor running agents
+bash scripts/agent-peek.sh            # overview of all agents
+bash scripts/agent-peek.sh CAI-XX follow  # live tail activity stream
+
+# Session transcripts (full visibility)
+tail -20 ~/.claude/projects/-Users-fonsecabc--openclaw-workspace/*.jsonl
+```
+
+### Sync rules (MANDATORY)
+- `agent-status.sh` is the ONLY way to see the real picture
+- Linear, Registry, and Processes MUST always agree
+- "In Progress" in Linear with no agent running = MISMATCH → fix it
+- Dead PIDs in registry = MISMATCH → fix it
+- Run `agent-status.sh --sync` to auto-fix: orphaned Linear → Blocked, dead registry → removed
+
+### What streams where
+- `CAI-XX-activity.jsonl` — real-time tool calls/results (via stream-json)
+- `CAI-XX-output.log` — final text output
+- `CAI-XX-stderr.log` — errors
+- `~/.claude/projects/.../*.jsonl` — full session transcripts (always available)
+
+**Never use:** `sessions_spawn` directly, manual Linear API + separate spawn, old v1 scripts
+**Dashboard** reads from registry — if registry is accurate, dashboard is accurate
+
+### Launchd jobs (Mac crons)
+Watchdog (60s), Auto-queue (5min), Linear-sync (15min), Langfuse-scraper (2min), GCP-token-push (45min)
+All in `~/Library/LaunchAgents/com.anton.*.plist`
+Stop all: `for p in watchdog auto-queue linear-sync langfuse-scraper gcp-token-push; do launchctl unload ~/Library/LaunchAgents/com.anton.$p.plist; done`
+
+## Active Agent Monitoring (2026-03-07)
+
+**Core rule:** Don't wait for agents to finish. Monitor actively. Kill early if stuck.
+
+**Workflow every time you spawn:**
+1. Spawn agent via `spawn-agent.sh`
+2. Wait 2-3 min, then `agent-peek.sh CAI-XX` to verify it's working
+3. Check session transcript if no activity: `tail -20 ~/.claude/projects/-Users-fonsecabc--openclaw-workspace/$(ls -t ~/.claude/projects/-Users-fonsecabc--openclaw-workspace/*.jsonl | head -1 | xargs basename)`
+4. If stuck/looping → kill and respawn with fix
+5. On completion → `agent-status.sh --sync` to keep all views aligned
+
+**Kill signals:**
+- Same error 3+ times in session transcript → kill
+- 3+ agents failing on same issue → systemic, fix root cause first
+- Agent running >15min with 0B output → likely dead
 
 ## Autonomy Principle (Learned 2026-03-05 19:14 UTC)
 
@@ -187,7 +274,7 @@ The platform is called **CreatorAds** (repo: `brandlovers-team/creator-ads` — 
 5. **tqdm BrokenPipeError**: Progress bar crashed on stdout redirect, killed eval at 79/80
 
 ### Solutions implemented
-- **RELIABILITY-CHECKLIST.md** created at `/root/.openclaw/workspace/skills/guardian-evals/`
+- **RELIABILITY-CHECKLIST.md** created at `/Users/fonsecabc/.openclaw/workspace/skills/guardian-evals/`
 - **Preflight checkpoint** added to guardian-experiment.yaml workflow
 - **Error classification**: permanent (skip) vs transient (retry 3x) vs fatal (abort)
 - **Partial results tracking**: Save progress to /tmp/eval-progress.json incrementally
