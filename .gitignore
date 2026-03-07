@@ -32,3 +32,4 @@ guardian-api/
 user-management-api/
 clawdbots/
 guardian-agents-api/
+.gcp-credentials.json
