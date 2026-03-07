@@ -118,10 +118,10 @@ def calculate_cost(usage, model):
 
     # Otherwise calculate from token counts
     pricing = get_pricing(model)
-    input_tokens = usage.get("input", 0) or 0
-    output_tokens = usage.get("output", 0) or 0
-    cache_read = usage.get("cacheRead", 0) or 0
-    cache_write = usage.get("cacheWrite", 0) or 0
+    input_tokens = usage.get("input_tokens", 0) or 0
+    output_tokens = usage.get("output_tokens", 0) or 0
+    cache_read = usage.get("cache_read_input_tokens", 0) or 0
+    cache_write = usage.get("cache_creation_input_tokens", 0) or 0
 
     cost_usd = (
         input_tokens * pricing["input"] / 1_000_000
@@ -236,9 +236,9 @@ def scan_sessions(state):
                             "date": date_key,
                             "model": model,
                             "cost": cost,
-                            "input_tokens": usage.get("input", 0) or 0,
-                            "output_tokens": usage.get("output", 0) or 0,
-                            "cache_read": usage.get("cacheRead", 0) or 0,
+                            "input_tokens": usage.get("input_tokens", 0) or 0,
+                            "output_tokens": usage.get("output_tokens", 0) or 0,
+                            "cache_read": usage.get("cache_read_input_tokens", 0) or 0,
                             "task_id": task_id,
                             "session_id": session_id,
                         })
