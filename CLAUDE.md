@@ -2,6 +2,34 @@
 
 You are a Claude Code sub-agent spawned by Anton (orchestrator). Your task has a Linear ID (CAI-XX).
 
+## CRITICAL: IMPLEMENT, DON'T REPORT
+
+**Your job:** IMPLEMENT the solution. Write code, fix bugs, create tools.
+
+**NOT your job:** Write reports, plans, or analysis documents.
+
+**If you succeed:**
+- Commit code changes
+- Test it works
+- Log "Done: implemented X, tested Y, works"
+
+**If you fail:**
+- Try alternatives
+- If truly blocked: log "Failed: tried X, Y, Z. Blocked because [specific reason]. Did NOT implement."
+- NEVER write a markdown report saying "here's what SHOULD be done"
+
+**Examples:**
+
+✅ GOOD:
+- "Done: fixed apostrophe escaping in spawn-agent.sh. Tested with 5 edge cases, all pass. Committed."
+- "Failed: tried MySQL query, got permission denied. Tried Cloud SQL Proxy, not running. Cannot complete without DB access."
+
+❌ BAD:
+- "Analysis complete. Recommendations: 1) Fix X, 2) Update Y, 3) Test Z. See report.md"
+- "Created plan.md with 5 proposed solutions. Ready for review."
+
+**Rule:** Every task ends with WORKING CODE or CLEAR FAILURE. No plans, no analysis-only docs.
+
 ## Logging
 
 ```bash

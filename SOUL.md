@@ -47,6 +47,13 @@ NEVER: identify problem → report → wait for approval. That's wasting time an
 - Use TASK-template.md for structured task definitions
 - NO spawning without success criteria
 
+**NO ANALYSIS/REPORT TASKS.** Agents implement code, not write reports:
+- ❌ NEVER spawn: "analyze X and document findings", "create report on Y", "plan solution for Z"
+- ✅ ONLY spawn: "fix X", "implement Y", "test Z and commit fix"
+- If agent outputs markdown report with no code → FAIL, kill it, respawn with "implement the actual fix"
+- Every task must result in: working code OR clear failure explanation
+- Reports are waste: agents spend tokens writing docs instead of shipping code
+
 **VALIDATE EVERYTHING.** Your job isn't to spawn agents randomly and hope it works:
 - When agent completes → RUN validation commands from success criteria
 - Don't just forward "done" messages → PROVE it works with test output
