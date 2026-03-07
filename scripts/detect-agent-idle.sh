@@ -63,10 +63,40 @@ def check_error_loop(activity_log):
         pass
     return False
 
-# Check 1: activity.jsonl unchanged > 3min (strongest signal — no events at all)
+# Check if agent has active child processes (background jobs)
+# If agent spawned a long-running background task (eval, build, etc), it may appear idle
+# while waiting, but the work is happening in a child process
+def has_active_children(task_id):
+    try:
+        import subprocess
+        # Get PID from agent registry
+        result = subprocess.run(
+            ["bash", "/Users/fonsecabc/.openclaw/workspace/scripts/agent-registry.sh", "list"],
+            capture_output=True, text=True, timeout=5
+        )
+        # Parse for this task's PID
+        for line in result.stdout.split('\n'):
+            if task_id in line and "PID=" in line:
+                pid_str = line.split("PID=")[1].split()[0].strip()
+                pid = int(pid_str)
+                # Check for child processes
+                ps_result = subprocess.run(
+                    ["pgrep", "-P", str(pid)],
+                    capture_output=True, text=True, timeout=5
+                )
+                return ps_result.returncode == 0  # 0 = children found
+    except Exception:
+        pass
+    return False
+
+# Check 1: activity.jsonl unchanged > 10min (strongest signal — no events at all)
 if os.path.exists(activity_log):
     activity_age = now - os.path.getmtime(activity_log)
     if activity_age > IDLE_ACTIVITY_SECS:
+        # Before declaring idle, check if agent has active background work
+        if has_active_children(TASK_ID):
+            print("active")  # Agent is waiting for background job
+            sys.exit(0)
         print("idle_no_activity")
         sys.exit(0)
     # Check error loop even when activity is recent
