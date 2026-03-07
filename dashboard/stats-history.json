@@ -1,10 +1,36 @@
 {
   "date": "2026-03-07",
-  "completedToday": 35,
+  "completedToday": 37,
   "failedToday": 0,
   "totalTokensToday": 194603,
   "estimatedCostToday": 2919.045,
   "recentAgents": [
+    {
+      "sessionKey": "completed:CAI-155",
+      "label": "CAI-155-🛡️-agent-watchdog:-add-early-t",
+      "model": "claude",
+      "totalTokens": 0,
+      "runtimeMs": 42000,
+      "status": "done",
+      "taskId": "CAI-155",
+      "source": "auto-queue",
+      "runtimeMin": "0.7",
+      "cost": "0",
+      "success": true
+    },
+    {
+      "sessionKey": "completed:CAI-151",
+      "label": "CAI-151-🔍-guardian:-analyze-tolerance-",
+      "model": "claude",
+      "totalTokens": 0,
+      "runtimeMs": 594000,
+      "status": "done",
+      "taskId": "CAI-151",
+      "source": "auto-queue",
+      "runtimeMin": "9.9",
+      "cost": "0",
+      "success": true
+    },
     {
       "sessionKey": "completed:CAI-153",
       "label": "CAI-153-🔍-guardian:-analyze-false-posi",
@@ -236,32 +262,6 @@
       "taskId": "CAI-131",
       "source": "auto-queue",
       "runtimeMin": "6.0",
-      "cost": "0",
-      "success": true
-    },
-    {
-      "sessionKey": "completed:CAI-128",
-      "label": "CAI-128-📊-monitor:-linear-sync-reliabi",
-      "model": "claude",
-      "totalTokens": 0,
-      "runtimeMs": 150000,
-      "status": "done",
-      "taskId": "CAI-128",
-      "source": "auto-queue",
-      "runtimeMin": "2.5",
-      "cost": "0",
-      "success": true
-    },
-    {
-      "sessionKey": "completed:CAI-130",
-      "label": "CAI-130-🚧-guard:-duplicate-spawn-preve",
-      "model": "claude",
-      "totalTokens": 0,
-      "runtimeMs": 108000,
-      "status": "done",
-      "taskId": "CAI-130",
-      "source": "auto-queue",
-      "runtimeMin": "1.8",
       "cost": "0",
       "success": true
     }
