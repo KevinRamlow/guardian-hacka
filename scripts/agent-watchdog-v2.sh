@@ -71,7 +71,7 @@ for task_id, a in agents.items():
         if os.path.exists(output_log):
             output_size = os.path.getsize(output_log)
 
-        if output_size > 100:
+        if output_size > 0:
             # Has output — likely completed successfully
             print(f"✅ {task_id}: Completed (PID={pid}, {age_min}min, output={output_size}B)")
             subprocess.run([LOGGER, task_id, "complete", f"Agent finished after {age_min}min (output={output_size}B)"], capture_output=True)
