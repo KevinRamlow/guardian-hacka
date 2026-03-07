@@ -15,8 +15,9 @@ flock -n 200 || { echo "Skipped: locked"; exit 0; }
 
 bash "$REGISTRY" list > /dev/null 2>&1
 
-# Source Linear API key for re-queue
+# Source Linear API key for re-queue and Slack token for alerts
 source /root/.openclaw/workspace/.env.linear 2>/dev/null || true
+source /root/.openclaw/workspace/.env.secrets 2>/dev/null || true
 
 python3 << 'PYEOF'
 import json, os, time, subprocess, re
@@ -27,6 +28,10 @@ LINEAR_LOG = "/root/.openclaw/workspace/skills/task-manager/scripts/linear-log.s
 REGISTRY = "/root/.openclaw/workspace/scripts/agent-registry.sh"
 LOGS_DIR = "/root/.openclaw/tasks/agent-logs"
 LINEAR_API_KEY = os.environ.get("LINEAR_API_KEY", "")
+CONSECUTIVE_FAILURES_FILE = "/root/.openclaw/tasks/consecutive-failures.json"
+SLACK_BOT_TOKEN = os.environ.get("SLACK_BOT_TOKEN", "")
+CAIO_SLACK_ID = "U04PHF0L65P"
+CONSECUTIVE_FAILURE_THRESHOLD = 3
 
 # Minimum output size to count as real work (not just an error message)
 MIN_OUTPUT_BYTES = 100
@@ -42,10 +47,110 @@ FAILURE_PATTERNS = [
     r"access denied",
     r"authentication.*failed",
     r"EACCES",
+    r"API Error",
+    r"usage limits",
+    r"rate limit",
+    r"quota exceeded",
+    r"billing",
+    r"invalid_request_error",
 ]
+
+def load_consecutive_failures():
+    """Load the consecutive failure state."""
+    try:
+        with open(CONSECUTIVE_FAILURES_FILE) as f:
+            return json.load(f)
+    except Exception:
+        return {"count": 0, "task_ids": []}
+
+
+def save_consecutive_failures(state):
+    """Persist the consecutive failure state."""
+    with open(CONSECUTIVE_FAILURES_FILE, "w") as f:
+        json.dump(state, f)
+
+
+def send_failure_alert(state):
+    """Send Slack DM to Caio when consecutive failures exceed threshold."""
+    token = SLACK_BOT_TOKEN
+    if not token:
+        print("ALERT: No SLACK_BOT_TOKEN — cannot send consecutive failure alert")
+        return
+
+    count = state["count"]
+    task_ids = state["task_ids"]
+    task_list = ", ".join(task_ids[-10:])  # last 10 at most
+
+    # Try to detect common error pattern from recent failure logs
+    error_snippets = []
+    for tid in task_ids[-4:]:
+        for suffix in ["-stderr.log", "-output.log"]:
+            log_path = f"{LOGS_DIR}/{tid}{suffix}"
+            if os.path.exists(log_path):
+                try:
+                    with open(log_path) as f:
+                        snippet = f.read(300).strip()
+                    if snippet:
+                        error_snippets.append(snippet)
+                        break
+                except Exception:
+                    pass
+
+    common_pattern = ""
+    if error_snippets:
+        # Simple heuristic: find the most common line across snippets
+        lines = []
+        for s in error_snippets:
+            lines.extend([l.strip() for l in s.split("\n") if l.strip()])
+        from collections import Counter
+        common = Counter(lines).most_common(1)
+        if common and common[0][1] > 1:
+            common_pattern = f"\n*Common pattern:* `{common[0][0][:150]}`"
+
+    msg = (
+        f":rotating_light: *{count} consecutive agent failures detected*\n"
+        f"*Failed tasks:* {task_list}\n"
+        f"This may indicate a systemic issue (infra, permissions, resource exhaustion)."
+        f"{common_pattern}\n"
+        f"Check logs: `/root/.openclaw/tasks/agent-logs/`"
+    )
+
+    # Open DM channel with Caio and send alert
+    try:
+        # Open conversation
+        r = subprocess.run(
+            ["curl", "-s", "-X", "POST", "https://slack.com/api/conversations.open",
+             "-H", f"Authorization: Bearer {token}",
+             "-H", "Content-Type: application/json",
+             "-d", json.dumps({"users": CAIO_SLACK_ID})],
+            capture_output=True, text=True, timeout=10
+        )
+        dm_data = json.loads(r.stdout)
+        dm_channel = dm_data.get("channel", {}).get("id")
+        if not dm_channel:
+            print(f"ALERT: Could not open DM channel: {r.stdout[:200]}")
+            return
+
+        # Send message
+        r2 = subprocess.run(
+            ["curl", "-s", "-X", "POST", "https://slack.com/api/chat.postMessage",
+             "-H", f"Authorization: Bearer {token}",
+             "-H", "Content-Type: application/json",
+             "-d", json.dumps({"channel": dm_channel, "text": msg, "mrkdwn": True})],
+            capture_output=True, text=True, timeout=10
+        )
+        resp = json.loads(r2.stdout)
+        if resp.get("ok"):
+            print(f"ALERT SENT: {count} consecutive failures → Slack DM to Caio")
+        else:
+            print(f"ALERT FAILED: {r2.stdout[:200]}")
+    except Exception as e:
+        print(f"ALERT ERROR: {e}")
+
 
 now = int(time.time())
 ts = time.strftime("%H:%M", time.gmtime())
+consec_state = load_consecutive_failures()
 
 try:
     d = json.load(open(REGISTRY_FILE))
@@ -175,6 +280,8 @@ for task_id, a in agents.items():
             subprocess.run([LOGGER, task_id, "complete", f"Finished in {age_min}min ({output_size}B)"], capture_output=True)
             subprocess.run([LINEAR_LOG, task_id, f"[{ts}] Agent completed ({age_min}min, {output_size}B)", "done"], capture_output=True)
             completions += 1
+            # Reset consecutive failure counter on success
+            consec_state = {"count": 0, "task_ids": []}
 
         elif status == "small":
             # Small but no failure patterns — count as done but flag it
@@ -182,6 +289,8 @@ for task_id, a in agents.items():
             subprocess.run([LOGGER, task_id, "complete", f"Finished in {age_min}min ({output_size}B) — small output, review needed"], capture_output=True)
             subprocess.run([LINEAR_LOG, task_id, f"[{ts}] Agent completed ({age_min}min, {output_size}B) — small output, review", "done"], capture_output=True)
             completions += 1
+            # Reset consecutive failure counter on success
+            consec_state = {"count": 0, "task_ids": []}
 
         else:
             # Empty or blocked — FAIL and re-queue
@@ -193,6 +302,14 @@ for task_id, a in agents.items():
             subprocess.run([LOGGER, task_id, "error", f"[FAIL] Died after {age_min}min, {fail_reason}"], capture_output=True)
             subprocess.run([LINEAR_LOG, task_id, f"[{ts}] [FAIL] {fail_reason}. Re-queuing.", "blocked"], capture_output=True)
             failures += 1
+
+            # Track consecutive failures
+            consec_state["count"] += 1
+            consec_state["task_ids"].append(task_id)
+
+            # Alert if threshold exceeded
+            if consec_state["count"] > CONSECUTIVE_FAILURE_THRESHOLD:
+                send_failure_alert(consec_state)
 
             # Re-queue to Todo if not retried too many times (max 2 retries)
             if retries < 2:
@@ -217,6 +334,13 @@ for task_id, a in agents.items():
         subprocess.run([LOGGER, task_id, "timeout", f"Killed at {age_min}min (limit={timeout_min}min)"], capture_output=True)
         subprocess.run([LINEAR_LOG, task_id, f"[{ts}] Timed out at {age_min}min — killed. Re-queuing.", "blocked"], capture_output=True)
         timeouts += 1
+
+        # Track consecutive failures (timeouts count as failures)
+        consec_state["count"] += 1
+        consec_state["task_ids"].append(task_id)
+
+        if consec_state["count"] > CONSECUTIVE_FAILURE_THRESHOLD:
+            send_failure_alert(consec_state)
 
         # Re-queue timed out tasks too
         requeue_task(task_id)
@@ -276,6 +400,9 @@ try:
 except Exception:
     pass
 
+# Persist consecutive failure state
+save_consecutive_failures(consec_state)
+
 # Summary
 alive = 0
 try:
@@ -283,5 +410,5 @@ try:
 except Exception:
     pass
 
-print(f"\n=== Watchdog: running={alive} done={completions} failed={failures} timeout={timeouts} requeued={requeued} orphans={orphans} ===")
+print(f"\n=== Watchdog: running={alive} done={completions} failed={failures} timeout={timeouts} requeued={requeued} orphans={orphans} consec_fail={consec_state['count']} ===")
 PYEOF

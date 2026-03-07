@@ -35,6 +35,15 @@ done
 [ -n "$TASK_FILE" ] && { [ -f "$TASK_FILE" ] && TASK_TEXT=$(cat "$TASK_FILE") || { echo "ERROR: File not found: $TASK_FILE" >&2; exit 1; }; }
 [ -z "$LABEL" ] && LABEL="$TASK_ID"
 
+# Pre-flight: check if API is accessible (catches spending limits before spawning)
+API_CHECK=$(claude --print -p "Say OK" 2>&1 || true)
+if echo "$API_CHECK" | grep -qi "usage limits\|rate limit\|billing\|quota exceeded\|API Error"; then
+  ERROR_MSG=$(echo "$API_CHECK" | head -1)
+  echo "ERROR: API health check failed: $ERROR_MSG" >&2
+  bash "$LINEAR_LOG" "$TASK_ID" "BLOCKED: API limit reached - $ERROR_MSG" blocked 2>/dev/null || true
+  exit 1
+fi
+
 # Check capacity
 SLOTS=$(bash "$REGISTRY" slots)
 [ "$SLOTS" -le 0 ] && { echo "ERROR: No slots ($(bash "$REGISTRY" count) running)" >&2; exit 1; }
