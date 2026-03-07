@@ -411,4 +411,253 @@ except Exception:
     pass
 
 print(f"\n=== Watchdog: running={alive} done={completions} failed={failures} timeout={timeouts} requeued={requeued} orphans={orphans} consec_fail={consec_state['count']} ===")
+
+# ── Health Metrics ─────────────────────────────────────────────────────────────
+import glob, re
+from datetime import datetime, timezone, timedelta
+from collections import defaultdict
+
+METRICS_FILE = "/root/.openclaw/workspace/metrics/agent-health.json"
+BUDGET_FILE  = "/root/.openclaw/workspace/self-improvement/loop/budget-status.json"
+LOGS_DIR2    = "/root/.openclaw/tasks/agent-logs"
+SUCCESS_RATE_ALERT_THRESHOLD = 70.0
+
+os.makedirs("/root/.openclaw/workspace/metrics", exist_ok=True)
+
+def _parse_ts(s):
+    """Parse log timestamp like '2026-03-07 15:30:23'."""
+    try:
+        return datetime.strptime(s, "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
+    except Exception:
+        return None
+
+def _task_type(label):
+    """Extract rough task type from label or task_id."""
+    label = label.lower()
+    for kw in ["guardian","fix","feat","feature","analysis","monitor","resil","refactor","test","docs","sync","deploy"]:
+        if kw in label:
+            return kw
+    return "other"
+
+# Parse all per-task agent logs (CAI-NNN.log, not -output, not sub-runs)
+task_logs = [
+    f for f in glob.glob(f"{LOGS_DIR2}/CAI-*.log")
+    if "-output" not in f and re.search(r"CAI-\d+\.log$", f)
+]
+
+# Rolling 7-day window
+cutoff = datetime.now(timezone.utc) - timedelta(days=7)
+
+tasks_by_date = defaultdict(lambda: {"completed": 0, "timeout": 0, "failed": 0, "durations": []})
+tasks_by_type = defaultdict(lambda: {"completed": 0, "timeout": 0, "failed": 0, "durations": []})
+all_durations = []
+total_completed = total_timeout = total_failed = total_unknown = 0
+
+# Track peak concurrent: collect (spawn_epoch, end_epoch) intervals
+concurrent_windows = []
+
+for fpath in sorted(task_logs):
+    lines = open(fpath).readlines()
+    status = "unknown"
+    duration_min = None
+    spawn_dt = None
+    label = os.path.basename(fpath).replace(".log", "")
+    ttype = _task_type(label)
+    log_date = None
+
+    for line in lines:
+        # Extract spawn time
+        if "[spawn]" in line:
+            m = re.search(r"\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})", line)
+            if m:
+                spawn_dt = _parse_ts(m.group(1))
+                log_date = m.group(1)[:10]
+            # Try to extract full label from spawn line
+            m2 = re.search(r"Agent spawned: (\S+)", line)
+            if m2:
+                label = m2.group(1)
+                ttype = _task_type(label)
+
+        # Also check progress lines for label
+        if "[progress]" in line and "Agent spawned:" in line:
+            m2 = re.search(r"Agent spawned: (\S+)", line)
+            if m2:
+                label = m2.group(1)
+                ttype = _task_type(label)
+
+        if "[complete]" in line and "Finished in" in line:
+            m = re.search(r"Finished in (\d+)min", line)
+            if m:
+                duration_min = int(m.group(1))
+            status = "completed"
+
+        if "[timeout]" in line and "Timed out" in line:
+            status = "timeout"
+
+        if "[error]" in line:
+            status = "failed"
+
+    # Only count within 7-day window
+    if spawn_dt and spawn_dt < cutoff:
+        continue
+    if log_date is None and status == "unknown":
+        continue
+
+    if log_date is None:
+        # Fallback: use file mtime
+        log_date = datetime.fromtimestamp(os.path.getmtime(fpath), tz=timezone.utc).strftime("%Y-%m-%d")
+
+    if status == "completed":
+        total_completed += 1
+        tasks_by_date[log_date]["completed"] += 1
+        tasks_by_type[ttype]["completed"] += 1
+        if duration_min:
+            all_durations.append(duration_min)
+            tasks_by_date[log_date]["durations"].append(duration_min)
+            tasks_by_type[ttype]["durations"].append(duration_min)
+            if spawn_dt:
+                end_epoch = spawn_dt.timestamp() + duration_min * 60
+                concurrent_windows.append((spawn_dt.timestamp(), end_epoch))
+    elif status == "timeout":
+        total_timeout += 1
+        tasks_by_date[log_date]["timeout"] += 1
+        tasks_by_type[ttype]["timeout"] += 1
+    elif status == "failed":
+        total_failed += 1
+        tasks_by_date[log_date]["failed"] += 1
+        tasks_by_type[ttype]["failed"] += 1
+    else:
+        total_unknown += 1
+
+total = total_completed + total_timeout + total_failed + total_unknown
+success_rate = round(total_completed / total * 100, 1) if total > 0 else 0.0
+avg_duration = round(sum(all_durations) / len(all_durations), 1) if all_durations else 0.0
+
+# Peak concurrent: sweep line over all intervals
+peak_concurrent = alive  # at minimum the current count
+if concurrent_windows:
+    events = []
+    for s, e in concurrent_windows:
+        events.append((s, +1))
+        events.append((e, -1))
+    events.sort()
+    cur = 0
+    for _, delta in events:
+        cur += delta
+        if cur > peak_concurrent:
+            peak_concurrent = cur
+
+# Load cost data from budget-status.json
+total_cost_usd = 0.0
+try:
+    bdata = json.load(open(BUDGET_FILE))
+    total_cost_usd = round(bdata.get("monthly_spend", 0.0), 2)
+except Exception:
+    pass
+
+# Build per-type summary
+by_type_out = {}
+for ttype, d in sorted(tasks_by_type.items()):
+    t = d["completed"] + d["timeout"] + d["failed"]
+    sr = round(d["completed"] / t * 100, 1) if t > 0 else 0.0
+    by_type_out[ttype] = {
+        "count": t,
+        "completed": d["completed"],
+        "timeout": d["timeout"],
+        "failed": d["failed"],
+        "success_rate_pct": sr,
+        "avg_duration_min": round(sum(d["durations"]) / len(d["durations"]), 1) if d["durations"] else 0.0,
+    }
+
+# Build daily trend (last 7 days)
+daily_trend = []
+for date_str in sorted(tasks_by_date.keys()):
+    d = tasks_by_date[date_str]
+    t = d["completed"] + d["timeout"] + d["failed"]
+    sr = round(d["completed"] / t * 100, 1) if t > 0 else 0.0
+    avg_d = round(sum(d["durations"]) / len(d["durations"]), 1) if d["durations"] else 0.0
+    daily_trend.append({
+        "date": date_str,
+        "completed": d["completed"],
+        "timeout": d["timeout"],
+        "failed": d["failed"],
+        "success_rate_pct": sr,
+        "avg_duration_min": avg_d,
+    })
+
+# Alerts list
+alerts = []
+if success_rate < SUCCESS_RATE_ALERT_THRESHOLD:
+    alerts.append({
+        "level": "critical",
+        "type": "low_success_rate",
+        "message": f"Success rate {success_rate}% is below threshold {SUCCESS_RATE_ALERT_THRESHOLD}%",
+        "value": success_rate,
+        "threshold": SUCCESS_RATE_ALERT_THRESHOLD,
+    })
+
+metrics = {
+    "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+    "generated_epoch": int(time.time()),
+    "window_days": 7,
+    "summary": {
+        "total_agents": total,
+        "completed": total_completed,
+        "timeouts": total_timeout,
+        "failed": total_failed,
+        "unknown": total_unknown,
+        "success_rate_pct": success_rate,
+        "avg_duration_min": avg_duration,
+        "peak_concurrent": peak_concurrent,
+        "total_cost_usd": total_cost_usd,
+    },
+    "by_task_type": by_type_out,
+    "daily_trend": daily_trend,
+    "alerts": alerts,
+}
+
+json.dump(metrics, open(METRICS_FILE, "w"), indent=2)
+
+# Daily summary line (always print so cron captures it)
+print(f"\n--- Health Metrics (7d) ---")
+print(f"  Agents: {total} total | completed={total_completed} timeout={total_timeout} failed={total_failed}")
+print(f"  Success rate: {success_rate}% | avg duration: {avg_duration}min | peak concurrent: {peak_concurrent}")
+print(f"  Total cost (month): ${total_cost_usd}")
+if alerts:
+    for a in alerts:
+        print(f"  !! ALERT [{a['level'].upper()}]: {a['message']}")
+else:
+    print(f"  Health: OK")
+print(f"  Metrics: {METRICS_FILE}")
+
+# Slack alert if success rate below threshold
+if alerts and SLACK_BOT_TOKEN:
+    for a in alerts:
+        if a["type"] == "low_success_rate":
+            try:
+                r = subprocess.run(
+                    ["curl", "-s", "-X", "POST", "https://slack.com/api/conversations.open",
+                     "-H", f"Authorization: Bearer {SLACK_BOT_TOKEN}",
+                     "-H", "Content-Type: application/json",
+                     "-d", json.dumps({"users": CAIO_SLACK_ID})],
+                    capture_output=True, text=True, timeout=10
+                )
+                dm_data = json.loads(r.stdout)
+                dm_channel = dm_data.get("channel", {}).get("id")
+                if dm_channel:
+                    msg = (f":warning: *Agent health alert*\n"
+                           f"Success rate dropped to *{success_rate}%* (threshold: {SUCCESS_RATE_ALERT_THRESHOLD}%)\n"
+                           f"7d window: {total_completed} completed, {total_timeout} timeout, {total_failed} failed\n"
+                           f"Check logs: `{LOGS_DIR2}/`")
+                    subprocess.run(
+                        ["curl", "-s", "-X", "POST", "https://slack.com/api/chat.postMessage",
+                         "-H", f"Authorization: Bearer {SLACK_BOT_TOKEN}",
+                         "-H", "Content-Type: application/json",
+                         "-d", json.dumps({"channel": dm_channel, "text": msg, "mrkdwn": True})],
+                        capture_output=True, text=True, timeout=10
+                    )
+                    print(f"  Health alert sent to Slack")
+            except Exception as e:
+                print(f"  Health alert Slack error: {e}")
+
 PYEOF
