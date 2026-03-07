@@ -20,6 +20,13 @@ flock -n 200 || { echo "[$(date -u +%H:%M)] Skipped: already running"; exit 0; }
 ENABLED=$(python3 -c "import json; print(json.load(open('$CONFIG'))['enabled'])" 2>/dev/null || echo "true")
 [ "$ENABLED" = "False" ] && exit 0
 
+# Check budget before spawning
+BUDGET_STATUS=$(python3 -c "import json; print(json.load(open('/root/.openclaw/workspace/self-improvement/loop/budget-status.json')).get('status','ok'))" 2>/dev/null || echo "ok")
+if [ "$BUDGET_STATUS" = "over_monthly_limit" ] || [ "$BUDGET_STATUS" = "critical" ]; then
+  echo "[$(date -u +%H:%M)] Budget $BUDGET_STATUS — skipping spawn"
+  exit 0
+fi
+
 # Check available slots via registry
 SLOTS=$(bash "$REGISTRY" slots)
 echo "[$(date -u +%H:%M)] Available slots: $SLOTS"
