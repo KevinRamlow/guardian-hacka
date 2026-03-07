@@ -14,7 +14,7 @@ fi
 
 MSG="${1:-auto: workspace update $(date -u +%Y-%m-%dT%H:%M:%SZ)}"
 
-# Stage everything except secrets and temp files
+# Stage everything except secrets, temp files, and stats
 git add -A \
   --ignore-errors \
   -- \
@@ -26,11 +26,22 @@ git add -A \
   ':!__pycache__/' \
   ':!*.log' \
   ':!.my.cnf' \
+  ':!scripts/agent-registry.json' \
+  ':!tasks/' \
+  ':!.claude_sessions/' \
   2>/dev/null
 
 # Check if there are changes
 if git diff --cached --quiet 2>/dev/null; then
   echo "No changes to commit"
+  exit 0
+fi
+
+# Check if changes are ONLY in stats/tracking files (filtered out above)
+# If all staged changes are meaningful, proceed
+STAGED_FILES=$(git diff --cached --name-only 2>/dev/null | wc -l)
+if [ "$STAGED_FILES" -eq 0 ]; then
+  echo "No meaningful changes (only stats/logs)"
   exit 0
 fi
 
