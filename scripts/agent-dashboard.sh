@@ -1,64 +1,98 @@
 #!/bin/bash
-# Agent Dashboard - Quick status view of all running agents
-# Shows: Linear task | agent label | runtime | last log time | status
+# Agent Metrics Dashboard - Simple text dashboard
+# Usage: agent-dashboard.sh [--refresh]
+set -euo pipefail
 
-set -e
+REFRESH="${1:-}"
 
-LINEAR_API_KEY="${LINEAR_API_KEY:-[REDACTED]}"
-TEAM_ID="b0bf6f0c-d989-42d2-9ada-3bb3abadec58"
-
-echo "🦞 Anton Agent Dashboard"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-
-# Get running agents
-AGENTS_JSON=$(openclaw subagents list --json 2>/dev/null || echo '{"active":[]}')
-
-if [ "$(echo "$AGENTS_JSON" | jq -r '.active | length')" -eq 0 ]; then
-    echo "✅ No active agents running"
-    echo ""
-    exit 0
+# Skip clear if no terminal
+if [ -n "${TERM:-}" ] && [ "$TERM" != "dumb" ]; then
+  clear 2>/dev/null || true
 fi
 
-# For each running agent
-echo "$AGENTS_JSON" | jq -r '.active[] | [.label, .runtime, .sessionKey] | @tsv' | while IFS=$'\t' read -r label runtime sessionKey; do
-    # Extract task ID from label (e.g., "CAI-42-something" -> "CAI-42")
-    TASK_ID=$(echo "$label" | grep -oP '\b(CAI-\d+)\b' | head -1 || echo "")
-    
-    # Get runtime in minutes
-    RUNTIME_DISPLAY="$runtime"
-    
-    # Get last Linear log time (if we have task ID)
-    LAST_LOG="unknown"
-    if [ -n "$TASK_ID" ]; then
-        # Query Linear for latest comment on this task
-        QUERY="{\"query\":\"query{issues(filter:{identifier:{eq:\\\"$TASK_ID\\\"}}){nodes{comments(last:1){nodes{createdAt}}}}}\"}";
-        LAST_COMMENT=$(curl -s -X POST https://api.linear.app/graphql \
-            -H "Authorization: $LINEAR_API_KEY" \
-            -H "Content-Type: application/json" \
-            -d "$QUERY" | jq -r '.data.issues.nodes[0].comments.nodes[0].createdAt // "none"')
-        
-        if [ "$LAST_COMMENT" != "none" ]; then
-            # Calculate time since last log
-            LAST_TS=$(date -d "$LAST_COMMENT" +%s 2>/dev/null || echo "0")
-            NOW_TS=$(date +%s)
-            DIFF_MIN=$(( (NOW_TS - LAST_TS) / 60 ))
-            LAST_LOG="${DIFF_MIN}min ago"
-        else
-            LAST_LOG="no logs"
-        fi
-    fi
-    
-    # Status indicator based on runtime and last log
-    STATUS="🟢"
-    if [[ "$RUNTIME_DISPLAY" =~ ([0-9]+)m ]] && [ "${BASH_REMATCH[1]}" -gt 25 ]; then
-        STATUS="🔴"
-    elif [[ "$RUNTIME_DISPLAY" =~ ([0-9]+)m ]] && [ "${BASH_REMATCH[1]}" -gt 15 ]; then
-        STATUS="🟡"
-    fi
-    
-    # Print row
-    printf "%s %-12s | %-25s | %8s | Last log: %s\n" "$STATUS" "${TASK_ID:-N/A}" "$label" "$RUNTIME_DISPLAY" "$LAST_LOG"
-done
+cat << 'BANNER'
+╔══════════════════════════════════════════════════════════╗
+║           ANTON AGENT METRICS DASHBOARD                  ║
+╚══════════════════════════════════════════════════════════╝
+BANNER
 
 echo ""
-echo "Legend: 🟢 Normal | 🟡 >15min | 🔴 >25min (check on it)"
+
+# 1. Current agents running
+echo "📊 CURRENT STATUS"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+bash /root/.openclaw/workspace/scripts/agent-registry.sh list | tail -n +2
+echo ""
+
+# 2. Success rate (last 50 agents)
+echo "✅ SUCCESS RATE (Last 50)"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+TOTAL=$(grep -E "DONE|FAIL|TIMEOUT" /root/.openclaw/tasks/agent-logs/watchdog.log 2>/dev/null | tail -50 | wc -l || echo 0)
+SUCCESS=$(grep "DONE" /root/.openclaw/tasks/agent-logs/watchdog.log 2>/dev/null | tail -50 | wc -l || echo 0)
+if [ "$TOTAL" -gt 0 ]; then
+  RATE=$((SUCCESS * 100 / TOTAL))
+  echo "Success: $SUCCESS/$TOTAL ($RATE%)"
+else
+  echo "No data"
+fi
+echo ""
+
+# 3. Recent completions (last 10)
+echo "🎯 RECENT COMPLETIONS (Last 10)"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+grep "DONE" /root/.openclaw/tasks/agent-logs/watchdog.log 2>/dev/null | tail -10 | while read -r line; do
+  TASK=$(echo "$line" | awk '{print $2}' | tr -d ':')
+  TIME=$(echo "$line" | grep -oP '\d+min' | head -1)
+  SIZE=$(echo "$line" | grep -oP '\d+B' | head -1)
+  echo "  $TASK ($TIME, $SIZE)"
+done
+echo ""
+
+# 4. Failed agents (last 10)
+echo "❌ RECENT FAILURES (Last 10)"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+grep -E "FAIL|TIMEOUT" /root/.openclaw/tasks/agent-logs/watchdog.log 2>/dev/null | tail -10 | while read -r line; do
+  TASK=$(echo "$line" | awk '{print $3}' | tr -d ':')
+  REASON=$(echo "$line" | cut -d' ' -f4- | cut -c1-50)
+  echo "  $TASK: $REASON"
+done
+echo ""
+
+# 5. Cost tracking (if available)
+if [ -f /tmp/agent-cost-report.json ]; then
+  echo "💰 COST (24h)"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  cat /tmp/agent-cost-report.json | jq -r '.[:5] | .[] | "  \(.task): $\(.estimatedCost)"'
+  echo ""
+fi
+
+# 6. System health
+echo "🏥 SYSTEM HEALTH"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+GATEWAY_PID=$(pgrep -f "openclaw-gateway" | head -1 || echo "")
+if [ -n "$GATEWAY_PID" ]; then
+  echo "  Gateway: ✅ Running (PID $GATEWAY_PID)"
+else
+  echo "  Gateway: ❌ Down"
+fi
+
+PROXY_PID=$(pgrep -f "cloud-sql-proxy" | head -1 || echo "")
+if [ -n "$PROXY_PID" ]; then
+  echo "  Cloud SQL Proxy: ✅ Running (PID $PROXY_PID)"
+else
+  echo "  Cloud SQL Proxy: ❌ Down"
+fi
+
+if mysql -e "SELECT 1" &>/dev/null; then
+  echo "  MySQL: ✅ Connected"
+else
+  echo "  MySQL: ❌ Disconnected"
+fi
+
+echo ""
+echo "Last updated: $(date -u +'%Y-%m-%d %H:%M:%S UTC')"
+
+if [ "$REFRESH" = "--refresh" ]; then
+  sleep 5
+  exec "$0" --refresh
+fi
