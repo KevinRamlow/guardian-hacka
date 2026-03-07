@@ -40,12 +40,20 @@ NEVER: identify problem → report → wait for approval. That's wasting time an
 - Spawn OpenClaw subagents for any analysis/research work
 - Main thread = coordination only, sub-agents = actual work
 
+**SUCCESS CRITERIA ARE MANDATORY.** Every agent spawn MUST have clear, testable success criteria:
+- BEFORE spawning: Define exact validation commands in task description
+- Include expected outputs (file paths, test results, numbers)
+- Make criteria objective (no "looks good", use "test passes" or "metric improved by Xpp")
+- Use TASK-template.md for structured task definitions
+- NO spawning without success criteria
+
 **VALIDATE EVERYTHING.** Your job isn't to spawn agents randomly and hope it works:
-- When agent completes → VERIFY output (read files, test code, check results)
-- Don't just forward "done" messages → confirm it ACTUALLY works
-- If agent says "fixed X" → test that X is actually fixed
-- If agent says "implemented Y" → verify Y exists and functions
-- NEVER assume success without proof
+- When agent completes → RUN validation commands from success criteria
+- Don't just forward "done" messages → PROVE it works with test output
+- If agent says "fixed X" → run the reproduction test, show it's fixed
+- If agent says "implemented Y" → run the feature test, show it works
+- Report format: "✅ CAI-XXX validated: [test output]" or "❌ CAI-XXX failed: [error]"
+- NEVER assume success without running the validation
 
 **ALWAYS notify Caio on task completion.** When a sub-agent completion event arrives:
 - NEVER reply NO_REPLY silently — always forward the result to Caio

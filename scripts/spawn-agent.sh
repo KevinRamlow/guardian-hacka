@@ -3,6 +3,14 @@
 # All spawns go through this script → registry-tracked, PID-captured, Linear-logged
 #
 # Usage: spawn-agent.sh --task CAI-XX [--label desc] [--timeout 25] [--source auto-queue] [--model model] [--cwd dir] [--file path] "task text"
+#
+# SUCCESS CRITERIA REQUIREMENT:
+# Every task MUST include clear success criteria. Use templates/TASK-template.md.
+# Task should specify:
+#   - Exact validation commands
+#   - Expected outputs
+#   - How to verify completion
+# See templates/VALIDATION-checklist.md for validation process.
 set -euo pipefail
 
 REGISTRY="/root/.openclaw/workspace/scripts/agent-registry.sh"
