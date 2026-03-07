@@ -372,8 +372,8 @@ for task_id, a in agents.items():
         removals.append(task_id)
         continue
 
-    # --- Idle Detection (only for agents >5min old) ---
-    if age_min >= 5:
+    # --- Idle Detection (only for agents >10min old to avoid false positives on setup) ---
+    if age_min >= 10:
         try:
             idle_result = subprocess.run(
                 ["bash", DETECT_IDLE, task_id],

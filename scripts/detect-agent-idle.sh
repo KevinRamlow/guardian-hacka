@@ -23,8 +23,23 @@ output_log   = f"{LOGS_DIR}/{TASK_ID}-output.log"
 activity_log = f"{LOGS_DIR}/{TASK_ID}-activity.jsonl"
 
 IDLE_OUTPUT_SECS   = 600  # 10 min: output.log not growing (increased from 5min for long setup tasks)
-IDLE_ACTIVITY_SECS = 180  # 3 min: no events in activity.jsonl
+IDLE_ACTIVITY_SECS = 600  # 10 min: no events in activity.jsonl (increased from 3min - setup can be long)
+MIN_AGE_SECS = 600  # Only check agents older than 10min (avoid false positives on startup)
 ERROR_LOOP_THRESHOLD = 10  # same error N+ times in last 20 events
+
+# Check agent age first - if too young, always return active
+agent_birth_time = None
+for log_file in [output_log, activity_log]:
+    if os.path.exists(log_file):
+        birth = os.path.getctime(log_file)
+        if agent_birth_time is None or birth < agent_birth_time:
+            agent_birth_time = birth
+
+if agent_birth_time:
+    agent_age = now - agent_birth_time
+    if agent_age < MIN_AGE_SECS:
+        print("active")  # Too young to judge
+        sys.exit(0)
 
 def check_error_loop(activity_log):
     try:
