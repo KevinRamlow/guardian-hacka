@@ -123,10 +123,13 @@ Never stop at "it compiled." Prove it works. Measure impact. Only report when yo
 6. You report results with data
 
 **Key tools:**
-- `sessions_spawn` — create sub-agents (runtime="acp" for coding work)
-- `subagents` — list/steer/kill running agents
-- `workflows/` — engine + templates for structured work
+- `spawn-agent.sh` — spawn sub-agents (registry-tracked, PID-captured, Linear-logged)
+- `agent-registry.sh` — list/count/check running agents
+- `agent-watchdog-v2.sh` — auto-detects completions, kills timeouts, cleans orphans (cron 60s)
+- `ralph-manager-v2.sh` — iterative story-based execution (ralph loop)
 - `nano-banana` — image/presentation generation (Gemini API)
+
+**NEVER use `sessions_spawn` directly.** All spawns go through `spawn-agent.sh` which tracks PIDs in `agent-registry.json`. Direct `sessions_spawn` creates invisible zombies via the ACP bridge.
 
 ### Image Generation Best Practices
 
@@ -179,69 +182,44 @@ These files are your memory. Read them every session. Update them when you learn
 If you change SOUL.md, tell Caio — it's your soul and he should know.
 
 **Task Routing Rules:**
-- **Code work** (Guardian, Billy features, PRs) → Claude Code agents (runtime="acp")
-- **Non-code work** (profile pics, debugging, research, config) → OpenClaw subagents (runtime="subagent")
+- **All agent work** → `spawn-agent.sh --task CAI-XX --label desc "task text"` (unified, registry-tracked)
+- **Structured iteration** → `ralph-manager-v2.sh start <project> CAI-XX` (story-based loop)
 - **All work tracked in Linear** (caio-tests CAI workspace), not just code tasks
 - **Background updates** (memory, Linear sync) → Silent cron jobs, NO chat replies
 - **Main thread** → Coordination only, never do work directly
 
 ## Agent Spawn Discipline
 
-**Before spawning ANY agent, verify this checklist:**
-1. ☐ Linear task created (or reusing existing CAI-XX)
-2. ☐ Task ID included in spawn description
-3. ☐ Logging instructions included (reference /root/.openclaw/workspace/CLAUDE.md)
-4. ☐ Timeout expectation set (see timeout rules below)
-5. ☐ Runtime type correct (acp for code, subagent for non-code)
+**All spawns go through `spawn-agent.sh`.** It handles: capacity check, duplicate check, PID capture, registry, Linear logging.
 
-**Agent timeout rules (never spawn without expectation):**
-- Image/simple tasks: 5 min
+```bash
+# Simple spawn
+bash scripts/spawn-agent.sh --task CAI-XX --label "description" --timeout 25 "task text here"
+
+# From file
+bash scripts/spawn-agent.sh --task CAI-XX --label "description" --timeout 25 --file /path/to/task.md
+
+# With model override
+bash scripts/spawn-agent.sh --task CAI-XX --label "desc" --timeout 15 --model "anthropic/claude-opus-4-6" "task text"
+```
+
+**Timeout rules:**
+- Image/simple: 5 min
 - Analysis/research: 15 min
 - Code work: 25 min max
-- If it needs >30 min, break it into smaller sub-tasks
+- If >30 min needed, break into smaller tasks
 
-**Manual logging (MANDATORY until hooks work):**
-Immediately after EVERY spawn/steer/kill, run:
-```bash
-cd /root/.openclaw/workspace && bash skills/task-manager/scripts/linear-log.sh CAI-XX "message" [status]
-```
+**Monitoring is automated:**
+- `agent-watchdog-v2.sh` (cron 60s): detects completions, kills timeouts, cleans orphans
+- `linear-sync-v2.sh` (cron 15min): moves orphaned In Progress tasks to Todo
+- `auto-queue-v2.sh` (cron 5min): picks up Todo tasks from Linear, spawns agents
+- No manual logging needed for spawn/complete/timeout — all automated
 
-Examples:
-- After spawn: `linear-log.sh CAI-42 "🚀 [HH:MM UTC] Sub-agent spawned: {label}. {what it's doing}" progress`
-- After steer: `linear-log.sh CAI-42 "🔄 [HH:MM UTC] Steered: {reason}"`
-- After kill: `linear-log.sh CAI-42 "⏱️ [HH:MM UTC] Killed after {N}min: {reason}" blocked`
-- Agent completes: handled by completion announcement (don't log twice)
-
-**Never skip this.** Manual logging is temporary until hook system works.
-
-**Parallel execution rules:**
-- Always have 2-4 agents running when work exists
-- Never wait for one agent to finish before spawning the next
-- Use completion announcements (push-based), don't poll
-- When an agent completes, immediately assess: spawn next task OR report to Caio
-- Batch related spawns in a single turn
-- Main thread response after spawning: list what's running, then free for Caio
-
-**Spawn template format:**
-```
-## Task Context
-- **Linear Task:** CAI-XX
-- **Timeout:** {N} minutes
-
-## Logging (MANDATORY — every 20 seconds)
-Use: /root/.openclaw/workspace/skills/task-manager/scripts/linear-log.sh CAI-XX "message" [status]
-
-Log FREQUENTLY (every 20 seconds max between logs):
-- Start: "🚀 Starting: {brief}"
-- Progress: "📍 {what you're doing right now}" — EVERY 20 SECONDS
-- Done: "✅ {summary}" with status=done
-- Failed: "❌ {reason}" with status=blocked
-
-Caio monitors Linear in real-time. Silent agents get killed.
-
-## Task
-{actual task description}
-```
+**Parallel execution:**
+- Keep 2-3 agents running when work exists
+- Never wait for one to finish before spawning next
+- Watchdog detects completions — assess result and spawn next or report to Caio
+- Main thread after spawning: list what's running, stay available for Caio
 
 ## Presentation/Image Generation Rules
 

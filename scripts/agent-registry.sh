@@ -122,7 +122,7 @@ cmd_list() {
   init_registry
 
   python3 -c "
-import json, time
+import json, os, time
 f = '$REGISTRY_FILE'
 d = json.load(open(f))
 agents = d.get('agents', {})
@@ -140,18 +140,13 @@ else:
         age_min = (now - a.get('spawnedEpoch', now)) // 60
         timeout = a.get('timeoutMin', 25)
         source = a.get('source', '?')
-        status = a.get('status', '?')
-
-        # Check if process is actually alive
-        import os
         try:
             os.kill(pid, 0)
             alive = True
         except (OSError, ProcessLookupError):
             alive = False
-
         icon = '🟢' if alive else '💀'
-        print(f'  {icon} {tid}: PID={pid} age={age_min}min timeout={timeout}min src={source} status={status} alive={alive}')
+        print(f'  {icon} {tid}: PID={pid} {age_min}/{timeout}min src={source} alive={alive}')
 "
 }
 
