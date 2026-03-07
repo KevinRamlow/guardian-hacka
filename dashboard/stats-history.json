@@ -1,10 +1,36 @@
 {
   "date": "2026-03-07",
-  "completedToday": 189,
+  "completedToday": 191,
   "failedToday": 5,
   "totalTokensToday": 194603,
   "estimatedCostToday": 2919.045,
   "recentAgents": [
+    {
+      "sessionKey": "completed:CAI-TEST-LF2",
+      "label": "CAI-TEST-LF2",
+      "model": "claude",
+      "totalTokens": 0,
+      "runtimeMs": 6000,
+      "status": "done",
+      "taskId": "CAI-TEST-LF2",
+      "source": "manual",
+      "runtimeMin": "0.1",
+      "cost": "0",
+      "success": true
+    },
+    {
+      "sessionKey": "completed:CAI-TEST-LF",
+      "label": "CAI-TEST-LF",
+      "model": "claude",
+      "totalTokens": 0,
+      "runtimeMs": 18000,
+      "status": "done",
+      "taskId": "CAI-TEST-LF",
+      "source": "manual",
+      "runtimeMin": "0.3",
+      "cost": "0",
+      "success": true
+    },
     {
       "sessionKey": "completed:CAI-TEST",
       "label": "langfuse-test",
@@ -238,32 +264,6 @@
       "runtimeMin": "0.1",
       "cost": "0",
       "success": false
-    },
-    {
-      "sessionKey": "completed:CAI-288",
-      "label": "CAI-288--fix-spawn-agentsh-apostrop",
-      "model": "claude",
-      "totalTokens": 0,
-      "runtimeMs": 6000,
-      "status": "error",
-      "taskId": "CAI-288",
-      "source": "auto-queue",
-      "runtimeMin": "0.1",
-      "cost": "0",
-      "success": false
-    },
-    {
-      "sessionKey": "completed:CAI-TEST-AUTO4",
-      "label": "autonomy-test-4",
-      "model": "claude",
-      "totalTokens": 0,
-      "runtimeMs": 18000,
-      "status": "done",
-      "taskId": "CAI-TEST-AUTO4",
-      "source": "manual-test",
-      "runtimeMin": "0.3",
-      "cost": "0",
-      "success": true
     }
   ]
 }

@@ -6,11 +6,6 @@
 #
 # SUCCESS CRITERIA REQUIREMENT:
 # Every task MUST include clear success criteria. Use templates/TASK-template.md.
-# Task should specify:
-#   - Exact validation commands
-#   - Expected outputs
-#   - How to verify completion
-# See templates/VALIDATION-checklist.md for validation process.
 set -euo pipefail
 
 REGISTRY="/root/.openclaw/workspace/scripts/agent-registry.sh"
@@ -59,20 +54,32 @@ else
   echo "$TASK_TEXT" > "$TASK_PATH"
 fi
 
+# Source GCP credentials if available (for BigQuery/Cloud SQL access)
+GCP_ENV="/root/.openclaw/workspace/.gcp-env"
+[ -f "$GCP_ENV" ] && source "$GCP_ENV"
+
+# Export env vars that sub-agents need
+export GOOGLE_APPLICATION_CREDENTIALS="${GOOGLE_APPLICATION_CREDENTIALS:-/root/.openclaw/workspace/.gcp-credentials.json}"
+
 # Spawn claude CLI directly (no ACP bridge — it creates invisible zombies)
+# Separate stdout (output) and stderr (errors) into different files
 cd "$CWD"
 MODEL_ARG=""
 [ -n "$MODEL" ] && MODEL_ARG="--model $MODEL"
 
-nohup claude --print --permission-mode dontAsk --allowedTools "Write,Edit,Bash,Read,Glob,Grep" $MODEL_ARG -p "$(cat "$TASK_PATH")" \
-  > "$LOGS_DIR/${TASK_ID}-output.log" 2>&1 &
+nohup bash -c "
+  claude --print --permission-mode dontAsk --allowedTools 'Write,Edit,Bash,Read,Glob,Grep' $MODEL_ARG -p \"\$(cat '$TASK_PATH')\" \
+    > '$LOGS_DIR/${TASK_ID}-output.log' 2> '$LOGS_DIR/${TASK_ID}-stderr.log';
+  EXIT_CODE=\$?;
+  echo \"\$EXIT_CODE\" > '$LOGS_DIR/${TASK_ID}-exit-code';
+" &>/dev/null &
 AGENT_PID=$!
 
 # Verify process started
 sleep 2
 if ! kill -0 "$AGENT_PID" 2>/dev/null; then
   echo "ERROR: Agent died immediately (PID=$AGENT_PID)" >&2
-  echo "Log: $LOGS_DIR/${TASK_ID}-output.log" >&2
+  echo "Stderr: $(cat "$LOGS_DIR/${TASK_ID}-stderr.log" 2>/dev/null)" >&2
   exit 1
 fi
 
