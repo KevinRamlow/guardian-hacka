@@ -1,10 +1,23 @@
 {
   "date": "2026-03-07",
-  "completedToday": 112,
+  "completedToday": 113,
   "failedToday": 0,
   "totalTokensToday": 194603,
   "estimatedCostToday": 2919.045,
   "recentAgents": [
+    {
+      "sessionKey": "completed:CAI-226",
+      "label": "CAI-226-🔧-extract-memorycontextbuilder",
+      "model": "claude",
+      "totalTokens": 0,
+      "runtimeMs": 288000,
+      "status": "done",
+      "taskId": "CAI-226",
+      "source": "auto-queue",
+      "runtimeMin": "4.8",
+      "cost": "0",
+      "success": true
+    },
     {
       "sessionKey": "completed:CAI-225",
       "label": "CAI-225-🛡️-fix-database-access-for-ana",
@@ -249,19 +262,6 @@
       "taskId": "CAI-145",
       "source": "auto-queue",
       "runtimeMin": "6.7",
-      "cost": "0",
-      "success": true
-    },
-    {
-      "sessionKey": "completed:CAI-207",
-      "label": "CAI-207-📊-monitor:-agent-performance-d",
-      "model": "claude",
-      "totalTokens": 0,
-      "runtimeMs": 396000,
-      "status": "done",
-      "taskId": "CAI-207",
-      "source": "auto-queue",
-      "runtimeMin": "6.6",
       "cost": "0",
       "success": true
     }
