@@ -22,7 +22,7 @@ now = time.time()
 output_log   = f"{LOGS_DIR}/{TASK_ID}-output.log"
 activity_log = f"{LOGS_DIR}/{TASK_ID}-activity.jsonl"
 
-IDLE_OUTPUT_SECS   = 300  # 5 min: output.log not growing
+IDLE_OUTPUT_SECS   = 600  # 10 min: output.log not growing (increased from 5min for long setup tasks)
 IDLE_ACTIVITY_SECS = 180  # 3 min: no events in activity.jsonl
 ERROR_LOOP_THRESHOLD = 10  # same error N+ times in last 20 events
 
