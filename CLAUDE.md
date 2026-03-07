@@ -20,6 +20,42 @@ linear-log.sh CAI-42 "Done: accuracy 76.8% -> 79.2% (+2.4pp). Files: severity_ag
 
 **Status values:** `progress` (In Progress), `done` (Done), `blocked` (Blocked/Failed), `todo` (Not started)
 
+## Git Commits
+
+**YOU commit your own changes.** Don't wait for a sync cron.
+
+```bash
+cd /root/.openclaw/workspace
+git add [files you changed]
+git commit -m "feat(CAI-XX): short description of what you did"
+git push origin HEAD
+```
+
+**When to commit:**
+- After completing a bug fix (commit the fix)
+- After implementing a feature (commit the code)
+- After creating analysis/docs (commit the files)
+- Before marking task as `done`
+
+**What to exclude:** Don't commit secrets, temp files, logs, or stats
+- `auth-profiles.json`, `.env*`, `*.key`, `*.pem`
+- `agent-registry.json`, `tasks/`, `.claude_sessions/`
+- `*.log`, `node_modules/`, `__pycache__/`
+
+**Commit message format:**
+- `feat(CAI-XX): description` for new features
+- `fix(CAI-XX): description` for bug fixes
+- `docs(CAI-XX): description` for documentation
+- `test(CAI-XX): description` for tests
+
+**Example:**
+```bash
+git add scripts/agent-registry.sh
+git commit -m "fix(CAI-274): escape apostrophes in task labels"
+git push origin HEAD
+linear-log.sh CAI-274 "Done: fixed + committed + pushed" done
+```
+
 ## Forbidden
 
 - **NEVER** edit `/root/.openclaw/openclaw.json` — causes infinite crash loop
