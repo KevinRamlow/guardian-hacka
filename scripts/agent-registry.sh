@@ -41,19 +41,19 @@ cmd_register() {
   local NOW=$(date -u +%Y-%m-%dT%H:%M:%SZ)
   local NOW_EPOCH=$(date +%s)
 
-  python3 -c "
-import json
+  _LABEL="$LABEL" _SOURCE="$SOURCE" _TASK_ID="$TASK_ID" _NOW="$NOW" python3 -c "
+import json, os
 f = '$REGISTRY_FILE'
 d = json.load(open(f))
-d['agents']['$TASK_ID'] = {
+d['agents'][os.environ['_TASK_ID']] = {
     'pid': $PID,
     'bridgePid': $BRIDGE_PID,
-    'label': '$LABEL',
-    'taskId': '$TASK_ID',
-    'source': '$SOURCE',
-    'spawnedAt': '$NOW',
+    'label': os.environ['_LABEL'],
+    'taskId': os.environ['_TASK_ID'],
+    'source': os.environ['_SOURCE'],
+    'spawnedAt': os.environ['_NOW'],
     'spawnedEpoch': $NOW_EPOCH,
-    'lastHeartbeat': '$NOW',
+    'lastHeartbeat': os.environ['_NOW'],
     'lastHeartbeatEpoch': $NOW_EPOCH,
     'timeoutMin': $TIMEOUT_MIN,
     'status': 'running'

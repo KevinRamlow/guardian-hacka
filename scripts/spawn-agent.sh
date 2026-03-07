@@ -56,7 +56,7 @@ cd "$CWD"
 MODEL_ARG=""
 [ -n "$MODEL" ] && MODEL_ARG="--model $MODEL"
 
-nohup claude --print $MODEL_ARG -p "$(cat "$TASK_PATH")" \
+nohup claude --print --permission-mode dontAsk --allowedTools "Write,Edit,Bash,Read" $MODEL_ARG -p "$(cat "$TASK_PATH")" \
   > "$LOGS_DIR/${TASK_ID}-output.log" 2>&1 &
 AGENT_PID=$!
 

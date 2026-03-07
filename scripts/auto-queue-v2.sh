@@ -90,8 +90,12 @@ for n in nodes:
 
     # Spawn
     print(f'  SPAWN: {task_id} - {title}')
+    # Sanitize label: remove apostrophes, quotes, and special chars
+    import re
+    safe_label = re.sub(r"['\"]", '', title[:30].replace(" ", "-").lower())
+    safe_label = re.sub(r'[^a-z0-9\-]', '', safe_label)
     result = subprocess.run(
-        ['bash', SPAWNER, '--task', task_id, '--label', f'{task_id}-{title[:30].replace(\" \", \"-\").lower()}',
+        ['bash', SPAWNER, '--task', task_id, '--label', f'{task_id}-{safe_label}',
          '--timeout', '25', '--source', 'auto-queue', '--file', task_file],
         capture_output=True, text=True
     )
