@@ -11,7 +11,7 @@
       "label": "CAI-76-billy-campaign-download",
       "model": "claude-sonnet-4-5",
       "totalTokens": 62117,
-      "runtimeMs": 894530,
+      "runtimeMs": 1799329,
       "agentId": "main",
       "task": "CAI-76-billy-campaign-download",
       "status": "done"
@@ -22,7 +22,7 @@
       "label": "CAI-88-billy-metabase-replacement",
       "model": "claude-sonnet-4-5",
       "totalTokens": 66008,
-      "runtimeMs": 927360,
+      "runtimeMs": 1832159,
       "agentId": "main",
       "task": "CAI-88-billy-metabase-replacement",
       "status": "done"
@@ -33,7 +33,7 @@
       "label": "CAI-77-billy-boost-sheets",
       "model": "claude-sonnet-4-5",
       "totalTokens": 66478,
-      "runtimeMs": 957880,
+      "runtimeMs": 1862679,
       "agentId": "main",
       "task": "CAI-77-billy-boost-sheets",
       "status": "done"
@@ -44,7 +44,7 @@
       "label": "CAI-84-billy-weekly-reports",
       "model": "claude-sonnet-4-5",
       "totalTokens": 44281,
-      "runtimeMs": 40441151,
+      "runtimeMs": 41345950,
       "agentId": "main",
       "task": "CAI-84-billy-weekly-reports",
       "status": "done"
@@ -55,7 +55,7 @@
       "label": "CAI-78-billy-screen-time",
       "model": "claude-sonnet-4-5",
       "totalTokens": 37079,
-      "runtimeMs": 40556534,
+      "runtimeMs": 41461333,
       "agentId": "main",
       "task": "CAI-78-billy-screen-time",
       "status": "done"
@@ -66,7 +66,7 @@
       "label": "CAI-80-billy-okr-tracker",
       "model": "claude-sonnet-4-5",
       "totalTokens": 42604,
-      "runtimeMs": 40649648,
+      "runtimeMs": 41554447,
       "agentId": "main",
       "task": "CAI-80-billy-okr-tracker",
       "status": "done"
@@ -77,7 +77,7 @@
       "label": "CAI-81-billy-hubspot",
       "model": "claude-sonnet-4-5",
       "totalTokens": 37714,
-      "runtimeMs": 40740728,
+      "runtimeMs": 41645527,
       "agentId": "main",
       "task": "CAI-81-billy-hubspot",
       "status": "done"
@@ -88,7 +88,7 @@
       "label": "CAI-83-billy-guardian-monitor",
       "model": "claude-sonnet-4-5",
       "totalTokens": 34545,
-      "runtimeMs": 40793087,
+      "runtimeMs": 41697886,
       "agentId": "main",
       "task": "CAI-83-billy-guardian-monitor",
       "status": "done"
