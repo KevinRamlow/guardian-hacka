@@ -511,10 +511,34 @@ from collections import defaultdict
 
 METRICS_FILE = "/Users/fonsecabc/.openclaw/workspace/metrics/agent-health.json"
 BUDGET_FILE  = "/Users/fonsecabc/.openclaw/workspace/self-improvement/loop/budget-status.json"
+ALERT_COOLDOWN_FILE = "/Users/fonsecabc/.openclaw/workspace/metrics/alert-cooldown.json"
 LOGS_DIR2    = "/Users/fonsecabc/.openclaw/tasks/agent-logs"
 SUCCESS_RATE_ALERT_THRESHOLD = 70.0
+ALERT_COOLDOWN_HOURS = 1  # Only alert once per hour for same issue
 
 os.makedirs("/Users/fonsecabc/.openclaw/workspace/metrics", exist_ok=True)
+
+def should_send_alert(alert_type):
+    """Check if enough time has passed since last alert of this type."""
+    try:
+        if os.path.exists(ALERT_COOLDOWN_FILE):
+            cooldowns = json.load(open(ALERT_COOLDOWN_FILE))
+        else:
+            cooldowns = {}
+        
+        last_alert_epoch = cooldowns.get(alert_type, 0)
+        now_epoch = int(time.time())
+        hours_since = (now_epoch - last_alert_epoch) / 3600
+        
+        if hours_since >= ALERT_COOLDOWN_HOURS:
+            # Update cooldown file
+            cooldowns[alert_type] = now_epoch
+            json.dump(cooldowns, open(ALERT_COOLDOWN_FILE, "w"))
+            return True
+        else:
+            return False
+    except Exception:
+        return True  # If cooldown check fails, allow the alert
 
 def _parse_ts(s):
     """Parse log timestamp like '2026-03-07 15:30:23'."""
@@ -679,8 +703,11 @@ for date_str in sorted(tasks_by_date.keys()):
 
 # Alerts list
 alerts = []
-# Only alert on low success rate if we have meaningful data (at least 3 agents in window)
-if total >= 3 and success_rate < SUCCESS_RATE_ALERT_THRESHOLD:
+# Only alert on low success rate if we have meaningful data:
+# - At least 5 total agents in window (enough for statistical significance)
+# - At least 1 completion attempt (not just all timeouts/unknowns)
+# - Success rate below threshold
+if total >= 5 and (total_completed + total_failed + total_timeout) >= 1 and success_rate < SUCCESS_RATE_ALERT_THRESHOLD:
     alerts.append({
         "level": "critical",
         "type": "low_success_rate",
@@ -723,10 +750,10 @@ else:
     print(f"  Health: OK")
 print(f"  Metrics: {METRICS_FILE}")
 
-# Slack alert if success rate below threshold
+# Slack alert if success rate below threshold (with cooldown)
 if alerts and SLACK_BOT_TOKEN:
     for a in alerts:
-        if a["type"] == "low_success_rate":
+        if a["type"] == "low_success_rate" and should_send_alert("low_success_rate"):
             try:
                 r = subprocess.run(
                     ["curl", "-s", "-X", "POST", "https://slack.com/api/conversations.open",
