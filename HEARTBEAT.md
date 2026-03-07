@@ -1,49 +1,21 @@
-# HEARTBEAT.md — Productive Heartbeats
+# HEARTBEAT.md
 
-## PRIORITY 1: Queue Processing (EVERY heartbeat)
+## What NOT to do
+- **DO NOT manage agents, queues, or spawns.** All handled by v2 cron scripts (watchdog, auto-queue, linear-sync).
+- **DO NOT reply with QUEUE_OK, SKIP, or any status noise.** If nothing needs attention, reply HEARTBEAT_OK silently.
+- **DO NOT send messages to Caio's DM unless you have something genuinely useful to say.**
+- **DO NOT read the old session store** (`sessions.json`). Use `agent-registry.sh list` if you need agent status.
 
-1. **Check spawn queue:** `ls /root/.openclaw/tasks/spawn-queue/*.json 2>/dev/null`
-   - If pending tasks exist → spawn agents for them (max 3 concurrent)
-   - After spawning → delete the .json file from spawn-queue
-   - Move Linear task to "In Progress"
+## What to do
 
-2. **Check running agents:** Read `/root/.openclaw/agents/claude/sessions/sessions.json`
-   - Count sessions updated < 15 min ago with "acp" in key
-   - If stale (>20 min no update) → mark as done/timeout
-   - If completed → notify Caio with results summary
+### Every heartbeat
+- If Caio sent you a message you haven't responded to → respond to it
+- If a watchdog alert exists in `/root/.openclaw/tasks/agent-logs/watchdog.log` (last 5 lines) with TIMEOUT or DEAD → tell Caio briefly
 
-3. **Check if slots available:** If running < 3 AND spawn-queue empty
-   - Run auto-queue.sh to fetch more from Linear Todo
+### Timed checks (rotate, 2-3x per day during work hours 08:00-23:00 São Paulo)
+- **Morning (12:00 UTC):** Calendar, Gmail unread, Guardian #guardian-alerts overnight
+- **Afternoon (17:00 UTC):** Linear GUA status changes, PR reviews pending
+- **Evening (21:00 UTC):** Brief day summary if there were notable events
 
-## PRIORITY 2: Health Checks (EVERY heartbeat)
-
-4. **Dashboard alive?** `curl -sf http://127.0.0.1:8765/ > /dev/null` → restart if dead
-5. **Billy alive?** `ssh -o ConnectTimeout=3 root@89.167.64.183 'curl -sf http://127.0.0.1:18790/'` → restart if dead
-6. **Gateway healthy?** Check own gateway status
-
-## PRIORITY 3: Timed Checks (rotate, 2-3x per day)
-
-### 9 AM (São Paulo = 12:00 UTC)
-- Calendar events today
-- Gmail unread (both accounts)
-- Slack unread DMs
-- Guardian #guardian-alerts overnight incidents
-
-### 2 PM (17:00 UTC)
-- Linear status changes on GUA issues
-- PR reviews pending
-- Slack threads unresolved
-
-### 6 PM (21:00 UTC)
-- Day summary for Caio
-- Tomorrow's calendar preview
-- Unresolved items
-
-## Rules
-
-- **NEVER return HEARTBEAT_OK without checking queue first**
-- Always process spawn queue if items exist
-- Always check agent health
-- If nothing to do AND no health issues → HEARTBEAT_OK
-- Keep responses SHORT (Slack message limit)
-- Outside work hours (23:00-08:00 São Paulo) → only check health, no proactive msgs
+### If nothing to do
+Reply `HEARTBEAT_OK` — nothing else. No status dumps. No queue checks. No noise.
