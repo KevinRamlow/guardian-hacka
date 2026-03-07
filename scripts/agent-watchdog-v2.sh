@@ -4,11 +4,11 @@
 # v2.1: Re-queues failed agents, validates output content, logs stderr
 set -euo pipefail
 
-REGISTRY="/root/.openclaw/workspace/scripts/agent-registry.sh"
-REGISTRY_FILE="/root/.openclaw/tasks/agent-registry.json"
+REGISTRY="/Users/fonsecabc/.openclaw/workspace/scripts/agent-registry.sh"
+REGISTRY_FILE="/Users/fonsecabc/.openclaw/tasks/agent-registry.json"
 LOCKFILE="/tmp/agent-watchdog-v2.lock"
 
-mkdir -p /root/.openclaw/tasks/agent-logs
+mkdir -p /Users/fonsecabc/.openclaw/tasks/agent-logs
 
 exec 200>"$LOCKFILE"
 flock -n 200 || { echo "Skipped: locked"; exit 0; }
@@ -16,19 +16,21 @@ flock -n 200 || { echo "Skipped: locked"; exit 0; }
 bash "$REGISTRY" list > /dev/null 2>&1
 
 # Source Linear API key for re-queue and Slack token for alerts
-source /root/.openclaw/workspace/.env.linear 2>/dev/null || true
-source /root/.openclaw/workspace/.env.secrets 2>/dev/null || true
+source /Users/fonsecabc/.openclaw/workspace/.env.linear 2>/dev/null || true
+source /Users/fonsecabc/.openclaw/workspace/.env.secrets 2>/dev/null || true
 
 python3 << 'PYEOF'
 import json, os, time, subprocess, re
 
-REGISTRY_FILE = "/root/.openclaw/tasks/agent-registry.json"
-LOGGER = "/root/.openclaw/workspace/scripts/agent-logger.sh"
-LINEAR_LOG = "/root/.openclaw/workspace/skills/task-manager/scripts/linear-log.sh"
-REGISTRY = "/root/.openclaw/workspace/scripts/agent-registry.sh"
-LOGS_DIR = "/root/.openclaw/tasks/agent-logs"
+REGISTRY_FILE = "/Users/fonsecabc/.openclaw/tasks/agent-registry.json"
+LOGGER = "/Users/fonsecabc/.openclaw/workspace/scripts/agent-logger.sh"
+LINEAR_LOG = "/Users/fonsecabc/.openclaw/workspace/skills/task-manager/scripts/linear-log.sh"
+REGISTRY = "/Users/fonsecabc/.openclaw/workspace/scripts/agent-registry.sh"
+LOGS_DIR = "/Users/fonsecabc/.openclaw/tasks/agent-logs"
+DETECT_IDLE = "/Users/fonsecabc/.openclaw/workspace/scripts/detect-agent-idle.sh"
+KILL_TREE = "/Users/fonsecabc/.openclaw/workspace/scripts/kill-agent-tree.sh"
 LINEAR_API_KEY = os.environ.get("LINEAR_API_KEY", "")
-CONSECUTIVE_FAILURES_FILE = "/root/.openclaw/tasks/consecutive-failures.json"
+CONSECUTIVE_FAILURES_FILE = "/Users/fonsecabc/.openclaw/tasks/consecutive-failures.json"
 SLACK_BOT_TOKEN = os.environ.get("SLACK_BOT_TOKEN", "")
 CAIO_SLACK_ID = "U04PHF0L65P"
 CONSECUTIVE_FAILURE_THRESHOLD = 3
@@ -112,7 +114,7 @@ def send_failure_alert(state):
         f"*Failed tasks:* {task_list}\n"
         f"This may indicate a systemic issue (infra, permissions, resource exhaustion)."
         f"{common_pattern}\n"
-        f"Check logs: `/root/.openclaw/tasks/agent-logs/`"
+        f"Check logs: `/Users/fonsecabc/.openclaw/tasks/agent-logs/`"
     )
 
     # Open DM channel with Caio and send alert
@@ -278,7 +280,16 @@ for task_id, a in agents.items():
         if status == "success":
             print(f"DONE {task_id}: {age_min}min, {output_size}B output")
             subprocess.run([LOGGER, task_id, "complete", f"Finished in {age_min}min ({output_size}B)"], capture_output=True)
-            subprocess.run([LINEAR_LOG, task_id, f"[{ts}] Agent completed ({age_min}min, {output_size}B)", "done"], capture_output=True)
+            # Include output snippet in Linear log for context
+            output_snippet = ""
+            try:
+                with open(f"{LOGS_DIR}/{task_id}-output.log") as f:
+                    output_snippet = f.read(500).strip().replace('"', '\\"')
+            except: pass
+            linear_msg = f"[{ts}] Agent completed ({age_min}min, {output_size}B)"
+            if output_snippet:
+                linear_msg += f"\n---\n{output_snippet}"
+            subprocess.run([LINEAR_LOG, task_id, linear_msg, "done"], capture_output=True)
             completions += 1
             # Reset consecutive failure counter on success
             consec_state = {"count": 0, "task_ids": []}
@@ -300,7 +311,16 @@ for task_id, a in agents.items():
 
             print(f"[FAIL] {task_id}: {age_min}min, {fail_reason}")
             subprocess.run([LOGGER, task_id, "error", f"[FAIL] Died after {age_min}min, {fail_reason}"], capture_output=True)
-            subprocess.run([LINEAR_LOG, task_id, f"[{ts}] [FAIL] {fail_reason}. Re-queuing.", "blocked"], capture_output=True)
+            # Include stderr snippet for failure context
+            stderr_snippet = ""
+            try:
+                with open(f"{LOGS_DIR}/{task_id}-stderr.log") as f:
+                    stderr_snippet = f.read(300).strip().replace('"', '\\"')
+            except: pass
+            fail_msg = f"[{ts}] [FAIL] {fail_reason}. Re-queuing."
+            if stderr_snippet:
+                fail_msg += f"\nStderr: {stderr_snippet}"
+            subprocess.run([LINEAR_LOG, task_id, fail_msg, "blocked"], capture_output=True)
             failures += 1
 
             # Track consecutive failures
@@ -319,15 +339,19 @@ for task_id, a in agents.items():
         continue
 
     if age_min >= timeout_min:
-        print(f"TIMEOUT {task_id}: {age_min}min >= {timeout_min}min — killing PID {pid}")
+        print(f"TIMEOUT {task_id}: {age_min}min >= {timeout_min}min — killing PID {pid} and children")
         try:
-            os.kill(pid, 9)
-        except Exception:
-            pass
-        bridge = a.get("bridgePid", 0)
-        if bridge > 0:
+            # Use kill-agent-tree.sh to kill entire process tree
+            subprocess.run([
+                "bash",
+                "/Users/fonsecabc/.openclaw/workspace/scripts/kill-agent-tree.sh",
+                str(pid)
+            ], capture_output=True, timeout=10)
+        except Exception as e:
+            print(f"  Error killing tree for {pid}: {e}")
+            # Fallback: try direct kill
             try:
-                os.kill(bridge, 9)
+                os.kill(pid, 9)
             except Exception:
                 pass
 
@@ -347,6 +371,60 @@ for task_id, a in agents.items():
 
         removals.append(task_id)
         continue
+
+    # --- Idle Detection (only for agents >5min old) ---
+    if age_min >= 5:
+        try:
+            idle_result = subprocess.run(
+                ["bash", DETECT_IDLE, task_id],
+                capture_output=True, text=True, timeout=15
+            ).stdout.strip()
+        except Exception as e:
+            idle_result = "active"
+            print(f"  IDLE_CHECK error for {task_id}: {e}")
+
+        if idle_result in ("idle_no_output", "idle_no_activity", "loop_same_error"):
+            print(f"IDLE {task_id}: {idle_result} at {age_min}min — killing PID {pid}")
+            try:
+                subprocess.run(["bash", KILL_TREE, str(pid)], capture_output=True, timeout=10)
+            except Exception:
+                try:
+                    os.kill(pid, 9)
+                except Exception:
+                    pass
+            subprocess.run([LOGGER, task_id, "error", f"Killed (idle): {idle_result} after {age_min}min"], capture_output=True)
+            subprocess.run([LINEAR_LOG, task_id, f"[{ts}] Killed: stuck ({idle_result}) at {age_min}min. Re-queuing.", "blocked"], capture_output=True)
+            failures += 1
+            # Track consecutive failures
+            consec_state["count"] += 1
+            consec_state["task_ids"].append(task_id)
+            if consec_state["count"] > CONSECUTIVE_FAILURE_THRESHOLD:
+                send_failure_alert(consec_state)
+            requeue_task(task_id)
+            removals.append(task_id)
+            continue
+
+    # --- Progress-Based Timeout Extension (max 2 extensions, +10min each) ---
+    extensions = a.get("extensions", 0)
+    if extensions < 2 and age_min >= timeout_min - 2:
+        activity_log = f"{LOGS_DIR}/{task_id}-activity.jsonl"
+        making_progress = False
+        if os.path.exists(activity_log):
+            activity_age = now - os.path.getmtime(activity_log)
+            making_progress = activity_age < 120  # event in last 2min
+        if making_progress:
+            new_timeout = timeout_min + 10
+            try:
+                reg_data = json.load(open(REGISTRY_FILE))
+                if task_id in reg_data.get("agents", {}):
+                    reg_data["agents"][task_id]["timeoutMin"] = new_timeout
+                    reg_data["agents"][task_id]["extensions"] = extensions + 1
+                    json.dump(reg_data, open(REGISTRY_FILE, "w"), indent=2)
+                    print(f"EXTENDED {task_id}: {timeout_min} → {new_timeout}min (ext #{extensions+1}, active at {age_min}min)")
+                    subprocess.run([LINEAR_LOG, task_id, f"[{ts}] Timeout extended: {timeout_min} → {new_timeout}min (still active at {age_min}min, ext #{extensions+1})", "progress"], capture_output=True)
+                    timeout_min = new_timeout  # update local var for the OK print below
+            except Exception as e:
+                print(f"  EXTEND FAILED {task_id}: {e}")
 
     print(f"OK {task_id}: PID={pid} {age_min}/{timeout_min}min")
 
@@ -381,9 +459,23 @@ try:
 
                 age_r = subprocess.run(["ps", "-o", "etimes=", "-p", str(pid)], capture_output=True, text=True)
                 if int(age_r.stdout.strip()) > 300:
-                    os.kill(pid, 9)
-                    print(f"ORPHAN killed: PID={pid}")
-                    orphans += 1
+                    # Use kill-agent-tree.sh for orphans too (they might have spawned children)
+                    try:
+                        subprocess.run([
+                            "bash",
+                            "/Users/fonsecabc/.openclaw/workspace/scripts/kill-agent-tree.sh",
+                            str(pid)
+                        ], capture_output=True, timeout=10)
+                        print(f"ORPHAN killed (tree): PID={pid}")
+                        orphans += 1
+                    except Exception:
+                        # Fallback
+                        try:
+                            os.kill(pid, 9)
+                            print(f"ORPHAN killed: PID={pid}")
+                            orphans += 1
+                        except Exception:
+                            pass
             except Exception:
                 pass
 except Exception:
@@ -391,7 +483,7 @@ except Exception:
 
 # Clean stale session store
 try:
-    sf = "/root/.openclaw/agents/claude/sessions/sessions.json"
+    sf = "/Users/fonsecabc/.openclaw/agents/claude/sessions/sessions.json"
     sessions = json.load(open(sf))
     cutoff = now * 1000 - 1800000
     cleaned = {k: v for k, v in sessions.items() if v.get("updatedAt", 0) > cutoff}
@@ -417,12 +509,12 @@ import glob, re
 from datetime import datetime, timezone, timedelta
 from collections import defaultdict
 
-METRICS_FILE = "/root/.openclaw/workspace/metrics/agent-health.json"
-BUDGET_FILE  = "/root/.openclaw/workspace/self-improvement/loop/budget-status.json"
-LOGS_DIR2    = "/root/.openclaw/tasks/agent-logs"
+METRICS_FILE = "/Users/fonsecabc/.openclaw/workspace/metrics/agent-health.json"
+BUDGET_FILE  = "/Users/fonsecabc/.openclaw/workspace/self-improvement/loop/budget-status.json"
+LOGS_DIR2    = "/Users/fonsecabc/.openclaw/tasks/agent-logs"
 SUCCESS_RATE_ALERT_THRESHOLD = 70.0
 
-os.makedirs("/root/.openclaw/workspace/metrics", exist_ok=True)
+os.makedirs("/Users/fonsecabc/.openclaw/workspace/metrics", exist_ok=True)
 
 def _parse_ts(s):
     """Parse log timestamp like '2026-03-07 15:30:23'."""
@@ -587,7 +679,8 @@ for date_str in sorted(tasks_by_date.keys()):
 
 # Alerts list
 alerts = []
-if success_rate < SUCCESS_RATE_ALERT_THRESHOLD:
+# Only alert on low success rate if we have meaningful data (at least 3 agents in window)
+if total >= 3 and success_rate < SUCCESS_RATE_ALERT_THRESHOLD:
     alerts.append({
         "level": "critical",
         "type": "low_success_rate",
