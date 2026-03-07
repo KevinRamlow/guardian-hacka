@@ -1,10 +1,23 @@
 {
   "date": "2026-03-07",
-  "completedToday": 85,
+  "completedToday": 86,
   "failedToday": 0,
   "totalTokensToday": 194603,
   "estimatedCostToday": 2919.045,
   "recentAgents": [
+    {
+      "sessionKey": "completed:CAI-201",
+      "label": "CAI-201-🛡️-infrastructure:-agent-check",
+      "model": "claude",
+      "totalTokens": 0,
+      "runtimeMs": 294000,
+      "status": "done",
+      "taskId": "CAI-201",
+      "source": "auto-queue",
+      "runtimeMin": "4.9",
+      "cost": "0",
+      "success": true
+    },
     {
       "sessionKey": "completed:CAI-147",
       "label": "CAI-147-⚡-billy:-fix-sheets-export-ski",
@@ -249,19 +262,6 @@
       "taskId": "CAI-178",
       "source": "auto-queue",
       "runtimeMin": "16.4",
-      "cost": "0",
-      "success": true
-    },
-    {
-      "sessionKey": "completed:CAI-184",
-      "label": "CAI-184-🧹-code-quality-audit:-guardian",
-      "model": "claude",
-      "totalTokens": 0,
-      "runtimeMs": 270000,
-      "status": "done",
-      "taskId": "CAI-184",
-      "source": "auto-queue",
-      "runtimeMin": "4.5",
       "cost": "0",
       "success": true
     }
