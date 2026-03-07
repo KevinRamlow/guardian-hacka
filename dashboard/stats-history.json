@@ -1,20 +1,63 @@
 {
   "date": "2026-03-07",
-  "completedToday": 3,
+  "completedToday": 6,
   "failedToday": 0,
   "totalTokensToday": 194603,
   "estimatedCostToday": 2919.045,
   "recentAgents": [
+    {
+      "sessionKey": "completed:CAI-77",
+      "label": "CAI-77-billy:-auto-generate-boost-spr",
+      "model": "claude",
+      "totalTokens": 0,
+      "runtimeMs": 306000,
+      "status": "done",
+      "taskId": "CAI-77",
+      "source": "auto-queue",
+      "runtimeMin": "5.1",
+      "cost": "0",
+      "success": true
+    },
+    {
+      "sessionKey": "completed:CAI-133",
+      "label": "CAI-133-🧪-test:-end-to-end-queue-pipel",
+      "model": "claude",
+      "totalTokens": 0,
+      "runtimeMs": 222000,
+      "status": "done",
+      "taskId": "CAI-133",
+      "source": "auto-queue",
+      "runtimeMin": "3.7",
+      "cost": "0",
+      "success": true
+    },
+    {
+      "sessionKey": "completed:CAI-129",
+      "label": "CAI-129-🚧-guard:-max-daily-spend-limit",
+      "model": "claude",
+      "totalTokens": 0,
+      "runtimeMs": 276000,
+      "status": "done",
+      "taskId": "CAI-129",
+      "source": "auto-queue",
+      "runtimeMin": "4.6",
+      "cost": "0",
+      "success": true
+    },
     {
       "sessionKey": "agent:main:subagent:3b314655-98ca-4619-8de3-fb3afa212c35",
       "sessionId": "3bbf1dd5-ca07-40c6-b646-bb911fff8586",
       "label": "CAI-84-billy-weekly-reports",
       "model": "claude-sonnet-4-5",
       "totalTokens": 44281,
-      "runtimeMs": 43147478,
+      "runtimeMs": 43419671,
       "agentId": "main",
       "task": "CAI-84-billy-weekly-reports",
-      "status": "done"
+      "status": "done",
+      "taskId": "CAI-84",
+      "runtimeMin": "723.7",
+      "cost": "0",
+      "success": true
     },
     {
       "sessionKey": "agent:main:subagent:c7f42a1a-712b-4864-8d40-f5af0c2cfc98",
@@ -22,10 +65,14 @@
       "label": "CAI-78-billy-screen-time",
       "model": "claude-sonnet-4-5",
       "totalTokens": 37079,
-      "runtimeMs": 43262861,
+      "runtimeMs": 43535054,
       "agentId": "main",
       "task": "CAI-78-billy-screen-time",
-      "status": "done"
+      "status": "done",
+      "taskId": "CAI-78",
+      "runtimeMin": "725.6",
+      "cost": "0",
+      "success": true
     },
     {
       "sessionKey": "agent:main:subagent:3cd5890f-4815-4937-910b-c26d9a58ac88",
@@ -33,10 +80,14 @@
       "label": "CAI-80-billy-okr-tracker",
       "model": "claude-sonnet-4-5",
       "totalTokens": 42604,
-      "runtimeMs": 43355975,
+      "runtimeMs": 43628168,
       "agentId": "main",
       "task": "CAI-80-billy-okr-tracker",
-      "status": "done"
+      "status": "done",
+      "taskId": "CAI-80",
+      "runtimeMin": "727.1",
+      "cost": "0",
+      "success": true
     },
     {
       "sessionKey": "agent:main:subagent:e5766632-d86d-450b-90e6-50fb41c6c713",
@@ -44,10 +95,14 @@
       "label": "CAI-81-billy-hubspot",
       "model": "claude-sonnet-4-5",
       "totalTokens": 37714,
-      "runtimeMs": 43447055,
+      "runtimeMs": 43719248,
       "agentId": "main",
       "task": "CAI-81-billy-hubspot",
-      "status": "done"
+      "status": "done",
+      "taskId": "CAI-81",
+      "runtimeMin": "728.7",
+      "cost": "0",
+      "success": true
     },
     {
       "sessionKey": "agent:main:subagent:ebfc5941-d8db-4b06-b149-b8d7f6f474ac",
@@ -55,10 +110,14 @@
       "label": "CAI-83-billy-guardian-monitor",
       "model": "claude-sonnet-4-5",
       "totalTokens": 34545,
-      "runtimeMs": 43499414,
+      "runtimeMs": 43771607,
       "agentId": "main",
       "task": "CAI-83-billy-guardian-monitor",
-      "status": "done"
+      "status": "done",
+      "taskId": "CAI-83",
+      "runtimeMin": "729.5",
+      "cost": "0",
+      "success": true
     },
     {
       "sessionKey": "agent:main:subagent:1c3effa3-0675-4da3-b78e-4cc6bf392a66",
@@ -69,18 +128,11 @@
       "runtimeMs": 3225340,
       "agentId": "main",
       "task": "CAI-88-billy-metabase-replacement",
-      "status": "done"
-    },
-    {
-      "sessionKey": "agent:main:subagent:2edd729f-1e11-4b87-9684-6e5447e1ecaf",
-      "sessionId": "00bd5bf8-d716-4b24-ab1c-b881a93c57e2",
-      "label": "CAI-77-billy-boost-sheets",
-      "model": "claude-sonnet-4-5",
-      "totalTokens": 66478,
-      "runtimeMs": 3255860,
-      "agentId": "main",
-      "task": "CAI-77-billy-boost-sheets",
-      "status": "done"
+      "status": "done",
+      "taskId": "CAI-88",
+      "runtimeMin": "53.8",
+      "cost": "0",
+      "success": true
     },
     {
       "sessionKey": "agent:main:subagent:0a2bd02e-f93a-473c-818b-4c3c6b64f359",
@@ -91,7 +143,11 @@
       "runtimeMs": 3128451,
       "agentId": "main",
       "task": "CAI-76-billy-campaign-download",
-      "status": "done"
+      "status": "done",
+      "taskId": "CAI-76",
+      "runtimeMin": "52.1",
+      "cost": "0",
+      "success": true
     },
     {
       "sessionKey": "agent:claude:acp:3fade84b-0705-4c6e-b7bc-a4af3835b42e",
@@ -102,18 +158,11 @@
       "runtimeMs": 1123607,
       "agentId": "claude",
       "task": "CAI-88",
-      "status": "done"
-    },
-    {
-      "sessionKey": "agent:claude:acp:d19f4390-c208-4e7f-b596-93c9040ee58b",
-      "sessionId": "9ac6dfe2-07c1-4fb9-9917-9091dd33384c",
-      "label": "CAI-77",
-      "model": "unknown",
-      "totalTokens": 0,
-      "runtimeMs": 1126707,
-      "agentId": "claude",
-      "task": "CAI-77",
-      "status": "done"
+      "status": "done",
+      "taskId": "CAI-88",
+      "runtimeMin": "18.7",
+      "cost": "0",
+      "success": true
     },
     {
       "sessionKey": "agent:claude:acp:52efb1eb-0815-4f4c-903f-ca1f6d644f14",
@@ -124,7 +173,11 @@
       "runtimeMs": 2639327,
       "agentId": "claude",
       "task": "CAI-93",
-      "status": "done"
+      "status": "done",
+      "taskId": "CAI-93",
+      "runtimeMin": "44.0",
+      "cost": "0",
+      "success": true
     },
     {
       "sessionKey": "agent:claude:acp:5acdd584-1fda-48a4-9a6f-999516e3fbc4",
@@ -135,7 +188,11 @@
       "runtimeMs": 3202322,
       "agentId": "claude",
       "task": "CAI-113-restart-scripts-r2",
-      "status": "done"
+      "status": "done",
+      "taskId": "CAI-113",
+      "runtimeMin": "53.4",
+      "cost": "0",
+      "success": true
     },
     {
       "sessionKey": "agent:claude:acp:dbba77d2-432f-47a2-9a74-7ca181d0ad16",
@@ -146,29 +203,11 @@
       "runtimeMs": 3213363,
       "agentId": "claude",
       "task": "CAI-68-max-tokens-r2",
-      "status": "done"
-    },
-    {
-      "sessionKey": "agent:claude:acp:39a59058-f3fa-4ce4-9fc9-da65d79d53bc",
-      "sessionId": "19a34d37-9835-40db-94b1-dd9e03b92b49",
-      "label": "CAI-133-e2e-test",
-      "model": "unknown",
-      "totalTokens": 0,
-      "runtimeMs": 3739364,
-      "agentId": "claude",
-      "task": "CAI-133-e2e-test",
-      "status": "done"
-    },
-    {
-      "sessionKey": "agent:claude:acp:2aff97a0-9f1c-4c6f-8955-6a74c1a30b31",
-      "sessionId": "58031e6e-39f4-48ca-8ba2-82cd77458638",
-      "label": "CAI-129-130-121-guards",
-      "model": "unknown",
-      "totalTokens": 0,
-      "runtimeMs": 3767055,
-      "agentId": "claude",
-      "task": "CAI-129-130-121-guards",
-      "status": "done"
+      "status": "done",
+      "taskId": "CAI-68",
+      "runtimeMin": "53.6",
+      "cost": "0",
+      "success": true
     },
     {
       "sessionKey": "agent:claude:acp:0928890a-70dd-400e-891c-4bd34a5a3dae",
@@ -179,7 +218,11 @@
       "runtimeMs": 3807884,
       "agentId": "claude",
       "task": "CAI-116-117-systemd",
-      "status": "done"
+      "status": "done",
+      "taskId": "CAI-116",
+      "runtimeMin": "63.5",
+      "cost": "0",
+      "success": true
     },
     {
       "sessionKey": "agent:claude:acp:007a1e71-7b02-4f92-bba3-c9bbbca2e6b8",
@@ -190,7 +233,11 @@
       "runtimeMs": 4035975,
       "agentId": "claude",
       "task": "CAI-114-auto-retry",
-      "status": "done"
+      "status": "done",
+      "taskId": "CAI-114",
+      "runtimeMin": "67.3",
+      "cost": "0",
+      "success": true
     },
     {
       "sessionKey": "agent:claude:acp:35a0b9c2-5e06-4e8b-ba70-a6d4c8e50c6a",
@@ -201,7 +248,11 @@
       "runtimeMs": 4185351,
       "agentId": "claude",
       "task": "CAI-113-gateway-resilience",
-      "status": "done"
+      "status": "done",
+      "taskId": "CAI-113",
+      "runtimeMin": "69.8",
+      "cost": "0",
+      "success": true
     },
     {
       "sessionKey": "agent:claude:acp:3b7cd077-9f9a-48fb-8b1b-6144c47c417a",
@@ -212,7 +263,12 @@
       "runtimeMs": 4527584,
       "agentId": "claude",
       "task": "auto-queue-pipeline",
-      "status": "done"
+      "status": "done",
+      "taskId": null,
+      "linear": null,
+      "runtimeMin": "75.5",
+      "cost": "0",
+      "success": true
     },
     {
       "sessionKey": "agent:claude:acp:2ff1dabe-c32a-4b0d-9df9-a8012bb7e2d1",
@@ -223,7 +279,11 @@
       "runtimeMs": 4548078,
       "agentId": "claude",
       "task": "CAI-68-max-tokens",
-      "status": "done"
+      "status": "done",
+      "taskId": "CAI-68",
+      "runtimeMin": "75.8",
+      "cost": "0",
+      "success": true
     }
   ]
 }
