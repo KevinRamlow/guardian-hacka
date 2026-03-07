@@ -20,6 +20,9 @@ cat <<'CRON' | crontab -
 # Linear sync: match In Progress tasks to registry, move orphans to Todo (every 15 min)
 */15 * * * * /bin/bash /root/.openclaw/workspace/scripts/linear-sync-v2.sh >> /root/.openclaw/tasks/agent-logs/linear-sync.log 2>&1
 
+# Health check: validate registry, watchdog, logs (every 5 min)
+*/5 * * * * /bin/bash /root/.openclaw/workspace/scripts/health-check.sh >> /root/.openclaw/tasks/agent-logs/health-check.log 2>&1
+
 # === Workspace Management (unchanged) ===
 # Auto-push workspace changes to git (every 15 min)
 */15 * * * * cd /root/.openclaw/workspace && bash scripts/auto-push.sh >> /tmp/auto-push.log 2>&1

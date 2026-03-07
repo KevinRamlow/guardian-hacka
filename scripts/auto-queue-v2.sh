@@ -45,10 +45,12 @@ if [ "$TASK_COUNT" -eq 0 ]; then
 fi
 
 # Spawn agents for available tasks
-echo "$TODOS" | python3 -c "
+TMPFILE=$(mktemp)
+echo "$TODOS" > "$TMPFILE"
+python3 <<EOF
 import json, sys, subprocess, os
 
-d = json.load(sys.stdin)
+d = json.load(open('$TMPFILE'))
 nodes = d.get('data', {}).get('issues', {}).get('nodes', [])
 slots = $SLOTS
 spawned = 0
@@ -101,12 +103,14 @@ for n in nodes:
     )
 
     if result.returncode == 0:
-        print(f'    OK: {result.stdout.strip().split(chr(10))[-1]}')
+        last_line = result.stdout.strip().splitlines()[-1] if result.stdout.strip() else ''
+        print(f'    OK: {last_line}')
         spawned += 1
     else:
         print(f'    FAIL: {result.stderr.strip()}')
 
 print(f'\nSpawned {spawned} agents')
-" 2>/dev/null
+EOF
 
+rm -f "$TMPFILE"
 echo "[$(date -u +%H:%M)] Queue check complete"
