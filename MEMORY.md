@@ -102,19 +102,18 @@ The platform is called **CreatorAds** (repo: `brandlovers-team/creator-ads` — 
 - API Key: REDACTED_GEMINI_KEY
 - Tools: generate_image, edit_image, analyze_image
 
-## Agent Monitoring (Learned 2026-03-05 19:42 UTC)
+## Agent Management v2 (Deployed 2026-03-07 by Caio)
 
-**Critical lesson from Caio:** Always check BOTH sources for agent status:
+**COMPLETE SYSTEM OVERHAUL.** Read `memory/2026-03-07.md` for full details.
 
-1. **Actual runtime** (`subagents list`):
-   - `startedAt` timestamp = when current run began
-   - `runtime` = actual elapsed time
-   - This is SOURCE OF TRUTH for current state
+**Source of truth:** `agent-registry.json` (NOT `sessions.json`, NOT `subagents list`)
 
-2. **Linear comments** (communication history):
-   - Last update timestamp
-   - What agent reported
-   - Progress indicators
+**How to spawn:** `bash scripts/spawn-agent.sh --task CAI-XX --label "desc" --timeout 25 "task text"`
+**How to check:** `bash scripts/agent-registry.sh list`
+
+**Crons handle everything:** watchdog (60s), auto-queue (5min), linear-sync (15min)
+**Never use:** `sessions_spawn`, `subagents list`, old v1 scripts (deleted)
+**Never send:** QUEUE_OK, SKIP, or status noise to Slack
 
 **Why both matter:**
 - Linear shows what agent SAID
