@@ -9,15 +9,31 @@ Pre-built SQL queries for common Metabase dashboards. Direct MySQL/BigQuery exec
 - "quantos criadores se cadastraram essa semana?"
 - "como está a fila de moderação?"
 - "quais campanhas têm mais engajamento?"
+- "qual o ROI da campanha X?"
+- "campanhas estourando orçamento?"
+- "quantos criadores estão inativos?"
+- "qual o CPM da campanha Y?"
+- "guardian está acertando?"
+- "quantas contestações temos?"
 
 ## Coverage
 
 This skill replaces these common Metabase queries:
+
+### Phase 0 (Baseline - Implemented)
 1. **Campaign counts by status** — Active/draft/completed campaigns
 2. **Total GMV/Revenue** — Overall and by time period
 3. **Creator signup counts** — New creators by period
 4. **Moderation queue stats** — Pending, in review, completed
 5. **Top campaigns by engagement** — Most active campaigns
+
+### Phase 1 (P1 Queries - Implemented)
+6. **Campaign ROI analysis** — Return on investment per campaign
+7. **Budget tracking** — Budget vs spend, campaigns over budget
+8. **Creator retention/churn** — Active vs inactive creators
+9. **Cost metrics** — CPM, CPE, cost efficiency
+10. **Guardian agreement rates** — AI moderation accuracy
+11. **Refusal contest patterns** — Contestation rates by campaign
 
 ---
 
@@ -356,6 +372,87 @@ For instant answers, use the companion script:
 
 # JSON output
 ./metabase-queries.sh --query gmv --format json
+```
+
+---
+
+## Natural Language Pattern Detection
+
+Billy should automatically detect which query to run based on user questions. Use these patterns:
+
+### Pattern → Query Mapping
+
+| User Question Keywords | Query Type | Example |
+|------------------------|------------|---------|
+| "quantas campanhas", "campanhas ativas", "status das campanhas" | `campaigns` | "quantas campanhas ativas temos?" |
+| "gmv", "revenue", "quanto pagamos", "faturamento" | `gmv` | "qual o GMV dos últimos 30 dias?" |
+| "novos criadores", "cadastros", "criadores essa semana" | `creators` | "quantos criadores se cadastraram?" |
+| "fila", "moderação", "pendentes", "aprovados" | `moderation` | "como está a fila de moderação?" |
+| "top campanhas", "mais ativas", "mais engajamento" | `top` | "quais campanhas têm mais engajamento?" |
+| "roi", "retorno", "retorno sobre investimento" | `roi` | "qual o ROI da campanha X?" |
+| "budget", "orçamento", "gasto", "estourando" | `budget` | "campanhas estourando orçamento?" |
+| "churn", "retenção", "inativos", "criadores que saíram" | `churn` | "quantos criadores estão inativos?" |
+| "cpm", "cpc", "cpe", "custo por", "mais baratas" | `costs` | "qual o CPM da campanha Y?" |
+| "guardian", "agreement", "concordância", "precisão" | `guardian` | "guardian está acertando?" |
+| "contestação", "contestações", "recusas contestadas" | `contests` | "quantas contestações temos?" |
+
+### Detection Logic (Pseudocode)
+
+```python
+def detect_query_type(user_message: str) -> str:
+    message_lower = user_message.lower()
+    
+    # Check for specific keywords (order matters - most specific first)
+    if any(word in message_lower for word in ["roi", "retorno sobre investimento"]):
+        return "roi"
+    elif any(word in message_lower for word in ["budget", "orçamento", "estourado", "estourando"]):
+        return "budget"
+    elif any(word in message_lower for word in ["churn", "retenção", "inativo", "criadores que saíram"]):
+        return "churn"
+    elif any(word in message_lower for word in ["cpm", "cpc", "cpe", "custo por"]):
+        return "costs"
+    elif any(word in message_lower for word in ["guardian", "agreement", "concordância", "precisão da moderação"]):
+        return "guardian"
+    elif any(word in message_lower for word in ["contestação", "contestações", "recusas contestadas"]):
+        return "contests"
+    elif any(word in message_lower for word in ["fila", "moderação", "pendente"]):
+        return "moderation"
+    elif any(word in message_lower for word in ["top campaña", "mais ativas", "mais engajamento"]):
+        return "top"
+    elif any(word in message_lower for word in ["gmv", "revenue", "faturamento", "quanto pagamos"]):
+        return "gmv"
+    elif any(word in message_lower for word in ["novos criadores", "cadastro", "quantos criadores se cadastraram"]):
+        return "creators"
+    elif any(word in message_lower for word in ["quantas campanhas", "campanhas ativa"]):
+        return "campaigns"
+    else:
+        # No clear match - ask for clarification or escalate
+        return None
+```
+
+### Billy's Response Flow
+
+1. **Detect question pattern** using keywords
+2. **Run the appropriate query** via metabase-queries.sh
+3. **Format results** in pt-BR, business language
+4. **Add context/insights** (trends, comparisons, alerts)
+5. **Cite data source** for transparency
+
+Example:
+```
+User: "Campanhas estourando orçamento?"
+Billy detects: "budget" query type
+Billy runs: ./metabase-queries.sh --query budget
+Billy responds:
+> 🚨 3 campanhas estão acima do orçamento:
+> 
+> **Summer Vibes 2026**
+>    Orçamento: R$ 50.000 | Gasto: R$ 52.340 (104,7%) — ESTOURADO
+> 
+> **Black Friday Deals**
+>    Orçamento: R$ 80.000 | Gasto: R$ 75.200 (94,0%) — CRÍTICO
+> 
+> _Dados: MySQL creator_payment_history (complete + partial payments)_
 ```
 
 ---

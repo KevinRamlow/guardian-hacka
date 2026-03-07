@@ -1,152 +1,102 @@
 #!/bin/bash
-# Linear Task Sync - Monitor sub-agents and update Linear tasks automatically
-# OPTIMIZED: Only checks tasks with active sessions, skips dead ones early
-
+# Linear Task Sync — Match "In Progress" tasks to active subagents
+# If a task is "In Progress" but has no subagent → move to Todo (agent died)
+# If a subagent is running but task isn't "In Progress" → update to In Progress
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-WORKSPACE_DIR="$(dirname "$SCRIPT_DIR")"
+WORKSPACE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+source "$WORKSPACE_DIR/.env.linear" 2>/dev/null || { echo "Error: .env.linear not found"; exit 1; }
+[ -z "${LINEAR_API_KEY:-}" ] && { echo "Error: LINEAR_API_KEY not set"; exit 1; }
 
-# Source Linear config
-if [[ -f "$WORKSPACE_DIR/.env.linear" ]]; then
-  source "$WORKSPACE_DIR/.env.linear"
-else
-  echo "Error: .env.linear not found"
-  exit 1
-fi
-
-# Check API key
-if [[ -z "${LINEAR_API_KEY:-}" ]]; then
-  echo "Error: LINEAR_API_KEY not set"
-  exit 1
-fi
-
-# Function to call Linear GraphQL API
 linear_query() {
-  local query="$1"
   curl -s -X POST https://api.linear.app/graphql \
     -H "Authorization: $LINEAR_API_KEY" \
     -H "Content-Type: application/json" \
-    -d "{\"query\": $(echo "$query" | jq -Rs .)}" | jq -r '.data // .errors'
+    -d "{\"query\": $(echo "$1" | jq -Rs .)}" | jq -r '.data // .errors'
 }
 
-# Function to add comment to Linear task
-add_task_comment() {
-  local issue_id="$1"
-  local comment="$2"
-  local escaped_comment=$(echo "$comment" | jq -Rs .)
-  local mutation="mutation {
-    commentCreate(input: { issueId: \"$issue_id\", body: $escaped_comment }) {
-      success
-    }
-  }"
-  linear_query "$mutation"
+update_status() {
+  local issue_id="$1" status_name="$2"
+  local state_id=$(linear_query "{workflowStates(filter:{name:{eq:\"$status_name\"},team:{key:{eq:\"CAI\"}}},first:1){nodes{id}}}" | jq -r '.workflowStates.nodes[0].id // empty')
+  [ -z "$state_id" ] && { echo "  ⚠️ Status '$status_name' not found"; return 1; }
+  linear_query "mutation{issueUpdate(id:\"$issue_id\",input:{stateId:\"$state_id\"}){success}}" > /dev/null
 }
 
-# Function to update task status
-update_task_status() {
-  local issue_id="$1"
-  local status_name="$2"
-  local state_query="{
-    workflowStates(filter: { name: { eq: \"$status_name\" } }) {
-      nodes { id name }
-    }
-  }"
-  local state_id=$(linear_query "$state_query" | jq -r '.workflowStates.nodes[0].id // empty')
-  if [[ -z "$state_id" ]]; then
-    echo "  Warning: Status '$status_name' not found"
-    return 1
+add_comment() {
+  local issue_id="$1" body="$2"
+  local escaped=$(echo "$body" | jq -Rs .)
+  linear_query "mutation{commentCreate(input:{issueId:\"$issue_id\",body:$escaped}){success}}" > /dev/null
+}
+
+echo "=== Linear ↔ Agent Sync ==="
+
+# 1. Get active subagents (labels like "CAI-77-...", check for task IDs)
+SUBAGENT_LABELS=""
+SUBAGENT_COUNT=0
+
+# Check actual running subagents via process (the only reliable source)
+CLAUDE_PIDS=$(pgrep -x claude 2>/dev/null || true)
+CLAUDE_COUNT=0
+[ -n "$CLAUDE_PIDS" ] && CLAUDE_COUNT=$(echo "$CLAUDE_PIDS" | wc -l)
+
+# Also check OpenClaw subagents API for labels
+SUBAGENT_JSON=$(timeout 5 openclaw sessions 2>/dev/null | grep -oP 'CAI-\d+' || true)
+
+# Build list of task IDs with active agents from session store labels
+ACTIVE_TASK_IDS=""
+if [ -f "/root/.openclaw/agents/claude/sessions/sessions.json" ]; then
+  ACTIVE_TASK_IDS=$(python3 -c "
+import json, time
+now = int(time.time() * 1000)
+store = json.load(open('/root/.openclaw/agents/claude/sessions/sessions.json'))
+for k, v in store.items():
+    label = v.get('label', '')
+    age_ms = now - v.get('updatedAt', 0)
+    # Consider active if updated in last 30 min
+    if age_ms < 1800000:
+        # Extract CAI-XX from label
+        import re
+        m = re.search(r'CAI-\d+', label)
+        if m:
+            print(m.group())
+" 2>/dev/null || true)
+fi
+
+echo "Active agents: $CLAUDE_COUNT processes"
+echo "Active task IDs from sessions: ${ACTIVE_TASK_IDS:-none}"
+
+# 2. Get "In Progress" tasks from Linear
+IN_PROGRESS=$(linear_query '{issues(filter:{team:{key:{eq:"CAI"}},state:{name:{eq:"In Progress"}}},first:20){nodes{id identifier title}}}')
+IP_COUNT=$(echo "$IN_PROGRESS" | jq '[.issues.nodes[]?] | length')
+echo "In Progress tasks: $IP_COUNT"
+
+# 3. Check each "In Progress" task for matching agent
+ORPHANED=0
+echo "$IN_PROGRESS" | jq -c '.issues.nodes[]?' 2>/dev/null | while read -r task; do
+  id=$(echo "$task" | jq -r '.id')
+  identifier=$(echo "$task" | jq -r '.identifier')
+  title=$(echo "$task" | jq -r '.title')
+  
+  # Check if this task has an active agent
+  has_agent=false
+  if echo "$ACTIVE_TASK_IDS" | grep -q "^${identifier}$" 2>/dev/null; then
+    has_agent=true
   fi
-  local mutation="mutation {
-    issueUpdate(id: \"$issue_id\", input: { stateId: \"$state_id\" }) {
-      success
-      issue { identifier state { name } }
-    }
-  }"
-  linear_query "$mutation"
-}
-
-# Get active subagents FIRST — if none, skip everything
-get_active_sessions() {
-  openclaw sessions-list --requester agent:main:main --json 2>/dev/null || echo '{"active":[],"recent":[]}'
-}
-
-sync_tasks() {
-  echo "Starting Linear task sync..."
-
-  # Step 1: Get active sessions first
-  local all_agents=$(get_active_sessions)
-  local active_count=$(echo "$all_agents" | jq '[.active[]?] | length')
-  local recent_count=$(echo "$all_agents" | jq '[.recent[]?] | length')
-
-  echo "  Active sessions: $active_count, Recent: $recent_count"
-
-  # If nothing active or recently completed, skip the Linear API call entirely
-  if [[ "$active_count" -eq 0 && "$recent_count" -eq 0 ]]; then
-    echo "  No active or recent sessions — skipping Linear query"
-    echo "Sync complete (no-op)"
-    return 0
+  
+  if [ "$has_agent" = true ]; then
+    echo "  ✅ $identifier: agent active — $title"
+  else
+    echo "  ❌ $identifier: NO AGENT — moving to Todo — $title"
+    update_status "$id" "Todo"
+    add_comment "$id" "🔄 **Auto-sync**: Moved to Todo — no active sub-agent found. Agent likely died or was killed during gateway restart."
+    ORPHANED=$((ORPHANED + 1))
   fi
+done
 
-  # Step 2: Only now fetch Linear tasks (only In Progress ones to reduce payload)
-  local tasks_query="{
-    issues(filter: { team: { key: { eq: \"CAI\" } }, state: { name: { in: [\"In Progress\", \"In Review\"] } } }) {
-      nodes {
-        id
-        identifier
-        title
-        state { name }
-        description
-      }
-    }
-  }"
-
-  local tasks=$(linear_query "$tasks_query")
-  local task_count=$(echo "$tasks" | jq '[.issues.nodes[]?] | length')
-  echo "  In-progress Linear tasks: $task_count"
-
-  echo "$tasks" | jq -c '.issues.nodes[]' 2>/dev/null | while read -r task; do
-    local task_id=$(echo "$task" | jq -r '.id')
-    local task_identifier=$(echo "$task" | jq -r '.identifier')
-    local task_title=$(echo "$task" | jq -r '.title')
-    local task_description=$(echo "$task" | jq -r '.description // ""')
-    local task_state=$(echo "$task" | jq -r '.state.name')
-
-    # Look for session ID in description
-    local session_id=$(echo "$task_description" | grep -oP 'Session:\*\* \K[a-f0-9-]{36}|Session: `?\K[a-f0-9-]{36}' | head -1)
-    if [[ -z "$session_id" ]]; then
-      continue
-    fi
-
-    echo "  Checking $task_identifier: $task_title (session: ${session_id:0:8}...)"
-
-    # Check active
-    local active_match=$(echo "$all_agents" | jq -r --arg sid "$session_id" \
-      '.active[]? | select(.sessionKey | contains($sid)) // empty' | head -1)
-
-    if [[ -n "$active_match" ]]; then
-      local status=$(echo "$active_match" | jq -r '.status')
-      local runtime_ms=$(echo "$active_match" | jq -r '.runtimeMs')
-      local runtime_min=$((runtime_ms / 60000))
-      local model=$(echo "$active_match" | jq -r '.model')
-      echo "    Active: ${runtime_min}m, model=$model, status=$status"
-      continue
-    fi
-
-    # Check recently completed
-    local done_match=$(echo "$all_agents" | jq -r --arg sid "$session_id" \
-      '.recent[]? | select(.sessionKey | contains($sid)) // empty' | head -1)
-
-    if [[ -n "$done_match" ]]; then
-      local status=$(echo "$done_match" | jq -r '.status')
-      if [[ "$status" == "done" && "$task_state" != "Done" ]]; then
-        echo "    Completed — updating to Done"
-        update_task_status "$task_id" "Done"
-      fi
-    fi
-  done
-
-  echo "Sync complete"
-}
-
-sync_tasks
+# 4. Summary
+echo ""
+if [ "$ORPHANED" -gt 0 ]; then
+  echo "SYNC: $ORPHANED orphaned tasks moved to Todo"
+else
+  echo "SYNC: OK — all In Progress tasks have agents (or none in progress)"
+fi

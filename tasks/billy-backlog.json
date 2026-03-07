@@ -41,7 +41,9 @@
       "title": "Auto-generate boost spreadsheets",
       "priority": "medium",
       "task": "Build a Billy skill to auto-generate boost spreadsheets. Query campaign boost data from MySQL, format into spreadsheet-ready output. Use Google Sheets export. Read existing skills, test locally, deploy via rsync.",
-      "status": "spawned"
+      "status": "completed",
+      "completed_at": "2026-03-06T23:52:00Z",
+      "implementation": "boost-sheets skill with generate-boost-sheet.sh script, full docs (SKILL.md, README.md, INTEGRATION.md, DEPLOYMENT.md), ready for deployment to Billy VM"
     },
     {
       "id": "CAI-78",

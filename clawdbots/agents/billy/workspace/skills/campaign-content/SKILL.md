@@ -1,19 +1,29 @@
-# Campaign Content Download Skill
+# Campaign Content Download & Package Skill
 
-Get download links for campaign media content with status filtering.
+**Get download links for campaign media content with status filtering AND package into shareable Google Sheets.**
 
 ## When to Use
-- "baixar conteúdos aprovados da campanha X"
-- "me manda os links dos conteúdos recusados da campanha Y"
-- "quero os arquivos pendentes da campanha Z"
-- "download all approved content from campaign ABC"
+- **"baixar conteúdos aprovados da campanha X"**
+- **"me manda os links dos conteúdos recusados da campanha Y"**
+- **"quero os arquivos pendentes da campanha Z"**
+- **"exporta o conteúdo da campanha para uma planilha"**
+- **"download all approved content from campaign ABC"**
+- **"package campaign X media into Drive"**
 
 ## How It Works
 
-Query MySQL `db-maestro-prod` to fetch media URLs from campaigns using:
+### Option 1: Raw URLs (fast, for terminal/scripts)
+Query MySQL `db-maestro-prod` to fetch media URLs and return as list.
+
+### Option 2: Google Sheets Package (NEW — recommended for users)
+Query MySQL → Format as organized table → Export to Google Sheets → Return shareable link.
+
+**Tables used:**
 - `proofread_medias` — moderation records with approval status
 - `actions` — submission records linking campaign to media
 - `media_content` — actual media files (URLs, thumbnails)
+- `campaigns` — campaign info
+- `brands` — brand names
 
 ## Database Schema
 
@@ -228,41 +238,114 @@ ORDER BY pm.created_at DESC;
 
 ## Use Cases
 
-### Use Case 1: Marketing team needs approved content for social media
+### Use Case 1: Marketing team needs approved content for social media ⭐ NEW
 **User:** "Billy, me manda os conteúdos aprovados da campanha Verão 2026"
-**Billy:** Queries approved media, returns URLs, offers bulk download script
+**Billy:** Creates Google Sheet with organized table, returns shareable link
+- Columns: Media ID, Tipo (Vídeo/Imagem), Status, URL de Download, Thumbnail, Moderado em
+- Auto-organized by brand/campaign
+- Shareable with anyone (view-only)
+- User can download files directly from URLs in sheet
 
 ### Use Case 2: Review rejected content
 **User:** "Show me rejected content from Natura Q1"
-**Billy:** Returns rejected URLs with contest status
+**Billy:** Creates sheet with rejected URLs, includes thumbnails for quick review
 
 ### Use Case 3: Check pending moderation queue
 **User:** "Quantos conteúdos pendentes tem na campanha X?"
-**Billy:** Shows count + URLs of unmoderated submissions
+**Billy:** Creates sheet showing pending submissions with submission timestamps
 
 ### Use Case 4: Bulk export for analysis
 **User:** "I need all content (approved + rejected) from campaign 5678"
-**Billy:** Returns all URLs grouped by status, generates CSV or download script
+**Billy:** Creates sheet with ALL content grouped by status, easy filtering
 
-## Helper Script (Optional)
+## Helper Scripts
 
-Create `scripts/fetch-campaign-content.sh` for command-line use:
-
+### 1. `fetch-campaign-content.sh` — Raw URLs
+Returns URLs as list (terminal-friendly)
 ```bash
-#!/bin/bash
-# Usage: ./fetch-campaign-content.sh CAMPAIGN_ID [approved|rejected|pending|all]
+./skills/campaign-content/scripts/fetch-campaign-content.sh CAMPAIGN_ID [approved|rejected|pending|all] [--script]
+```
+- With `--script` flag: generates download bash script
+- Outputs URLs to stdout
 
-CAMPAIGN_ID=$1
-STATUS=${2:-all}
+### 2. `package-campaign-content.sh` — Google Sheets Export ⭐ NEW
+Creates organized Google Sheet with media links
+```bash
+./skills/campaign-content/scripts/package-campaign-content.sh CAMPAIGN_ID [approved|rejected|pending|all]
+```
+- Creates shareable Google Sheet
+- Columns: Media ID, Tipo, Status, URL de Download, Thumbnail, Moderado em
+- Auto-titled: `[Brand Name] Campaign Name - Status`
+- Returns shareable URL
+- View-only access for anyone with link
 
-# ... (SQL query logic)
-# ... (format output as JSON or plain text)
+### When to use which?
+- **User asks for "download" or "links"** → Use package-campaign-content.sh (Google Sheets)
+- **Script/automation needed** → Use fetch-campaign-content.sh
+- **User explicitly asks for "bash script"** → Use fetch-campaign-content.sh with --script flag
+
+## Billy Implementation Guide
+
+### Step 1: Identify campaign
+If user gives campaign name (not ID), search first:
+```bash
+mysql -e "SELECT c.id, c.title, b.name FROM campaigns c JOIN brands b ON b.id = c.brand_id WHERE c.title LIKE '%SEARCH_TERM%' ORDER BY c.created_at DESC LIMIT 5;"
 ```
 
-This allows Billy to call:
+If multiple matches, ask user to confirm which one.
+
+### Step 2: Determine status filter
+Parse user intent:
+- "aprovados", "approved", "conteúdo aprovado" → `approved`
+- "recusados", "rejected", "refused" → `rejected`
+- "pendentes", "pending", "aguardando moderação" → `pending`
+- No status mentioned or "todos", "all", "tudo" → `all`
+
+### Step 3: Call package script
 ```bash
-./skills/campaign-content/scripts/fetch-campaign-content.sh 123 approved
+cd /root/.openclaw/workspace/clawdbots/agents/billy/workspace
+bash skills/campaign-content/scripts/package-campaign-content.sh CAMPAIGN_ID STATUS
 ```
+
+### Step 4: Format response for user
+The script outputs the Google Sheets URL. Billy should respond with:
+
+**Example response (pt-BR):**
+> ✅ Prontinho! Criei uma planilha com os conteúdos **aprovados** da campanha **Verão 2026**
+> 
+> 🔗 https://docs.google.com/spreadsheets/d/ABC123/edit
+> 
+> 📊 **56 conteúdos** organizados por tipo e data
+> - 🎥 32 vídeos
+> - 🖼️ 24 imagens
+> 
+> 💡 **Como usar:**
+> - Você pode baixar os arquivos diretamente pelos links na coluna "URL de Download"
+> - Use a coluna "Thumbnail" para visualizar antes de baixar
+> - A planilha é compartilhável com qualquer pessoa que tenha o link
+> 
+> Precisa de mais alguma coisa?
+
+**Example response (English):**
+> ✅ Done! Created a spreadsheet with **approved** content from campaign **Summer 2026**
+> 
+> 🔗 https://docs.google.com/spreadsheets/d/ABC123/edit
+> 
+> 📊 **56 items** organized by type and date
+> - 🎥 32 videos
+> - 🖼️ 24 images
+> 
+> 💡 **How to use:**
+> - Download files directly from the "URL de Download" column
+> - Use the "Thumbnail" column to preview before downloading
+> - Sheet is shareable with anyone who has the link
+> 
+> Need anything else?
+
+### Error Handling
+- Campaign not found → "Não encontrei uma campanha com esse ID/nome. Pode conferir?"
+- No content found → "Essa campanha não tem conteúdos [aprovados/recusados/pendentes] ainda."
+- Sheets export failed → "Algo deu errado ao criar a planilha. Posso te mandar os links diretos?"
 
 ## Testing Locally
 
@@ -270,17 +353,11 @@ This allows Billy to call:
 # Test with a real campaign
 mysql -e "SELECT id, title FROM campaigns ORDER BY created_at DESC LIMIT 5;"
 
-# Pick a campaign ID and test each status filter
-CAMPAIGN_ID=123
+# Pick a campaign ID and test package script
+cd /root/.openclaw/workspace/clawdbots/agents/billy/workspace
+bash skills/campaign-content/scripts/package-campaign-content.sh 501014 approved
 
-# Approved
-mysql -e "SELECT COUNT(*) FROM ... WHERE c.id = $CAMPAIGN_ID AND pm.is_approved = 1;"
-
-# Rejected
-mysql -e "SELECT COUNT(*) FROM ... WHERE c.id = $CAMPAIGN_ID AND pm.is_approved = 0;"
-
-# Pending
-mysql -e "SELECT COUNT(*) FROM ... WHERE c.id = $CAMPAIGN_ID AND pm.id IS NULL;"
+# Should output Google Sheets URL
 ```
 
 ## Future Enhancements

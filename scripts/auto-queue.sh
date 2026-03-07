@@ -22,18 +22,8 @@ ENABLED=$(python3 -c "import json; print(json.load(open('$CONFIG'))['enabled'])"
 
 MAX_CONCURRENT=$(python3 -c "import json; print(json.load(open('$CONFIG'))['maxConcurrent'])" 2>/dev/null || echo "3")
 
-# Count active agents (sessions updated < 15 min ago)
-NOW_MS=$(date +%s%3N)
-ACTIVE=0
-if [ -f "$SESSIONS_DIR" ]; then
-  ACTIVE=$(python3 -c "
-import json, time
-now = int(time.time() * 1000)
-store = json.load(open('$SESSIONS_DIR'))
-active = sum(1 for k,v in store.items() if (now - v.get('updatedAt', 0)) < 900000 and 'acp' in k)
-print(active)
-" 2>/dev/null || echo "0")
-fi
+# Count active agents by ACTUAL PROCESSES (not session store — session store is unreliable)
+ACTIVE=$(pgrep -x claude 2>/dev/null | wc -l || echo "0")
 
 echo "[$(date -u +%H:%M)] Active agents: $ACTIVE / max $MAX_CONCURRENT"
 

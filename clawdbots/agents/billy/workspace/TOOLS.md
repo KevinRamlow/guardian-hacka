@@ -199,16 +199,17 @@ Responde na thread pfv! 🙏
 
 ## Skills Reference
 
-### Available Skills (9 total)
+### Available Skills (10 total)
 | Skill | Purpose | Trigger phrases |
 |-------|---------|-----------------|
 | `data-query` | General data questions → SQL → business answers | "quantos...", "qual a taxa...", "me mostra..." |
 | `campaign-lookup` | Quick campaign status/performance lookups | "status da campanha X", "campanhas ativas" |
-| `campaign-comments` | **NEW** Export campaign moderation comments to Google Sheets | "exporta comentários da campanha X", "feedbacks de moderação", "comentários de recusa" |
-| `campaign-performance` | **NEW** Full campaign dashboard: revenue, ROI, creators, approval vs platform avg | "dashboard da campanha X", "performance da campanha", "GMV/ROI/revenue da campanha" |
-| `campaign-compare` | **NEW** Side-by-side campaign comparison | "compara campanha X vs Y", "qual performou melhor?" |
-| `creator-analytics` | **NEW** Creator participation & payment insights | "quantos creators...", "pagamentos do mês", "creators ativos" |
-| `weekly-digest` | **NEW** Auto-generated weekly platform summary | "resumo da semana", "weekly report" |
+| `campaign-content` | ⭐ **UPDATED** Package campaign media into Google Sheets with download links | "baixar conteúdos da campanha X", "exporta mídia da campanha", "download campaign content" |
+| `campaign-comments` | Export campaign moderation comments to Google Sheets | "exporta comentários da campanha X", "feedbacks de moderação", "comentários de recusa" |
+| `campaign-performance` | Full campaign dashboard: revenue, ROI, creators, approval vs platform avg | "dashboard da campanha X", "performance da campanha", "GMV/ROI/revenue da campanha" |
+| `campaign-compare` | Side-by-side campaign comparison | "compara campanha X vs Y", "qual performou melhor?" |
+| `creator-analytics` | Creator participation & payment insights | "quantos creators...", "pagamentos do mês", "creators ativos" |
+| `weekly-digest` | Auto-generated weekly platform summary | "resumo da semana", "weekly report" |
 | `powerpoint` | Branded .pptx generation (4 templates) | "faz uma apresentação", "cria um report" |
 | `ask-human` | Uncertainty escalation to #billy-questions | Auto-triggered when Billy can't answer |
 
@@ -216,6 +217,54 @@ Responde na thread pfv! 🙏
 Run standalone: `python3 skills/weekly-digest/generate.py --output slack`
 Outputs: Formatted Slack message with volume, top campaigns, contests, payments, anomalies.
 JSON output: `python3 skills/weekly-digest/generate.py --output json`
+
+### Campaign Content Packaging ⭐ NEW (CAI-76)
+**Purpose:** Package campaign media URLs into shareable Google Sheets organized by brand/campaign structure.
+
+**Usage:**
+```bash
+cd /root/.openclaw/workspace/clawdbots/agents/billy/workspace
+bash skills/campaign-content/scripts/package-campaign-content.sh CAMPAIGN_ID [approved|rejected|pending|all]
+```
+
+**Status filters:**
+- `approved` — Only approved content
+- `rejected` — Only rejected/refused content
+- `pending` — Awaiting moderation
+- `all` — Everything (default)
+
+**Output:**
+- Google Sheet URL (shareable, view-only)
+- Columns: Media ID, Tipo (Vídeo/Imagem), Status, URL de Download, Thumbnail, Moderado em
+- Auto-titled: `[Brand Name] Campaign Name - Status`
+- Statistics: total count, video/image breakdown
+
+**Response template:**
+> ✅ Prontinho! Criei uma planilha com os conteúdos **[STATUS]** da campanha **[CAMPAIGN]**
+> 
+> 🔗 [GOOGLE_SHEETS_URL]
+> 
+> 📊 **[COUNT] conteúdos** organizados por tipo e data
+> - 🎥 [N] vídeos
+> - 🖼️ [N] imagens
+> 
+> 💡 **Como usar:**
+> - Você pode baixar os arquivos diretamente pelos links na coluna "URL de Download"
+> - Use a coluna "Thumbnail" para visualizar antes de baixar
+> - A planilha é compartilhável com qualquer pessoa que tenha o link
+
+**Finding campaigns:**
+If user gives campaign name (not ID):
+```bash
+mysql -e "SELECT c.id, c.title, b.name FROM campaigns c JOIN brands b ON b.id = c.brand_id WHERE c.title LIKE '%SEARCH%' ORDER BY c.created_at DESC LIMIT 5;"
+```
+
+**Integration status:**
+- ✅ MySQL queries working
+- ✅ Google Sheets export via `sheets-export` skill
+- ✅ Auto-organization by brand/campaign
+- ⚠️ Requires gog auth configured (use Anton's keyring)
+- 🔄 Future: Direct Drive folder creation with file uploads
 
 ## Query Safety Rules
 
