@@ -2,7 +2,22 @@
 # Spawn Agent — Unified spawn wrapper for all agent creation
 # All spawns go through this script → registry-tracked, PID-captured, Linear-logged
 #
-# Usage: spawn-agent.sh --task CAI-XX [--label desc] [--timeout 25] [--source auto-queue] [--model model] [--cwd dir] [--file path] [--no-fallback] "task text"
+# Usage: spawn-agent.sh --task CAI-XX [--label desc] [--timeout 25] [--source auto-queue] [--model model] [--model-override model] [--cwd dir] [--file path] [--no-fallback] [--force-spawn] "task text"
+#
+# Model tiering (proactive cost optimization):
+#   Tasks are auto-classified by complexity. Analysis/monitoring/simple tasks → Sonnet ($6/M).
+#   Complex/creative tasks → Opus ($30/M). ~50-60% cost savings on mixed workloads.
+#
+#   Classification rules (keyword-based on task text):
+#     SONNET tier (analysis/monitoring/simple):
+#       - Keywords: analyze, analysis, check, monitor, query, count, list, report, status,
+#         investigate, fetch, search, find, log, metrics, stats, data, sql, bigquery, scan,
+#         sync, cleanup, lint, format, self-improve, review
+#     OPUS tier (complex/creative — default for unmatched):
+#       - Keywords: implement, build, create, architect, design, refactor, optimize, fix bug,
+#         debug complex, migrate, integrate, agent, pipeline, eval, prompt engineering
+#     --model-override: Force a specific model, bypassing the classifier entirely.
+#     --model: Set the default model (classifier still runs unless --model-override is used).
 #
 # Model fallback: On API limit errors, auto-retries with next model tier (opus→sonnet→haiku).
 # Use --no-fallback to disable this behavior for tasks requiring a specific model.
@@ -17,7 +32,9 @@ LINEAR_LOG="/root/.openclaw/workspace/skills/task-manager/scripts/linear-log.sh"
 LOGS_DIR="/root/.openclaw/tasks/agent-logs"
 TASKS_DIR="/root/.openclaw/tasks/spawn-tasks"
 
-TASK_ID="" LABEL="" TIMEOUT_MIN=25 SOURCE="manual" MODEL="" CWD="/root/.openclaw/workspace" TASK_TEXT="" TASK_FILE="" NO_FALLBACK=false
+DEDUP_CHECK="/root/.openclaw/workspace/scripts/dedup-check.sh"
+
+TASK_ID="" LABEL="" TIMEOUT_MIN=25 SOURCE="manual" MODEL="" MODEL_OVERRIDE="" CWD="/root/.openclaw/workspace" TASK_TEXT="" TASK_FILE="" NO_FALLBACK=false FORCE_SPAWN=false
 
 # Model fallback chain: opus → sonnet → haiku
 FALLBACK_CHAIN=("claude-opus-4-6" "claude-sonnet-4-6" "claude-haiku-4-5-20251001")
@@ -29,9 +46,11 @@ while [[ $# -gt 0 ]]; do
     --timeout) TIMEOUT_MIN="$2"; shift 2 ;;
     --source)  SOURCE="$2"; shift 2 ;;
     --model)   MODEL="$2"; shift 2 ;;
+    --model-override) MODEL_OVERRIDE="$2"; shift 2 ;;
     --cwd)     CWD="$2"; shift 2 ;;
     --file)    TASK_FILE="$2"; shift 2 ;;
     --no-fallback) NO_FALLBACK=true; shift ;;
+    --force-spawn) FORCE_SPAWN=true; shift ;;
     -*)        echo "ERROR: Unknown option: $1" >&2; exit 1 ;;
     *)         TASK_TEXT="$1"; shift ;;
   esac
@@ -41,6 +60,20 @@ done
 [ -z "$TASK_TEXT" ] && [ -z "$TASK_FILE" ] && { echo "ERROR: Provide task text or --file <path>" >&2; exit 1; }
 [ -n "$TASK_FILE" ] && { [ -f "$TASK_FILE" ] && TASK_TEXT=$(cat "$TASK_FILE") || { echo "ERROR: File not found: $TASK_FILE" >&2; exit 1; }; }
 [ -z "$LABEL" ] && LABEL="$TASK_ID"
+
+# --- Dedup Check ---
+if ! $FORCE_SPAWN && [ -f "$DEDUP_CHECK" ]; then
+  DEDUP_RESULT=$(bash "$DEDUP_CHECK" "$TASK_ID" "$TASK_TEXT" 2>/dev/null || true)
+  if [[ "$DEDUP_RESULT" == duplicate:* ]]; then
+    MATCH_TASK=$(echo "$DEDUP_RESULT" | cut -d: -f2)
+    MATCH_REASON=$(echo "$DEDUP_RESULT" | cut -d: -f3-)
+    echo "DEDUP: $TASK_ID blocked — matches $MATCH_TASK ($MATCH_REASON)" >&2
+    echo "[spawn] DEDUP: $TASK_ID blocked (matches $MATCH_TASK, reason: $MATCH_REASON)"
+    bash "$LOGGER" "$TASK_ID" dedup "Blocked: matches $MATCH_TASK ($MATCH_REASON)" 2>/dev/null || true
+    bash "$LINEAR_LOG" "$TASK_ID" "DEDUP: blocked — duplicate of $MATCH_TASK ($MATCH_REASON). Use --force-spawn to override." 2>/dev/null || true
+    exit 1
+  fi
+fi
 
 # --- Model Fallback Helpers ---
 is_api_limit_error() {
@@ -74,6 +107,45 @@ get_effective_model() {
   fi
 }
 
+# --- Proactive Model Tiering (CAI-321) ---
+# Classifies task text and returns recommended model tier.
+# Returns: "sonnet" for simple/analysis tasks, "opus" for complex tasks
+classify_task_tier() {
+  local text
+  text=$(echo "$1" | tr '[:upper:]' '[:lower:]')
+
+  # Sonnet-tier keywords: analysis, monitoring, simple tasks
+  local sonnet_patterns="analyze|analysis|check status|monitor |monitoring|query |count |list |report |report$|status |investigate|fetch |search |find |log |metrics|stats|data |sql |bigquery|scan |sync |cleanup|lint |format|self-improve|review |review$|check |summarize|compare|gather"
+
+  # Opus-tier keywords: complex, creative, implementation tasks (checked first — override sonnet matches)
+  local opus_patterns="implement|build |create |architect|design |refactor|optimize |optimization|fix bug|debug |migrate|integrate|new agent|agent pipeline|pipeline|eval |prompt engineer|feature:|feat:|new feature|write code|code gen|complex"
+
+  # Check opus patterns first (higher priority)
+  if echo "$text" | grep -qiE "$opus_patterns"; then
+    echo "opus"
+    return
+  fi
+
+  # Check sonnet patterns
+  if echo "$text" | grep -qiE "$sonnet_patterns"; then
+    echo "sonnet"
+    return
+  fi
+
+  # Default: opus (safer for unclassified tasks)
+  echo "opus"
+}
+
+# Maps tier name to model ID
+tier_to_model() {
+  case "$1" in
+    sonnet) echo "claude-sonnet-4-6" ;;
+    opus)   echo "claude-opus-4-6" ;;
+    haiku)  echo "claude-haiku-4-5-20251001" ;;
+    *)      echo "claude-opus-4-6" ;;
+  esac
+}
+
 log_fallback_event() {
   local task_id="$1" from_model="$2" to_model="$3" reason="$4"
   local msg="FALLBACK: $task_id model $from_model -> $to_model (reason: $reason)"
@@ -86,9 +158,27 @@ log_fallback_event() {
     >> "$LOGS_DIR/fallback-events.jsonl"
 }
 
-# --- Pre-flight: check API accessibility with fallback ---
-EFFECTIVE_MODEL=$(get_effective_model "$MODEL")
-SPAWN_MODEL="$MODEL"  # Original model arg (may be empty = use default)
+# --- Model Selection: override > classifier > explicit --model > default ---
+TIERING_NOTE=""
+if [ -n "$MODEL_OVERRIDE" ]; then
+  # --model-override: bypass classifier entirely
+  SPAWN_MODEL="$MODEL_OVERRIDE"
+  EFFECTIVE_MODEL="$MODEL_OVERRIDE"
+  TIERING_NOTE=" [MODEL:override=$MODEL_OVERRIDE]"
+elif [ -z "$MODEL" ]; then
+  # No explicit model — run the task classifier
+  TASK_TIER=$(classify_task_tier "$TASK_TEXT")
+  TIER_MODEL=$(tier_to_model "$TASK_TIER")
+  SPAWN_MODEL="$TIER_MODEL"
+  EFFECTIVE_MODEL="$TIER_MODEL"
+  TIERING_NOTE=" [TIER:$TASK_TIER=$TIER_MODEL]"
+  echo "[spawn] Task classified as '$TASK_TIER' tier → $TIER_MODEL"
+else
+  # Explicit --model provided (no override, no classifier)
+  SPAWN_MODEL="$MODEL"
+  EFFECTIVE_MODEL=$(get_effective_model "$MODEL")
+  TIERING_NOTE=" [MODEL:explicit=$EFFECTIVE_MODEL]"
+fi
 
 preflight_check() {
   local model_arg=""
@@ -256,8 +346,8 @@ fi
 FALLBACK_NOTE=""
 [ -f "$FALLBACK_INDICATOR" ] && FALLBACK_NOTE=" [FALLBACK:$(cat "$FALLBACK_INDICATOR")]"
 bash "$REGISTRY" register "$TASK_ID" "$AGENT_PID" 0 "$LABEL" "$SOURCE" "$TIMEOUT_MIN"
-bash "$LOGGER" "$TASK_ID" spawn "PID=$AGENT_PID timeout=${TIMEOUT_MIN}min src=$SOURCE$FALLBACK_NOTE" 2>/dev/null || true
-bash "$LINEAR_LOG" "$TASK_ID" "Agent spawned: $LABEL (timeout=${TIMEOUT_MIN}min)$FALLBACK_NOTE" progress 2>/dev/null || true
+bash "$LOGGER" "$TASK_ID" spawn "PID=$AGENT_PID timeout=${TIMEOUT_MIN}min src=$SOURCE$TIERING_NOTE$FALLBACK_NOTE" 2>/dev/null || true
+bash "$LINEAR_LOG" "$TASK_ID" "Agent spawned: $LABEL (timeout=${TIMEOUT_MIN}min)$TIERING_NOTE$FALLBACK_NOTE" progress 2>/dev/null || true
 
-echo "[spawn] $TASK_ID PID=$AGENT_PID timeout=${TIMEOUT_MIN}min$FALLBACK_NOTE"
+echo "[spawn] $TASK_ID PID=$AGENT_PID timeout=${TIMEOUT_MIN}min$TIERING_NOTE$FALLBACK_NOTE"
 echo "$AGENT_PID"
