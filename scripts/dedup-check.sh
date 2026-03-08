@@ -14,7 +14,7 @@ DEDUP_DIR="/Users/fonsecabc/.openclaw/tasks/dedup"
 HISTORY_FILE="$DEDUP_DIR/task-history.jsonl"
 EVENTS_FILE="$DEDUP_DIR/dedup-events.jsonl"
 SIMILARITY_THRESHOLD=0.55  # 55% keyword overlap = duplicate (catches paraphrased tasks)
-LOOKBACK_HOURS=24
+LOOKBACK_HOURS=4
 
 mkdir -p "$DEDUP_DIR"
 touch "$HISTORY_FILE"
@@ -105,10 +105,15 @@ for entry in recent_tasks:
             f.write(json.dumps(event) + '\n')
         sys.exit(1)
 
-# Check 2: Same task ID already completed recently
+# Check 2: Same task ID already completed SUCCESSFULLY recently
+# Only block if the previous run succeeded. Failed/timed-out tasks should be retried.
 for entry in recent_tasks:
     if entry.get('task_id') == task_id:
-        reason = f"same_task_id_ran_recently"
+        prev_status = entry.get('status', 'unknown')
+        # Allow retry if previous run failed, timed out, or status unknown
+        if prev_status in ('failed', 'timeout', 'idle_killed', 'blocked', 'unknown'):
+            continue
+        reason = f"same_task_id_succeeded_recently"
         print(f"duplicate:{entry['task_id']}:{reason}")
         event = {"ts": now, "blocked_task": task_id, "matched_task": entry['task_id'],
                  "reason": reason, "hash": task_hash}
@@ -131,11 +136,13 @@ for entry in recent_tasks:
         sys.exit(1)
 
 # No duplicate found — record this task in history
+# status: "spawned" initially, updated to "success"/"failed"/"timeout" by watchdog
 entry = {
     "task_id": task_id,
     "hash": task_hash,
     "keywords": task_keywords,
     "ts": now,
+    "status": "spawned",
     "text_preview": normalize(task_text)[:200]
 }
 with open(history_file, 'a') as f:

@@ -69,6 +69,7 @@ Recommend: [your best next step]
 - Apply spawn criteria (skip quick-wins, manual tasks, read-only analysis)
 - Spawn via `bash scripts/spawn-agent.sh --task CAI-XX --label "desc" "task text"`
 - Budget check: read `self-improvement/loop/budget-status.json` — skip if over_monthly_limit
+- **Blocked queue detection (CRITICAL):** If slots > 0 AND todo tasks > 0 AND you spawned 0 agents for 2+ consecutive heartbeats → something is blocking (dedup, budget, config). Investigate immediately, don't just reply HEARTBEAT_OK.
 
 **Priority 3 — Agent Health Monitoring:**
 - If Caio sent you a message you haven't responded to → respond to it
