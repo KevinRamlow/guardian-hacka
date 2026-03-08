@@ -8,5 +8,6 @@
   "last_reset_daily": "2026-03-07T00:00:00Z",
   "last_reset_weekly": "2026-03-02T00:00:00Z",
   "last_reset_monthly": "2026-03-01T00:00:00Z",
-  "status": "ok"
+  "status": "ok",
+  "spawn_block_threshold_pct": 90.0
 }
