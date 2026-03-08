@@ -34,7 +34,8 @@ echo "$FAIL_COUNT" > "$STATE_FILE"
 echo "$LOG_TAG [$TS] Gateway DOWN (consecutive failures: $FAIL_COUNT). Restarting..."
 
 # Kill any zombie node processes on the gateway port
-fuser -k "$GATEWAY_PORT/tcp" 2>/dev/null || true
+# Kill process on port (macOS-compatible)
+lsof -ti ":$GATEWAY_PORT" 2>/dev/null | xargs kill -9 2>/dev/null || true
 sleep 1
 
 # Restart gateway
