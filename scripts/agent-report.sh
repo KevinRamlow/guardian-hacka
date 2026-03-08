@@ -159,4 +159,23 @@ fi
 # 3. Disk log
 bash "$WORKSPACE/scripts/agent-logger.sh" "$TASK_ID" "report" "$HEADLINE ($DURATION)" 2>/dev/null || true
 
+# 4. Trigger Guardian eval if task completed successfully and is guardian-related
+if [ "$STATUS" = "done" ]; then
+  # Check task label from registry
+  LABEL=$(jq -r "select(.task_id == \"$TASK_ID\") | .label // \"\"" \
+    "$WORKSPACE/metrics/agent-registry.json" 2>/dev/null || echo "")
+  
+  # Trigger eval for guardian tasks (but not for eval tasks themselves to avoid recursion)
+  if [[ "$LABEL" =~ guardian ]] && [[ ! "$LABEL" =~ guardian_eval ]]; then
+    echo "[report] Guardian task completed → triggering validation eval"
+    bash "$WORKSPACE/scripts/run-guardian-eval.sh" > /tmp/eval-trigger-$TASK_ID.log 2>&1 &
+  fi
+fi
+
+# 5. Clean up timeout warning file and checkpoint on success
+if [ "$STATUS" = "done" ]; then
+  rm -f "/Users/fonsecabc/.openclaw/tasks/timeout-warnings/${TASK_ID}.warn" 2>/dev/null || true
+  rm -rf "/Users/fonsecabc/.openclaw/tasks/checkpoints/${TASK_ID}" 2>/dev/null || true
+fi
+
 echo "[report] $TASK_ID: $HEADLINE ($DURATION) → Linear=$LINEAR_STATUS + Slack"

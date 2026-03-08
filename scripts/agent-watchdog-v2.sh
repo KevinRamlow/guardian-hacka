@@ -192,7 +192,7 @@ def requeue_task(task_id):
         issue_id = nodes[0]["id"]
 
         # Get Todo state ID
-        state_query = '{workflowStates(filter:{name:{eq:"Todo"},team:{key:{eq:"AUT"}}},first:1){nodes{id}}}'
+        state_query = '{workflowStates(filter:{name:{eq:"Todo"},team:{key:{eq:"AUTO"}}},first:1){nodes{id}}}'
         result2 = subprocess.run(
             ["curl", "-s", "-X", "POST", "https://api.linear.app/graphql",
              "-H", f"Authorization: {LINEAR_API_KEY}",
@@ -378,6 +378,38 @@ for task_id, a in agents.items():
             requeue_task(task_id)
             removals.append(task_id)
             continue
+
+    # --- 80% Timeout Warning — write warning file so agent can flush results ---
+    warned = a.get("warned_80pct", False)
+    warning_threshold = int(timeout_min * 0.8)
+    if not warned and age_min >= warning_threshold:
+        WARNING_DIR = "/Users/fonsecabc/.openclaw/tasks/timeout-warnings"
+        os.makedirs(WARNING_DIR, exist_ok=True)
+        warning_file = f"{WARNING_DIR}/{task_id}.warn"
+        remaining_min = timeout_min - age_min
+        try:
+            with open(warning_file, "w") as wf:
+                json.dump({
+                    "task_id": task_id,
+                    "warned_at": now,
+                    "age_min": age_min,
+                    "timeout_min": timeout_min,
+                    "remaining_min": remaining_min
+                }, wf)
+            # Mark warned in registry
+            try:
+                reg_data = json.load(open(REGISTRY_FILE))
+                if task_id in reg_data.get("agents", {}):
+                    reg_data["agents"][task_id]["warned_80pct"] = True
+                    json.dump(reg_data, open(REGISTRY_FILE, "w"), indent=2)
+            except Exception:
+                pass
+            subprocess.run([LINEAR_LOG, task_id,
+                f"[{ts}] Timeout warning: {age_min}/{timeout_min}min elapsed ({remaining_min}min left). Agent should flush results and checkpoint.",
+                "progress"], capture_output=True)
+            print(f"WARN_80 {task_id}: {age_min}/{timeout_min}min — warning file written, {remaining_min}min left")
+        except Exception as e:
+            print(f"  WARN_80 FAILED {task_id}: {e}")
 
     # --- Progress-Based Timeout Extension (max 2 extensions, +10min each) ---
     extensions = a.get("extensions", 0)

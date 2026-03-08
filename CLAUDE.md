@@ -1,6 +1,6 @@
 # CLAUDE.md — Sub-Agent Instructions
 
-You are a Claude Code sub-agent spawned by Anton (orchestrator). Your task has a Linear ID (CAI-XX).
+You are a Claude Code sub-agent spawned by Anton (orchestrator). Your task has a Linear ID (AUTO-XX).
 
 ## CRITICAL: IMPLEMENT, DON'T REPORT
 
@@ -33,7 +33,7 @@ You are a Claude Code sub-agent spawned by Anton (orchestrator). Your task has a
 ## Logging
 
 ```bash
-/Users/fonsecabc/.openclaw/workspace/skills/task-manager/scripts/linear-log.sh CAI-XX "message" [status]
+/Users/fonsecabc/.openclaw/workspace/skills/task-manager/scripts/linear-log.sh AUTO-XX "message" [status]
 ```
 
 **When:** On start (`progress`), every 5-10 min of work, on completion (`done`), on failure (`blocked`).
@@ -41,9 +41,9 @@ You are a Claude Code sub-agent spawned by Anton (orchestrator). Your task has a
 **Format:** Short, data-rich. File paths, test results, error messages. Not essays.
 
 ```bash
-linear-log.sh CAI-42 "Starting: archetype standardization in severity_agent.py" progress
-linear-log.sh CAI-42 "Updated severity prompt with 15 patterns. Running eval."
-linear-log.sh CAI-42 "Done: accuracy 76.8% -> 79.2% (+2.4pp). Files: severity_agent.py" done
+linear-log.sh AUTO-42 "Starting: archetype standardization in severity_agent.py" progress
+linear-log.sh AUTO-42 "Updated severity prompt with 15 patterns. Running eval."
+linear-log.sh AUTO-42 "Done: accuracy 76.8% -> 79.2% (+2.4pp). Files: severity_agent.py" done
 ```
 
 **Status values:** `progress` (In Progress), `done` (Done), `blocked` (Blocked/Failed), `todo` (Not started)
@@ -96,7 +96,7 @@ print(f"Delta:    {delta:+.2f}pp")
 
 ### Step 4: Log Validation Results
 ```bash
-linear-log.sh CAI-XX "Validation: ${new_acc}% (${delta:+}pp vs baseline). Expected: +Xpp. VALIDATED ✓" done
+linear-log.sh AUTO-XX "Validation: ${new_acc}% (${delta:+}pp vs baseline). Expected: +Xpp. VALIDATED ✓" done
 ```
 
 ### What if Validation Fails?
@@ -105,7 +105,7 @@ linear-log.sh CAI-XX "Validation: ${new_acc}% (${delta:+}pp vs baseline). Expect
 1. Check stderr logs for errors during eval
 2. Review predictions.json for unexpected regressions
 3. Try alternative implementation approach
-4. OR mark as blocked: `linear-log.sh CAI-XX "BLOCKED: validation failed. Expected +Xpp, got ${delta}pp. Investigated: [what you tried]" blocked`
+4. OR mark as blocked: `linear-log.sh AUTO-XX "BLOCKED: validation failed. Expected +Xpp, got ${delta}pp. Investigated: [what you tried]" blocked`
 
 **Rules:**
 - ✅ Code committed + eval run + delta reported = complete task
@@ -121,7 +121,7 @@ linear-log.sh CAI-XX "Validation: ${new_acc}% (${delta:+}pp vs baseline). Expect
 ```bash
 cd /Users/fonsecabc/.openclaw/workspace
 git add [files you changed]
-git commit -m "feat(CAI-XX): short description of what you did"
+git commit -m "feat(AUTO-XX): short description of what you did"
 git push origin HEAD
 ```
 
@@ -137,17 +137,17 @@ git push origin HEAD
 - `*.log`, `node_modules/`, `__pycache__/`
 
 **Commit message format:**
-- `feat(CAI-XX): description` for new features
-- `fix(CAI-XX): description` for bug fixes
-- `docs(CAI-XX): description` for documentation
-- `test(CAI-XX): description` for tests
+- `feat(AUTO-XX): description` for new features
+- `fix(AUTO-XX): description` for bug fixes
+- `docs(AUTO-XX): description` for documentation
+- `test(AUTO-XX): description` for tests
 
 **Example:**
 ```bash
 git add scripts/agent-registry.sh
-git commit -m "fix(CAI-274): escape apostrophes in task labels"
+git commit -m "fix(AUTO-274): escape apostrophes in task labels"
 git push origin HEAD
-linear-log.sh CAI-274 "Done: fixed + committed + pushed" done
+linear-log.sh AUTO-274 "Done: fixed + committed + pushed" done
 ```
 
 ## Forbidden
@@ -166,6 +166,34 @@ Key tables: `proofread_medias`, `proofread_guidelines`, `media_content`, `campai
 
 - Production: `brandlovers-prod` (NOT `brandlovrs-production`)
 - Homolog: `brandlovrs-homolog` (note: missing 'e' is correct in GCP)
+
+## Timeout Warning & Checkpoints
+
+**Save progress checkpoints** periodically so work survives if you're killed:
+
+```bash
+bash /Users/fonsecabc/.openclaw/workspace/scripts/agent-checkpoint.sh \
+  AUTO-XX "step_name" "What was done so far and what remains"
+```
+
+**When to checkpoint:**
+- After each major phase of work (e.g., after analysis, after implementing first file, after launching eval)
+- Before any long-running background operation (eval, build, test)
+
+**Check for timeout warning** — the watchdog writes a file at 80% of your timeout:
+
+```bash
+WARN_FILE="/Users/fonsecabc/.openclaw/tasks/timeout-warnings/AUTO-XX.warn"
+if [ -f "$WARN_FILE" ]; then
+  # Save final checkpoint and exit gracefully
+  bash /Users/fonsecabc/.openclaw/workspace/scripts/agent-checkpoint.sh \
+    AUTO-XX "interrupted_at_80pct" "Summarize what was done and what remains"
+  linear-log.sh AUTO-XX "Timeout warning received. Checkpoint saved. Exiting for resume." progress
+  exit 0
+fi
+```
+
+**Why this matters:** When a task times out with no output (like EVAL-001), work is lost. Checkpoints let the next agent resume instead of restarting.
 
 ## CRITICAL: Do NOT Poll Long-Running Processes
 
@@ -188,9 +216,9 @@ EVAL_PID=$!
 echo "Eval PID=$EVAL_PID, output: /tmp/eval-output.log"
 
 # Log and EXIT — do NOT wait
-linear-log.sh CAI-XX "Eval launched (PID=$EVAL_PID). Results will appear in evals/.runs/content_moderation/. Exiting." done
+linear-log.sh AUTO-XX "Eval launched (PID=$EVAL_PID). Results will appear in evals/.runs/content_moderation/. Exiting." done
 ```
 
 ## Task Format
 
-Your spawn message includes: Linear Task ID (CAI-XX), timeout, and task description. Extract the CAI-XX and use it for all logging.
+Your spawn message includes: Linear Task ID (AUTO-XX), timeout, and task description. Extract the AUTO-XX and use it for all logging.

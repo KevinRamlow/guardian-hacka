@@ -40,11 +40,11 @@ if [ "$SLOTS" -le 0 ]; then
   exit 0
 fi
 
-# Fetch Todo tasks from Linear (CAI team) WITH LABELS
+# Fetch Todo tasks from Linear (AUTO team) WITH LABELS
 TODOS=$(curl -s -X POST https://api.linear.app/graphql \
   -H "Authorization: $LINEAR_API_KEY" \
   -H "Content-Type: application/json" \
-  -d '{"query":"query{issues(filter:{team:{key:{eq:\"AUT\"}},state:{name:{eq:\"Todo\"}}},first:5,orderBy:updatedAt){nodes{identifier title description labels{nodes{name}}}}}"}' 2>/dev/null)
+  -d '{"query":"query{issues(filter:{team:{key:{eq:\"AUTO\"}},state:{name:{eq:\"Todo\"}}},first:5,orderBy:updatedAt){nodes{identifier title description labels{nodes{name}}}}}"}' 2>/dev/null)
 
 TASK_COUNT=$(echo "$TODOS" | python3 -c "import json,sys; d=json.load(sys.stdin); print(len(d.get('data',{}).get('issues',{}).get('nodes',[])))" 2>/dev/null || echo "0")
 
@@ -139,6 +139,24 @@ for n in nodes:
         skipped += 1
         continue
 
+    # Check for prior checkpoint (task may be a resume after timeout)
+    checkpoint_context = ""
+    checkpoint_file = f'/Users/fonsecabc/.openclaw/tasks/checkpoints/{task_id}/checkpoint.json'
+    if os.path.exists(checkpoint_file):
+        try:
+            with open(checkpoint_file) as cf:
+                ckpt = json.load(cf)
+            checkpoint_context = f'''
+## Resume Context (Previous Run Timed Out)
+This task was previously started but timed out. Checkpoint saved at step **"{ckpt.get('step', 'unknown')}"**:
+
+> {ckpt.get('summary', '(no summary)')}
+
+Continue from where the previous agent left off. Do NOT restart from scratch.
+'''
+        except Exception:
+            pass
+
     # Build task text
     task_text = f'''## Task Context
 - **Linear Task:** {task_id}
@@ -148,7 +166,7 @@ for n in nodes:
 **{title}**
 
 {desc}
-'''
+{checkpoint_context}'''
 
     # Write task file
     task_file = f'/Users/fonsecabc/.openclaw/tasks/spawn-tasks/{task_id}.md'
