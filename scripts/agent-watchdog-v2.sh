@@ -163,6 +163,11 @@ agents = dict(d.get("agents", {}))
 removals = []
 completions = timeouts = failures = requeued = 0
 
+# Proactively extend timeouts for active agents near deadline (defense in depth)
+try:
+    subprocess.run(["bash", "/Users/fonsecabc/.openclaw/workspace/scripts/monitor-extend-timeouts.sh"], capture_output=True, timeout=10)
+except Exception:
+    pass
 
 def requeue_task(task_id):
     """Move task back to Todo in Linear for retry."""
@@ -277,61 +282,32 @@ for task_id, a in agents.items():
     if not alive:
         status, output_size, detail = check_output_quality(task_id)
 
-        if status == "success":
-            print(f"DONE {task_id}: {age_min}min, {output_size}B output")
-            subprocess.run([LOGGER, task_id, "complete", f"Finished in {age_min}min ({output_size}B)"], capture_output=True)
-            # Include output snippet in Linear log for context
-            output_snippet = ""
-            try:
-                with open(f"{LOGS_DIR}/{task_id}-output.log") as f:
-                    output_snippet = f.read(500).strip().replace('"', '\\"')
-            except: pass
-            linear_msg = f"[{ts}] Agent completed ({age_min}min, {output_size}B)"
-            if output_snippet:
-                linear_msg += f"\n---\n{output_snippet}"
-            subprocess.run([LINEAR_LOG, task_id, linear_msg, "done"], capture_output=True)
-            completions += 1
-            # Reset consecutive failure counter on success
-            consec_state = {"count": 0, "task_ids": []}
+        REPORT = "/Users/fonsecabc/.openclaw/workspace/scripts/agent-report.sh"
 
-        elif status == "small":
-            # Small but no failure patterns — count as done but flag it
-            print(f"DONE? {task_id}: {age_min}min, {output_size}B output (small, review needed)")
-            subprocess.run([LOGGER, task_id, "complete", f"Finished in {age_min}min ({output_size}B) — small output, review needed"], capture_output=True)
-            subprocess.run([LINEAR_LOG, task_id, f"[{ts}] Agent completed ({age_min}min, {output_size}B) — small output, review", "done"], capture_output=True)
+        if status in ("success", "small"):
+            print(f"DONE {task_id}: {age_min}min, {output_size}B output")
+            # Unified report: reads logs, posts to Linear + Slack atomically
+            subprocess.run(["bash", REPORT, task_id, "done"], capture_output=True, timeout=30)
             completions += 1
-            # Reset consecutive failure counter on success
             consec_state = {"count": 0, "task_ids": []}
 
         else:
-            # Empty or blocked — FAIL and re-queue
+            # Empty or blocked — FAIL
             fail_reason = f"output={output_size}B"
             if detail:
                 fail_reason += f" ({detail[:200]})"
 
             print(f"[FAIL] {task_id}: {age_min}min, {fail_reason}")
-            subprocess.run([LOGGER, task_id, "error", f"[FAIL] Died after {age_min}min, {fail_reason}"], capture_output=True)
-            # Include stderr snippet for failure context
-            stderr_snippet = ""
-            try:
-                with open(f"{LOGS_DIR}/{task_id}-stderr.log") as f:
-                    stderr_snippet = f.read(300).strip().replace('"', '\\"')
-            except: pass
-            fail_msg = f"[{ts}] [FAIL] {fail_reason}. Re-queuing."
-            if stderr_snippet:
-                fail_msg += f"\nStderr: {stderr_snippet}"
-            subprocess.run([LINEAR_LOG, task_id, fail_msg, "blocked"], capture_output=True)
+            # Unified report: reads logs, diagnoses error, posts to Linear + Slack atomically
+            subprocess.run(["bash", REPORT, task_id, "failed"], capture_output=True, timeout=30)
             failures += 1
 
-            # Track consecutive failures
             consec_state["count"] += 1
             consec_state["task_ids"].append(task_id)
 
-            # Alert if threshold exceeded
             if consec_state["count"] > CONSECUTIVE_FAILURE_THRESHOLD:
                 send_failure_alert(consec_state)
 
-            # Re-queue to Todo if not retried too many times (max 2 retries)
             if retries < 2:
                 requeue_task(task_id)
 
@@ -355,8 +331,8 @@ for task_id, a in agents.items():
             except Exception:
                 pass
 
-        subprocess.run([LOGGER, task_id, "timeout", f"Killed at {age_min}min (limit={timeout_min}min)"], capture_output=True)
-        subprocess.run([LINEAR_LOG, task_id, f"[{ts}] Timed out at {age_min}min — killed. Re-queuing.", "blocked"], capture_output=True)
+        # Unified report: reads logs, posts to Linear + Slack atomically
+        subprocess.run(["bash", "/Users/fonsecabc/.openclaw/workspace/scripts/agent-report.sh", task_id, "timeout"], capture_output=True, timeout=30)
         timeouts += 1
 
         # Track consecutive failures (timeouts count as failures)
@@ -392,8 +368,7 @@ for task_id, a in agents.items():
                     os.kill(pid, 9)
                 except Exception:
                     pass
-            subprocess.run([LOGGER, task_id, "error", f"Killed (idle): {idle_result} after {age_min}min"], capture_output=True)
-            subprocess.run([LINEAR_LOG, task_id, f"[{ts}] Killed: stuck ({idle_result}) at {age_min}min. Re-queuing.", "blocked"], capture_output=True)
+            subprocess.run(["bash", "/Users/fonsecabc/.openclaw/workspace/scripts/agent-report.sh", task_id, "idle_killed"], capture_output=True, timeout=30)
             failures += 1
             # Track consecutive failures
             consec_state["count"] += 1

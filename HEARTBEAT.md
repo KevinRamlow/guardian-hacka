@@ -1,14 +1,20 @@
 # HEARTBEAT.md
 
 ## What NOT to do
-- **DO NOT manage agents, queues, or spawns.** All handled by v2 cron scripts (watchdog, auto-queue, linear-sync).
 - **DO NOT reply with QUEUE_OK, SKIP, or any status noise.** If nothing needs attention, reply HEARTBEAT_OK silently.
 - **DO NOT send messages to Caio's DM unless you have something genuinely useful to say.**
 - **DO NOT read the old session store** (`sessions.json`). Use `agent-registry.sh list` if you need agent status.
 
+## What you CAN manage autonomously
+- **Timeout extension:** If agent near timeout BUT actively working (eval running, output growing, activity recent) → extend timeout automatically
+- **Failure diagnosis:** Run `diagnose-failure.sh` on failed agents, apply fixes autonomously
+- **System health:** Fix spawn issues, auth problems, config errors without asking
+- **Registry cleanup:** Remove dead PIDs, sync Linear status mismatches
+
 ## What to do
 
 ### Every heartbeat
+- **Proactive timeout monitoring:** Run `bash scripts/monitor-extend-timeouts.sh` — auto-extends timeouts for active agents near deadline
 - If Caio sent you a message you haven't responded to → respond to it
 - If a watchdog alert exists in `/root/.openclaw/tasks/agent-logs/watchdog.log` (last 5 lines) with TIMEOUT or DEAD → tell Caio briefly
 - **Agent completion validation (CRITICAL):**
