@@ -107,7 +107,7 @@ def should_spawn(task_id, title, desc, labels):
             return False, f'pattern:{pattern[:20]}'
     
     # Spawn for implementation work
-    spawn_keywords = ['eval', 'hypothesis', 'implement', 'fix', 'refactor', 'test', 'pr review', 'build', 'create', 'deploy']
+    spawn_keywords = ['eval', 'hypothesis', 'implement', 'fix', 'refactor', 'test', 'pr review', 'build', 'create', 'deploy', 'feature', 'improve', 'optimize', 'migrate', 'resilience', 'investigation', 'investigate', 'budget', 'strategy', 'fallback']
     for kw in spawn_keywords:
         if kw in title_lower or kw in desc_lower:
             return True, f'keyword:{kw}'
