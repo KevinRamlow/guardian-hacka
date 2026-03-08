@@ -3,7 +3,7 @@
 # Run from Anton's server after pulling the repo
 set -euo pipefail
 
-WORKSPACE="/root/.openclaw/workspace"
+WORKSPACE="/Users/fonsecabc/.openclaw/workspace"
 cd "$WORKSPACE"
 
 echo "=== Deploying Agent Management v2 ==="
@@ -20,11 +20,11 @@ chmod +x scripts/install-cron-v2.sh
 echo "[1/6] Scripts made executable"
 
 # 2. Initialize registry
-mkdir -p /root/.openclaw/tasks/agent-logs
-mkdir -p /root/.openclaw/tasks/spawn-tasks
+mkdir -p /Users/fonsecabc/.openclaw/tasks/agent-logs
+mkdir -p /Users/fonsecabc/.openclaw/tasks/spawn-tasks
 
-if [ ! -f /root/.openclaw/tasks/agent-registry.json ]; then
-  echo '{"agents":{},"maxConcurrent":3}' > /root/.openclaw/tasks/agent-registry.json
+if [ ! -f /Users/fonsecabc/.openclaw/tasks/agent-registry.json ]; then
+  echo '{"agents":{},"maxConcurrent":3}' > /Users/fonsecabc/.openclaw/tasks/agent-registry.json
   echo "[2/6] Registry initialized"
 else
   echo "[2/6] Registry already exists"
@@ -47,8 +47,8 @@ AFTER=$(pgrep -x claude 2>/dev/null | wc -l || echo 0)
 echo "  Processes: $BEFORE -> $AFTER"
 
 # 4. Clean session store
-if [ -f "/root/.openclaw/agents/claude/sessions/sessions.json" ]; then
-  echo '{}' > /root/.openclaw/agents/claude/sessions/sessions.json
+if [ -f "/Users/fonsecabc/.openclaw/agents/claude/sessions/sessions.json" ]; then
+  echo '{}' > /Users/fonsecabc/.openclaw/agents/claude/sessions/sessions.json
   echo "[4/6] Session store cleaned"
 else
   echo "[4/6] No session store to clean"
@@ -72,7 +72,7 @@ echo ""
 echo "=== Deploy Complete ==="
 echo ""
 echo "v2 System:"
-echo "  Registry:    /root/.openclaw/tasks/agent-registry.json"
+echo "  Registry:    /Users/fonsecabc/.openclaw/tasks/agent-registry.json"
 echo "  Spawn:       scripts/spawn-agent.sh --task CAI-XX --label desc [--timeout 25] task-text"
 echo "  Watchdog:    scripts/agent-watchdog-v2.sh (cron every 60s)"
 echo "  Auto-queue:  scripts/auto-queue-v2.sh (cron every 5min)"

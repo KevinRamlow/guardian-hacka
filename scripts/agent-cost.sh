@@ -3,7 +3,7 @@
 # Usage: agent-cost.sh [--period 24h|7d|30d] [--task CAI-XX]
 set -euo pipefail
 
-source /root/.openclaw/workspace/.env.secrets
+source /Users/fonsecabc/.openclaw/workspace/.env.secrets
 
 PERIOD="${1:-24h}"
 TASK_FILTER=""

@@ -12,20 +12,20 @@ crontab -l > /tmp/crontab-backup-$(date +%Y%m%d-%H%M%S).txt 2>/dev/null || true
 cat <<'CRON' | crontab -
 # === Agent Management v2 ===
 # Watchdog: check registered agents, kill zombies, detect completions (every 60s)
-* * * * * /bin/bash /root/.openclaw/workspace/scripts/agent-watchdog-v2.sh >> /root/.openclaw/tasks/agent-logs/watchdog.log 2>&1
+* * * * * /bin/bash /Users/fonsecabc/.openclaw/workspace/scripts/agent-watchdog-v2.sh >> /Users/fonsecabc/.openclaw/tasks/agent-logs/watchdog.log 2>&1
 
 # Auto-queue: fetch Linear Todo tasks and spawn agents (every 5 min)
-*/5 * * * * /bin/bash /root/.openclaw/workspace/scripts/auto-queue-v2.sh >> /root/.openclaw/tasks/agent-logs/auto-queue.log 2>&1
+*/5 * * * * /bin/bash /Users/fonsecabc/.openclaw/workspace/scripts/auto-queue-v2.sh >> /Users/fonsecabc/.openclaw/tasks/agent-logs/auto-queue.log 2>&1
 
 # Linear sync: match In Progress tasks to registry, move orphans to Todo (every 15 min)
-*/15 * * * * /bin/bash /root/.openclaw/workspace/scripts/linear-sync-v2.sh >> /root/.openclaw/tasks/agent-logs/linear-sync.log 2>&1
+*/15 * * * * /bin/bash /Users/fonsecabc/.openclaw/workspace/scripts/linear-sync-v2.sh >> /Users/fonsecabc/.openclaw/tasks/agent-logs/linear-sync.log 2>&1
 
 # Health check: validate registry, watchdog, logs (every 5 min)
-*/5 * * * * /bin/bash /root/.openclaw/workspace/scripts/health-check.sh >> /root/.openclaw/tasks/agent-logs/health-check.log 2>&1
+*/5 * * * * /bin/bash /Users/fonsecabc/.openclaw/workspace/scripts/health-check.sh >> /Users/fonsecabc/.openclaw/tasks/agent-logs/health-check.log 2>&1
 
 # === Workspace Management (unchanged) ===
 # Auto-push workspace changes to git (every 15 min)
-*/15 * * * * cd /root/.openclaw/workspace && bash scripts/auto-push.sh >> /tmp/auto-push.log 2>&1
+*/15 * * * * cd /Users/fonsecabc/.openclaw/workspace && bash scripts/auto-push.sh >> /tmp/auto-push.log 2>&1
 CRON
 
 echo "New crontab installed:"

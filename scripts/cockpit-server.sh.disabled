@@ -10,7 +10,7 @@ mkdir -p "$HTML_DIR"
 
 # Generate dashboard data
 refresh_dashboard() {
-    bash /root/.openclaw/workspace/agent-cockpit.sh --html 2>/dev/null
+    bash /Users/fonsecabc/.openclaw/workspace/agent-cockpit.sh --html 2>/dev/null
     cp /tmp/agent-cockpit.html "$HTML_DIR/agent-cockpit.html" 2>/dev/null || true
 }
 

@@ -3,7 +3,7 @@
 # Usage: sync-billy.sh [commit-msg]
 
 set -euo pipefail
-REPO="/root/.openclaw/workspace"
+REPO="/Users/fonsecabc/.openclaw/workspace"
 BILLY="root@89.167.64.183"
 
 cd "$REPO"
@@ -12,9 +12,9 @@ cd "$REPO"
 bash scripts/auto-push.sh
 
 # 2. Pull on Billy
-ssh "$BILLY" "cd /root/.openclaw/workspace && git pull origin main --ff-only 2>&1" || {
+ssh "$BILLY" "cd /Users/fonsecabc/.openclaw/workspace && git pull origin main --ff-only 2>&1" || {
     echo "[sync-billy] Pull failed, trying reset..."
-    ssh "$BILLY" "cd /root/.openclaw/workspace && git fetch origin && git reset --hard origin/main 2>&1"
+    ssh "$BILLY" "cd /Users/fonsecabc/.openclaw/workspace && git fetch origin && git reset --hard origin/main 2>&1"
 }
 
 echo "[sync-billy] Billy synced ✓"

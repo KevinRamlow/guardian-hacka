@@ -156,7 +156,12 @@ The platform is called **CreatorAds** (repo: `brandlovers-team/creator-ads` — 
 
 **Source of truth:** `agent-registry.json` — but MUST stay in sync with Linear and actual processes.
 
-**Default model:** `claude-sonnet-4-6` — no tiering, no fallback complexity.
+**Model tiering (auto-selected by task type):**
+- `guardian_eval` / `analysis` → `claude-haiku-4-5-20251001` (cheap, just runs commands)
+- `code_task` / default → `claude-sonnet-4-6` (needs reasoning)
+- Override with `--model` flag when needed
+- `--fallback-model claude-sonnet-4-6` auto-escalates if Haiku overloaded
+- Budget caps: eval=$2, analysis=$1, code=$3 (`--max-budget-usd`)
 
 ### Core commands
 ```bash
@@ -191,29 +196,55 @@ tail -20 ~/.claude/projects/-Users-fonsecabc--openclaw-workspace/*.jsonl
 - `CAI-XX-stderr.log` — errors
 - `~/.claude/projects/.../*.jsonl` — full session transcripts (always available)
 
-**Never use:** `sessions_spawn` directly, manual Linear API + separate spawn, old v1 scripts
-**Dashboard** reads from registry — if registry is accurate, dashboard is accurate
+**Never use:** `sessions_spawn`, manual Linear API + separate spawn, old v1 scripts, hooks for logging
+
+### Reporting (how Linear + Slack get updated)
+All reporting comes from **actual agent logs on disk**, not hooks:
+- **During execution:** `agent-stream-monitor.py` posts progress to Linear + Slack every 2min (tool count, errors, elapsed time)
+- **On completion/failure:** `agent-report.sh` reads output/stderr/activity logs, posts summary to both
+- **No hooks for logging.** `linear-logger` hook is REMOVED. Only hooks active: boot-md, command-logger, session-memory, slack-thread-router
 
 ### Launchd jobs (Mac crons)
 Watchdog (60s), Auto-queue (5min), Linear-sync (15min), Langfuse-scraper (2min), GCP-token-push (45min)
 All in `~/Library/LaunchAgents/com.anton.*.plist`
 Stop all: `for p in watchdog auto-queue linear-sync langfuse-scraper gcp-token-push; do launchctl unload ~/Library/LaunchAgents/com.anton.$p.plist; done`
 
+## Token Efficiency Architecture (2026-03-07)
+
+**spawn-agent.sh uses `--append-system-prompt` for stable context (cached by API = 90% cheaper).**
+
+How agents get context now:
+1. `--append-system-prompt` ← base template + task-type template + knowledge files (CACHED)
+2. `-p` ← task description only (VARIABLE)
+
+**Knowledge base** (`knowledge/`): Pre-digested codebase maps + patterns. Read, don't explore.
+- `guardian-agents-api.map.md` — codemap (2K tokens replaces 8K of exploration)
+- `eval-patterns.md`, `auth-patterns.md`, `common-errors.md` — known fixes
+- Auto-injected for guardian tasks, common-errors always included
+
+**Templates** (`templates/claude-md/`): Task-specific instructions instead of monolithic CLAUDE.md.
+- `base.md` + `guardian-eval.md` | `code-fix.md` | `analysis.md` + `error-handling.md`
+- Agent gets only relevant instructions (~800 tokens vs ~2K for full CLAUDE.md)
+
+**Codemap generator**: `bash scripts/generate-codemap.sh /path/to/repo > knowledge/repo.map.md`
+Regenerate when repo changes significantly.
+
 ## Active Agent Monitoring (2026-03-07)
 
-**Core rule:** Don't wait for agents to finish. Monitor actively. Kill early if stuck.
+**You don't need to manually check agents anymore.** The stream monitor posts progress to Slack + Linear every 2min automatically. But you CAN check:
 
-**Workflow every time you spawn:**
-1. Spawn agent via `spawn-agent.sh`
-2. Wait 2-3 min, then `agent-peek.sh CAI-XX` to verify it's working
-3. Check session transcript if no activity: `tail -20 ~/.claude/projects/-Users-fonsecabc--openclaw-workspace/$(ls -t ~/.claude/projects/-Users-fonsecabc--openclaw-workspace/*.jsonl | head -1 | xargs basename)`
-4. If stuck/looping → kill and respawn with fix
-5. On completion → `agent-status.sh --sync` to keep all views aligned
+```bash
+bash scripts/agent-peek.sh              # all agents overview
+bash scripts/agent-peek.sh CAI-XX       # last 20 events
+bash scripts/agent-peek.sh CAI-XX follow  # live tail
+bash scripts/agent-status.sh            # unified Linear + Registry + Process view
+bash scripts/agent-status.sh --sync     # fix mismatches
+```
 
-**Kill signals:**
-- Same error 3+ times in session transcript → kill
-- 3+ agents failing on same issue → systemic, fix root cause first
-- Agent running >15min with 0B output → likely dead
+**When to intervene:**
+- Progress updates show repeated errors → kill and fix root cause
+- Agent running >15min with 0 tool calls → check session transcript
+- 3+ agents failing on same issue → systemic problem, investigate before re-queuing
 
 ## Autonomy Principle (Learned 2026-03-05 19:14 UTC)
 

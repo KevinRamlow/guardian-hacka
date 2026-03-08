@@ -14,8 +14,8 @@ if [ -z "$TASK_ID" ] || [ -z "$MESSAGE" ]; then
 fi
 
 SLACK_TOKEN="REDACTED_SLACK_USER_TOKEN"
-CONFIG_FILE="/root/.openclaw/workspace/config/slack-linear-sync.json"
-THREAD_MAP_FILE="/root/.openclaw/workspace/config/slack-linear-threads.json"
+CONFIG_FILE="/Users/fonsecabc/.openclaw/workspace/config/slack-linear-sync.json"
+THREAD_MAP_FILE="/Users/fonsecabc/.openclaw/workspace/config/slack-linear-threads.json"
 
 # Load config
 if [ ! -f "$CONFIG_FILE" ]; then
@@ -52,7 +52,7 @@ esac
 
 if [ -z "$THREAD_TS" ]; then
   # First message: Create parent with task title from Linear
-  source /root/.openclaw/workspace/.env.linear 2>/dev/null || true
+  source /Users/fonsecabc/.openclaw/workspace/.env.linear 2>/dev/null || true
   
   if [ -n "$LINEAR_API_KEY" ]; then
     # Fetch task title and priority from Linear
@@ -125,7 +125,7 @@ else
   
   # Update parent message title with new status
   if [ -n "$STATUS" ]; then
-    source /root/.openclaw/workspace/.env.linear 2>/dev/null || true
+    source /Users/fonsecabc/.openclaw/workspace/.env.linear 2>/dev/null || true
     if [ -n "$LINEAR_API_KEY" ]; then
       TASK_DATA=$(curl -s -X POST https://api.linear.app/graphql \
         -H "Authorization: $LINEAR_API_KEY" \

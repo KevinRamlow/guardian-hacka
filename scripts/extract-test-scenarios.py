@@ -170,7 +170,7 @@ def main():
     parser = argparse.ArgumentParser(description="Extract test scenarios from agent output logs")
     parser.add_argument(
         "--log-dir",
-        default="/root/.openclaw/tasks/agent-logs",
+        default="/Users/fonsecabc/.openclaw/tasks/agent-logs",
         help="Directory containing agent output logs",
     )
     parser.add_argument(

@@ -16,7 +16,7 @@ After=network.target
 [Service]
 Type=simple
 User=root
-WorkingDirectory=/root/.openclaw
+WorkingDirectory=/Users/fonsecabc/.openclaw
 ExecStart=/usr/bin/node /usr/lib/node_modules/openclaw/gateway/index.js --port 18790
 Restart=always
 RestartSec=10

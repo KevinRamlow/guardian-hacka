@@ -5,9 +5,9 @@
 # Usage: bash health-check.sh [--json] [--verbose]
 set -uo pipefail
 
-REGISTRY_FILE="/root/.openclaw/tasks/agent-registry.json"
-REGISTRY_CMD="/root/.openclaw/workspace/scripts/agent-registry.sh"
-LOGS_DIR="/root/.openclaw/tasks/agent-logs"
+REGISTRY_FILE="/Users/fonsecabc/.openclaw/tasks/agent-registry.json"
+REGISTRY_CMD="/Users/fonsecabc/.openclaw/workspace/scripts/agent-registry.sh"
+LOGS_DIR="/Users/fonsecabc/.openclaw/tasks/agent-logs"
 WATCHDOG_LOG="$LOGS_DIR/watchdog.log"
 MAX_LOG_SIZE_MB=50
 WATCHDOG_MAX_AGE_SEC=300  # 5 minutes

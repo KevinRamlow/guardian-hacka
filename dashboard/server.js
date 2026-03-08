@@ -18,7 +18,7 @@ if (fs.existsSync(envPath)) {
 }
 
 const PORT = 8765;
-const BIND = '0.0.0.0'; // protected by token auth
+const BIND = '127.0.0.1'; // localhost only — no public access
 const POLL_INTERVAL = 8000; // 8s
 const LINEAR_API_KEY = process.env.LINEAR_API_KEY || '';
 const STATS_FILE = path.join(__dirname, 'stats-history.json');
@@ -33,22 +33,7 @@ const DASHBOARD_TOKEN = process.env.DASHBOARD_TOKEN || 'anton-dash-2026';
 
 const app = express();
 
-// Auth middleware
-app.use((req, res, next) => {
-  // Allow static files if token is in query param
-  const token = req.query.token || req.headers['x-dashboard-token'] || 
-    (req.headers.authorization || '').replace('Bearer ', '');
-  if (token === DASHBOARD_TOKEN || req.path === '/login') {
-    return next();
-  }
-  // Serve login page
-  res.send(`<html><body style="background:#0a0e17;color:#e2e8f0;font-family:monospace;display:flex;align-items:center;justify-content:center;height:100vh">
-    <form onsubmit="location.href='/?token='+document.getElementById('t').value;return false">
-      <h2>🦞 Anton Cockpit</h2>
-      <input id="t" type="password" placeholder="Token" style="padding:8px;background:#111827;color:#e2e8f0;border:1px solid #333;border-radius:4px;width:250px">
-      <button style="padding:8px 16px;background:#3b82f6;color:white;border:none;border-radius:4px;cursor:pointer;margin-left:8px">Enter</button>
-    </form></body></html>`);
-});
+// No auth needed — dashboard is localhost only (127.0.0.1)
 
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
@@ -289,8 +274,11 @@ async function fetchLangfuseMetrics() {
 }
 
 // --- Data Collection (v2 — reads from agent-registry.json) ---
-const REGISTRY_FILE = '/root/.openclaw/tasks/agent-registry.json';
-const AGENT_LOGS_DIR = '/root/.openclaw/tasks/agent-logs';
+const OPENCLAW_HOME = process.env.HOME ? path.join(process.env.HOME, '.openclaw') : '/Users/fonsecabc/.openclaw';
+const REGISTRY_FILE = path.join(OPENCLAW_HOME, 'tasks/agent-registry.json');
+const AGENT_LOGS_DIR = path.join(OPENCLAW_HOME, 'tasks/agent-logs');
+const WORKSPACE = path.join(OPENCLAW_HOME, 'workspace');
+const HEALTH_METRICS = path.join(WORKSPACE, 'metrics/agent-health.json');
 
 function readRegistry() {
   try {
@@ -318,6 +306,33 @@ function getOutputSize(taskId) {
     if (fs.existsSync(p)) return fs.statSync(p).size;
   } catch {}
   return 0;
+}
+
+function getLastActivity(taskId) {
+  try {
+    const activityPath = path.join(AGENT_LOGS_DIR, `${taskId}-activity.jsonl`);
+    if (!fs.existsSync(activityPath)) return null;
+    const lines = fs.readFileSync(activityPath, 'utf-8').trim().split('\n').slice(-10);
+    const tools = [];
+    let lastSummary = '';
+    for (const line of lines) {
+      try {
+        const e = JSON.parse(line);
+        if (e._summary) {
+          if (e._summary.startsWith('TOOL_START:')) tools.push(e._summary.replace('TOOL_START: ', ''));
+          lastSummary = e._summary;
+        }
+      } catch {}
+    }
+    return { tools: [...new Set(tools)], lastEvent: lastSummary, eventCount: lines.length };
+  } catch { return null; }
+}
+
+function readHealthMetrics() {
+  try {
+    if (fs.existsSync(HEALTH_METRICS)) return JSON.parse(fs.readFileSync(HEALTH_METRICS, 'utf-8'));
+  } catch {}
+  return null;
 }
 
 // Track completed agents across polls (not just registry snapshots)
@@ -416,7 +431,8 @@ async function collectData() {
       const etaMin = Math.max(0, timeoutMin - runtimeMin);
       const progress = Math.min(100, (runtimeMin / timeoutMin) * 100);
 
-      return { ...a, health, taskId, linear, runtimeMin: runtimeMin.toFixed(1), timeoutMin, etaMin: etaMin.toFixed(1), progress: progress.toFixed(0), cost: '0' };
+      const activity = getLastActivity(taskId);
+      return { ...a, health, taskId, linear, activity, runtimeMin: runtimeMin.toFixed(1), timeoutMin, etaMin: etaMin.toFixed(1), progress: progress.toFixed(0), cost: '0' };
     } catch {
       return { ...a, health: { status: 'unknown', color: 'gray' }, runtimeMin: '0', cost: '0' };
     }
@@ -447,10 +463,14 @@ async function collectData() {
   let langfuseData = null;
   try { langfuseData = await fetchLangfuseMetrics(); } catch {}
 
+  // 8. Read health metrics from watchdog (single source of truth)
+  const healthMetrics = readHealthMetrics();
+
   dashboardState = {
     active: enrichedActive,
     recent: enrichedRecent,
     langfuse: langfuseData,
+    health: healthMetrics?.summary || null,
     stats: {
       totalActive: enrichedActive.length,
       maxConcurrent: registry.maxConcurrent || 3,
@@ -459,6 +479,7 @@ async function collectData() {
       totalTokensToday: persistentStats.totalTokensToday,
       estimatedCostToday: persistentStats.estimatedCostToday.toFixed(4),
       avgRuntimeMin: enrichedRecent.length > 0 ? (enrichedRecent.reduce((s, a) => s + parseFloat(a.runtimeMin || 0), 0) / enrichedRecent.length).toFixed(1) : '0',
+      successRate7d: healthMetrics?.summary?.success_rate_pct ?? 'N/A',
     },
     alerts,
     lastUpdated: new Date().toISOString(),
@@ -507,14 +528,14 @@ wss.on('connection', (ws) => {
         if (agent?.pid) {
           try { process.kill(agent.pid, 9); } catch {}
         }
-        safeExecSync(`bash /root/.openclaw/workspace/scripts/agent-registry.sh remove "${taskId}" 2>/dev/null`);
+        safeExecSync(`bash ${WORKSPACE}/scripts/agent-registry.sh remove "${taskId}" 2>/dev/null`);
         await pollAndBroadcast();
       }
 
       if (msg.action === 'steer' && msg.sessionKey && msg.message) {
         // Steer not supported for direct CLI agents — log the message instead
         const taskId = msg.sessionKey.replace('registry:', '');
-        safeExecSync(`bash /root/.openclaw/workspace/skills/task-manager/scripts/linear-log.sh "${taskId}" "Steer: ${msg.message.replace(/"/g, '\\"')}" 2>/dev/null`);
+        safeExecSync(`bash ${WORKSPACE}/skills/task-manager/scripts/linear-log.sh "${taskId}" "Steer: ${msg.message.replace(/"/g, '\\"')}" 2>/dev/null`);
         await pollAndBroadcast();
       }
 
@@ -530,8 +551,124 @@ wss.on('connection', (ws) => {
 // --- Static Files ---
 app.use(express.static(path.join(__dirname, 'public')));
 
-// --- API endpoints (fallback for non-WS) ---
+// --- API endpoints ---
 app.get('/api/state', (req, res) => res.json(dashboardState));
+
+// Stream live activity log for a specific agent via SSE
+app.get('/api/stream/:taskId', (req, res) => {
+  const taskId = req.params.taskId;
+  const activityPath = path.join(AGENT_LOGS_DIR, `${taskId}-activity.jsonl`);
+  const sessionDir = path.join(process.env.HOME || '/Users/fonsecabc', '.claude/projects/-Users-fonsecabc--openclaw-workspace');
+
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive',
+  });
+
+  // Send existing activity first
+  if (fs.existsSync(activityPath)) {
+    const existing = fs.readFileSync(activityPath, 'utf-8').trim().split('\n');
+    for (const line of existing.slice(-50)) { // last 50 events
+      try {
+        const e = JSON.parse(line);
+        if (e._summary) res.write(`data: ${JSON.stringify({ ts: e._ts, event: e._summary })}\n\n`);
+      } catch {}
+    }
+  }
+
+  // Watch for new events
+  let watcher = null;
+  let lastSize = 0;
+
+  function checkForNewLines(filePath) {
+    try {
+      const stat = fs.statSync(filePath);
+      if (stat.size > lastSize) {
+        const fd = fs.openSync(filePath, 'r');
+        const buf = Buffer.alloc(stat.size - lastSize);
+        fs.readSync(fd, buf, 0, buf.length, lastSize);
+        fs.closeSync(fd);
+        lastSize = stat.size;
+
+        const newLines = buf.toString('utf-8').trim().split('\n');
+        for (const line of newLines) {
+          try {
+            const e = JSON.parse(line);
+            if (e._summary) res.write(`data: ${JSON.stringify({ ts: e._ts, event: e._summary })}\n\n`);
+            else if (e.type) res.write(`data: ${JSON.stringify({ ts: e._ts || '', event: e.type })}\n\n`);
+          } catch {}
+        }
+      }
+    } catch {}
+  }
+
+  // Also try to find the Claude session file for richer data
+  let sessionWatcher = null;
+  try {
+    const sessionFiles = fs.readdirSync(sessionDir).filter(f => f.endsWith('.jsonl')).sort((a, b) => {
+      return fs.statSync(path.join(sessionDir, b)).mtimeMs - fs.statSync(path.join(sessionDir, a)).mtimeMs;
+    });
+    // Watch the most recent session file
+    if (sessionFiles.length > 0) {
+      const sessionPath = path.join(sessionDir, sessionFiles[0]);
+      let sessionLastSize = fs.existsSync(sessionPath) ? fs.statSync(sessionPath).size : 0;
+
+      sessionWatcher = setInterval(() => {
+        try {
+          const stat = fs.statSync(sessionPath);
+          if (stat.size > sessionLastSize) {
+            const fd = fs.openSync(sessionPath, 'r');
+            const buf = Buffer.alloc(Math.min(stat.size - sessionLastSize, 10000)); // max 10KB per read
+            fs.readSync(fd, buf, 0, buf.length, sessionLastSize);
+            fs.closeSync(fd);
+            sessionLastSize = stat.size;
+
+            for (const line of buf.toString('utf-8').trim().split('\n')) {
+              try {
+                const e = JSON.parse(line);
+                const msg = e.message || {};
+                const role = msg.role || '';
+                if (role === 'assistant') {
+                  const content = msg.content || [];
+                  if (Array.isArray(content)) {
+                    for (const p of content) {
+                      if (p?.type === 'text' && p.text) {
+                        res.write(`data: ${JSON.stringify({ ts: '', event: `ASSISTANT: ${p.text.substring(0, 200)}` })}\n\n`);
+                      } else if (p?.type === 'toolCall') {
+                        res.write(`data: ${JSON.stringify({ ts: '', event: `TOOL: ${p.toolName || p.name || '?'}` })}\n\n`);
+                      }
+                    }
+                  }
+                }
+              } catch {}
+            }
+          }
+        } catch {}
+      }, 2000);
+    }
+  } catch {}
+
+  // Watch activity file
+  if (fs.existsSync(activityPath)) {
+    lastSize = fs.statSync(activityPath).size;
+    watcher = setInterval(() => checkForNewLines(activityPath), 1000);
+  } else {
+    // File doesn't exist yet — poll until it does
+    watcher = setInterval(() => {
+      if (fs.existsSync(activityPath)) {
+        lastSize = 0;
+        checkForNewLines(activityPath);
+      }
+    }, 2000);
+  }
+
+  // Cleanup on disconnect
+  req.on('close', () => {
+    if (watcher) clearInterval(watcher);
+    if (sessionWatcher) clearInterval(sessionWatcher);
+  });
+});
 
 // --- Start ---
 loadStatsFromDisk(); // Load stats on startup

@@ -4,9 +4,9 @@
 # Generates tasks from: agent output review, Guardian improvements, infra gaps, proactive analysis
 set -euo pipefail
 
-source /root/.openclaw/workspace/.env.linear 2>/dev/null || true
+source /Users/fonsecabc/.openclaw/workspace/.env.linear 2>/dev/null || true
 
-REGISTRY="/root/.openclaw/workspace/scripts/agent-registry.sh"
+REGISTRY="/Users/fonsecabc/.openclaw/workspace/scripts/agent-registry.sh"
 MIN_BACKLOG=3  # Generate tasks if fewer than this many Todos exist
 
 # Count current Todo tasks

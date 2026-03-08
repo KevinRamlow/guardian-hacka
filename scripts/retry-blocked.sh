@@ -6,7 +6,7 @@ set -euo pipefail
 DRY_RUN=false
 [ "${1:-}" = "--dry-run" ] && DRY_RUN=true
 
-cd /root/.openclaw/workspace
+cd /Users/fonsecabc/.openclaw/workspace
 source .env.linear
 
 MAX_RETRIES=2

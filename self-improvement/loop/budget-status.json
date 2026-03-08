@@ -1,12 +1,12 @@
 {
-  "daily_spend": 1244.1053,
-  "weekly_spend": 1734.1121,
-  "monthly_spend": 1734.1121,
+  "daily_spend": 0.0,
+  "weekly_spend": 0.0,
+  "monthly_spend": 0.0,
   "daily_limit": 50.0,
   "weekly_limit": 200.0,
   "monthly_limit": 500.0,
   "last_reset_daily": "2026-03-07T00:00:00Z",
   "last_reset_weekly": "2026-03-02T00:00:00Z",
   "last_reset_monthly": "2026-03-01T00:00:00Z",
-  "status": "over_monthly_limit"
+  "status": "ok"
 }

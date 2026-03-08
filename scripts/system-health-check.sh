@@ -2,8 +2,8 @@
 # system-health-check.sh - Proactive system health monitoring
 # Anton runs this periodically to detect and fix issues autonomously
 
-LOGS_DIR="/root/.openclaw/tasks/agent-logs"
-REGISTRY="/root/.openclaw/workspace/scripts/agent-registry.sh"
+LOGS_DIR="/Users/fonsecabc/.openclaw/tasks/agent-logs"
+REGISTRY="/Users/fonsecabc/.openclaw/workspace/scripts/agent-registry.sh"
 
 # Check 1: Agent success rate last 30min
 check_success_rate() {

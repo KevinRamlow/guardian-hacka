@@ -3,17 +3,17 @@
 # Replaces direct sessions_spawn with registry-tracked spawning
 set -euo pipefail
 
-RALPH="/root/.openclaw/workspace/skills/ralph-loop/ralph-loop.sh"
-REGISTRY="/root/.openclaw/workspace/scripts/agent-registry.sh"
-SPAWNER="/root/.openclaw/workspace/scripts/spawn-agent.sh"
-LOGGER="/root/.openclaw/workspace/scripts/agent-logger.sh"
-LINEAR_LOG="/root/.openclaw/workspace/skills/task-manager/scripts/linear-log.sh"
-RALPH_DIR="/root/.openclaw/tasks/ralph"
+RALPH="/Users/fonsecabc/.openclaw/workspace/skills/ralph-loop/ralph-loop.sh"
+REGISTRY="/Users/fonsecabc/.openclaw/workspace/scripts/agent-registry.sh"
+SPAWNER="/Users/fonsecabc/.openclaw/workspace/scripts/spawn-agent.sh"
+LOGGER="/Users/fonsecabc/.openclaw/workspace/scripts/agent-logger.sh"
+LINEAR_LOG="/Users/fonsecabc/.openclaw/workspace/skills/task-manager/scripts/linear-log.sh"
+RALPH_DIR="/Users/fonsecabc/.openclaw/tasks/ralph"
 
 # ── CLEANUP: Kill orphans via watchdog (don't duplicate logic) ──
 cmd_cleanup() {
   echo "[$(date -u +%H:%M)] Running watchdog cleanup..."
-  bash /root/.openclaw/workspace/scripts/agent-watchdog-v2.sh
+  bash /Users/fonsecabc/.openclaw/workspace/scripts/agent-watchdog-v2.sh
 }
 
 # ── STATUS: Registry-based status ──
@@ -48,7 +48,7 @@ cmd_start() {
   # Get PRD config
   local RUNTIME=$(jq -r '.runtime // "subagent"' "$RALPH_DIR/$PROJECT_ID/prd.json")
   local MODEL=$(jq -r '.model // ""' "$RALPH_DIR/$PROJECT_ID/prd.json")
-  local CWD=$(jq -r '.cwd // "/root/.openclaw/workspace"' "$RALPH_DIR/$PROJECT_ID/prd.json")
+  local CWD=$(jq -r '.cwd // "/Users/fonsecabc/.openclaw/workspace"' "$RALPH_DIR/$PROJECT_ID/prd.json")
   local TIMEOUT=$(jq -r '.timeoutMin // 25' "$RALPH_DIR/$PROJECT_ID/prd.json" 2>/dev/null || echo 25)
 
   # Get next task text

@@ -2,7 +2,7 @@
 # Updates cockpit state file with current agent data
 # Called by cron every 30s or manually
 
-STATE_FILE="/root/.openclaw/workspace/config/cockpit-state.json"
+STATE_FILE="/Users/fonsecabc/.openclaw/workspace/config/cockpit-state.json"
 GATEWAY_URL="ws://127.0.0.1:18789"
 
 # Use the OpenClaw gateway API directly via curl to localhost

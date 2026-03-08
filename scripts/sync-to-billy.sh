@@ -4,8 +4,8 @@
 set -euo pipefail
 
 BILLY_HOST="root@89.167.64.183"
-WORKSPACE="/root/.openclaw/workspace"
-BILLY_WORKSPACE="$BILLY_HOST:/root/.openclaw/workspace"
+WORKSPACE="/Users/fonsecabc/.openclaw/workspace"
+BILLY_WORKSPACE="$BILLY_HOST:/Users/fonsecabc/.openclaw/workspace"
 
 COMMIT_MSG=""
 SKILLS_ONLY=false
@@ -57,7 +57,7 @@ else
 fi
 
 # Restart Billy gateway to pick up changes
-ssh "$BILLY_HOST" 'PID=$(pgrep -f openclaw-gateway 2>/dev/null); if [ -n "$PID" ]; then kill $PID; sleep 2; fi; cd /root/.openclaw && nohup openclaw gateway run > /tmp/billy.log 2>&1 &'
+ssh "$BILLY_HOST" 'PID=$(pgrep -f openclaw-gateway 2>/dev/null); if [ -n "$PID" ]; then kill $PID; sleep 2; fi; cd /Users/fonsecabc/.openclaw && nohup openclaw gateway run > /tmp/billy.log 2>&1 &'
 sleep 3
 ssh "$BILLY_HOST" 'pgrep -f openclaw-gateway > /dev/null && echo "✅ Billy gateway restarted" || echo "❌ Billy gateway failed to start"'
 

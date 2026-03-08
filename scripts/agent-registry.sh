@@ -3,7 +3,7 @@
 # All agent management scripts read/write through this interface
 set -euo pipefail
 
-REGISTRY_FILE="/root/.openclaw/tasks/agent-registry.json"
+REGISTRY_FILE="/Users/fonsecabc/.openclaw/tasks/agent-registry.json"
 REGISTRY_LOCK="/tmp/agent-registry.lock"
 
 # Initialize registry if missing

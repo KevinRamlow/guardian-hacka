@@ -14,7 +14,7 @@ import urllib.parse
 from datetime import datetime, timezone
 
 SLACK_API_URL = "https://slack.com/api"
-STATE_FILE = "/root/.openclaw/workspace/memory/slack-dm-state.json"
+STATE_FILE = "/Users/fonsecabc/.openclaw/workspace/memory/slack-dm-state.json"
 TIMEOUT = 10  # seconds
 
 class SlackChecker:

@@ -3,7 +3,7 @@
 # Run manually, via cron, or as a post-task hook
 
 set -euo pipefail
-REPO="/root/.openclaw/workspace"
+REPO="/Users/fonsecabc/.openclaw/workspace"
 cd "$REPO"
 
 # Skip if no changes

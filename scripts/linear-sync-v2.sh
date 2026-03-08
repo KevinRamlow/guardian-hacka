@@ -4,9 +4,9 @@
 # Simple, reliable, reads from registry (not session store or pgrep)
 set -euo pipefail
 
-REGISTRY="/root/.openclaw/workspace/scripts/agent-registry.sh"
+REGISTRY="/Users/fonsecabc/.openclaw/workspace/scripts/agent-registry.sh"
 
-source /root/.openclaw/workspace/.env.linear 2>/dev/null || { echo "Error: .env.linear not found"; exit 1; }
+source /Users/fonsecabc/.openclaw/workspace/.env.linear 2>/dev/null || { echo "Error: .env.linear not found"; exit 1; }
 [ -z "${LINEAR_API_KEY:-}" ] && { echo "Error: LINEAR_API_KEY not set"; exit 1; }
 
 linear_query() {
@@ -34,7 +34,7 @@ echo "=== Linear <> Registry Sync ==="
 # Get list of task IDs with running agents from registry
 RUNNING_TASKS=$(python3 -c "
 import json, os
-f = '/root/.openclaw/tasks/agent-registry.json'
+f = '/Users/fonsecabc/.openclaw/tasks/agent-registry.json'
 try:
     d = json.load(open(f))
     for tid, a in d.get('agents', {}).items():

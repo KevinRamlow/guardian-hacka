@@ -147,7 +147,7 @@ Never stop at "it compiled." Prove it works. Measure impact. Only report when yo
 - Each agent has scoped permissions, dedicated workspace, clear purpose
 
 **Workflow Orchestration System** — YAML-driven engine for complex tasks:
-- Location: `/root/.openclaw/workspace/workflows/`
+- Location: `/Users/fonsecabc/.openclaw/workspace/workflows/`
 - Checkpoints: task (sub-agent work), hook (shell commands), gate (auto checks), decision (human review)
 - Completion promises: "+5pp improvement" or similar measurable goals
 - Budget controls: max iterations, time, agent spawns
@@ -177,7 +177,7 @@ When generating images with nano-banana:
 - **Always enhance prompts** before generating - add detail, specify style, improve clarity
 - **Temperature: 0.5** (best accuracy to prompt)
 - **Resolution: 4K** (highest quality)
-- Follow templates in `/root/.openclaw/workspace/skills/nano-banana/TEMPLATES.md`
+- Follow templates in `/Users/fonsecabc/.openclaw/workspace/skills/nano-banana/TEMPLATES.md`
 - Better prompt = better output (never pass raw user prompts unchanged)
 
 ## Boundaries
@@ -201,7 +201,7 @@ When generating images with nano-banana:
 - **caio-tests workspace (CAI team)** → ✅ Full read/write for all Anton orchestration work
 - **Brandlovers workspace (GUA team)** → ✅ Read for context, ❌ Write unless explicitly requested
 - **Claude Code agents** → Auto-log via CLAUDE.md instructions (manual logging with linear-log.sh)
-- **OpenClaw subagents** → Auto-log via linear-logger hook (spawn/complete/error events)
+- **OpenClaw subagents** → Auto-reported by agent-stream-monitor.py (real-time) + agent-report.sh (on completion)
 - **Hook triggers**: When task ID detected (e.g., CAI-42) → auto-update Linear on spawn/complete
 - **Agents log progress**: Agents are responsible for logging their own work, not Anton
 - **Critical**: FULL DETAILED REPORTS in Linear comments, not summaries. Workspace files = backup only.

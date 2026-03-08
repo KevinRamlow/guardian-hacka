@@ -3,7 +3,7 @@
 # Usage: auto-commit.sh ["message"]
 set -euo pipefail
 
-WORKSPACE="/root/.openclaw/workspace"
+WORKSPACE="/Users/fonsecabc/.openclaw/workspace"
 cd "$WORKSPACE"
 
 # Initialize git if needed

@@ -22,17 +22,17 @@ from datetime import datetime, timedelta, timezone
 from collections import defaultdict
 
 # --- Config ---
-STATE_FILE = Path("/root/.openclaw/tasks/api-usage-state.json")
-BUDGET_FILE = Path("/root/.openclaw/workspace/self-improvement/loop/budget-status.json")
-MASTER_LOG = Path("/root/.openclaw/tasks/agent-logs/master.log")
-SECRETS_FILE = Path("/root/.openclaw/workspace/.env.secrets")
-SETTINGS_FILE = Path("/root/.claude/settings.json")
+STATE_FILE = Path("/Users/fonsecabc/.openclaw/tasks/api-usage-state.json")
+BUDGET_FILE = Path("/Users/fonsecabc/.openclaw/workspace/self-improvement/loop/budget-status.json")
+MASTER_LOG = Path("/Users/fonsecabc/.openclaw/tasks/agent-logs/master.log")
+SECRETS_FILE = Path("/Users/fonsecabc/.openclaw/workspace/.env.secrets")
+SETTINGS_FILE = Path("/Users/fonsecabc/.claude/settings.json")
 
 SESSION_DIRS = [
-    Path("/root/.openclaw/agents/main/sessions"),
-    Path("/root/.claude/projects/-root"),
-    Path("/root/.claude/projects/-root--openclaw-workspace"),
-    Path("/root/.claude/projects/-root--openclaw-workspace-guardian-agents-api"),
+    Path("/Users/fonsecabc/.openclaw/agents/main/sessions"),
+    Path("/Users/fonsecabc/.claude/projects/-Users-fonsecabc"),
+    Path("/Users/fonsecabc/.claude/projects/-Users-fonsecabc--openclaw-workspace"),
+    Path("/Users/fonsecabc/.openclaw/agents/main/sessions"),
 ]
 
 # Monthly budget in USD (configurable via budget-status.json)

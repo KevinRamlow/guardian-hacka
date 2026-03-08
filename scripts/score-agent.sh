@@ -10,7 +10,7 @@ if [ -z "$TASK_ID" ]; then
   exit 1
 fi
 
-TASK_LOG="/root/.openclaw/tasks/agent-logs/${TASK_ID}-output.log"
+TASK_LOG="/Users/fonsecabc/.openclaw/tasks/agent-logs/${TASK_ID}-output.log"
 
 if [ ! -f "$TASK_LOG" ]; then
   echo "❌ Task log not found: $TASK_LOG"

@@ -4,7 +4,7 @@
 # Also runs on boot to restore proxy after server restart
 set -euo pipefail
 
-TOKEN_FILE="/root/.openclaw/workspace/.gcp-access-token"
+TOKEN_FILE="/Users/fonsecabc/.openclaw/workspace/.gcp-access-token"
 PROXY_LOG="/tmp/cloud-sql-proxy.log"
 INSTANCE="brandlovers-prod:us-east1:brandlovers-prod"
 PORT=3306
@@ -42,7 +42,7 @@ echo "$LOG_TAG [$TS] Starting Cloud SQL Proxy..."
 
 cat > /tmp/start-proxy.sh << 'SCRIPT'
 #!/bin/bash
-TOKEN=$(cat /root/.openclaw/workspace/.gcp-access-token)
+TOKEN=$(cat /Users/fonsecabc/.openclaw/workspace/.gcp-access-token)
 exec cloud-sql-proxy "brandlovers-prod:us-east1:brandlovers-prod" --port 3306 --token "$TOKEN"
 SCRIPT
 chmod +x /tmp/start-proxy.sh

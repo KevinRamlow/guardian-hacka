@@ -7,8 +7,8 @@ set -euo pipefail
 LABEL="${1:-}"
 [ -z "$LABEL" ] && exit 0
 
-LOGS_DIR="/root/.openclaw/tasks/agent-logs"
-SESSIONS_DIR="/root/.openclaw/agents/claude/sessions"
+LOGS_DIR="/Users/fonsecabc/.openclaw/tasks/agent-logs"
+SESSIONS_DIR="/Users/fonsecabc/.openclaw/agents/claude/sessions"
 mkdir -p "$LOGS_DIR"
 
 # Find session by label in sessions.json

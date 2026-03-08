@@ -16,7 +16,7 @@ if [ -z "$CHANNEL_ID" ]; then
   exit 1
 fi
 
-CONFIG_FILE="/root/.openclaw/workspace/config/slack-linear-sync.json"
+CONFIG_FILE="/Users/fonsecabc/.openclaw/workspace/config/slack-linear-sync.json"
 
 echo "Updating config with channel ID: $CHANNEL_ID"
 jq --arg cid "$CHANNEL_ID" '.channel_id = $cid' "$CONFIG_FILE" > "${CONFIG_FILE}.tmp"
@@ -25,4 +25,4 @@ mv "${CONFIG_FILE}.tmp" "$CONFIG_FILE"
 echo "✅ Config updated"
 echo ""
 echo "Test with:"
-echo "bash /root/.openclaw/workspace/scripts/slack-linear-post.sh CAI-102 \"🚀 Testing Slack sync\" progress"
+echo "bash /Users/fonsecabc/.openclaw/workspace/scripts/slack-linear-post.sh CAI-102 \"🚀 Testing Slack sync\" progress"

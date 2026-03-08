@@ -21,14 +21,14 @@ echo ""
 # 1. Current agents running
 echo "📊 CURRENT STATUS"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-bash /root/.openclaw/workspace/scripts/agent-registry.sh list | tail -n +2
+bash /Users/fonsecabc/.openclaw/workspace/scripts/agent-registry.sh list | tail -n +2
 echo ""
 
 # 2. Success rate (last 50 agents)
 echo "✅ SUCCESS RATE (Last 50)"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-TOTAL=$(grep -E "DONE|FAIL|TIMEOUT" /root/.openclaw/tasks/agent-logs/watchdog.log 2>/dev/null | tail -50 | wc -l || echo 0)
-SUCCESS=$(grep "DONE" /root/.openclaw/tasks/agent-logs/watchdog.log 2>/dev/null | tail -50 | wc -l || echo 0)
+TOTAL=$(grep -E "DONE|FAIL|TIMEOUT" /Users/fonsecabc/.openclaw/tasks/agent-logs/watchdog.log 2>/dev/null | tail -50 | wc -l || echo 0)
+SUCCESS=$(grep "DONE" /Users/fonsecabc/.openclaw/tasks/agent-logs/watchdog.log 2>/dev/null | tail -50 | wc -l || echo 0)
 if [ "$TOTAL" -gt 0 ]; then
   RATE=$((SUCCESS * 100 / TOTAL))
   echo "Success: $SUCCESS/$TOTAL ($RATE%)"
@@ -40,7 +40,7 @@ echo ""
 # 3. Recent completions (last 10)
 echo "🎯 RECENT COMPLETIONS (Last 10)"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-grep "DONE" /root/.openclaw/tasks/agent-logs/watchdog.log 2>/dev/null | tail -10 | while read -r line; do
+grep "DONE" /Users/fonsecabc/.openclaw/tasks/agent-logs/watchdog.log 2>/dev/null | tail -10 | while read -r line; do
   TASK=$(echo "$line" | awk '{print $2}' | tr -d ':')
   TIME=$(echo "$line" | grep -oP '\d+min' | head -1)
   SIZE=$(echo "$line" | grep -oP '\d+B' | head -1)
@@ -51,7 +51,7 @@ echo ""
 # 4. Failed agents (last 10)
 echo "❌ RECENT FAILURES (Last 10)"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-grep -E "FAIL|TIMEOUT" /root/.openclaw/tasks/agent-logs/watchdog.log 2>/dev/null | tail -10 | while read -r line; do
+grep -E "FAIL|TIMEOUT" /Users/fonsecabc/.openclaw/tasks/agent-logs/watchdog.log 2>/dev/null | tail -10 | while read -r line; do
   TASK=$(echo "$line" | awk '{print $3}' | tr -d ':')
   REASON=$(echo "$line" | cut -d' ' -f4- | cut -c1-50)
   echo "  $TASK: $REASON"
