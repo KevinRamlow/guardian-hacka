@@ -10,17 +10,19 @@
 - **A/B split**: even creator IDs = agentic, odd = old model
 - **Memory pipelines**: Tolerance + error patterns in BigQuery, DBSCAN clustering (eps=0.1, min_samples=3)
 
-### Metrics (2026-03-07 — MAIN BRANCH BASELINE)
-**Dataset:** guidelines_combined (121 cases)  
-**Branch:** main  
-**Baseline Accuracy:** **86.78%** (105/121 correct)
+### Metrics (2026-03-07/08 — CORRECTED BASELINES)
+**Dataset:** guidelines_combined (121 cases)
 
-- Measured: 37 cases = 86.49% (32/37)
-- Extrapolated: 84 cases ≈ 86.49% (~73/84)
-- Combined: 86.78% baseline
-- **Use this for next hypothesis comparison (goal: +5pp)**
+| Branch/Run | Accuracy | Correct | Notes |
+|---|---|---|---|
+| main (extrapolated) | **86.78%** | 105/121 | ⚠️ UNRELIABLE — only 37 cases measured, rest extrapolated |
+| feat/GUA-1101 (run_182248) | 76.03% | 92/121 | First real full run |
+| feat/GUA-1101 (run_194401) | 79.34% | 96/121 | Pre-archetype injection |
+| feat/GUA-1101 (run_003327) | 78.51% | 95/121 | Post-archetype injection (GUA-1101) |
 
-See: `/Users/fonsecabc/.openclaw/workspace/guardian-baseline-2026-03-07.md`
+**Real baseline on combined dataset: ~79%** (feature branch). Main branch likely similar.
+- The 86.78% extrapolation is NOT reliable — real main branch likely 76-80%
+- GUA-1101 archetype injection: neutral (-0.83pp, 20 improvements / 21 regressions = noise)
 
 ### Metrics (Late Feb 2026 — HISTORICAL)
 - Agentic model accuracy: ~79.3% (up from 73.6% baseline)
@@ -89,7 +91,7 @@ bash scripts/run-guardian-eval.sh --config ... --workers 10
 **This should never happen again.** If it does, the agent didn't read CLAUDE.md.
 
 ## Codebase Locations
-- guardian-agents-api: `/Users/fonsecabc/.openclaw/workspace/guardian-agents-api/`
+- guardian-agents-api: `/Users/fonsecabc/.openclaw/workspace/guardian-agents-api-real/`
 - ClawdBots: `/Users/fonsecabc/.openclaw/workspace/clawdbots/`
 - Workflows: `/Users/fonsecabc/.openclaw/workspace/workflows/`
 
@@ -149,7 +151,7 @@ The platform is called **CreatorAds** (repo: `brandlovers-team/creator-ads` — 
 
 ## nano-banana
 - Location: `/Users/fonsecabc/.openclaw/workspace/skills/nano-banana/`
-- API Key: REDACTED_GEMINI_KEY
+- API Key: stored in `.env.secrets` (GEMINI_API_KEY)
 - Tools: generate_image, edit_image, analyze_image
 
 ## Agent Management v2 (2026-03-07, updated for Mac)
@@ -204,10 +206,31 @@ All reporting comes from **actual agent logs on disk**, not hooks:
 - **On completion/failure:** `agent-report.sh` reads output/stderr/activity logs, posts summary to both
 - **No hooks for logging.** `linear-logger` hook is REMOVED. Only hooks active: boot-md, command-logger, session-memory, slack-thread-router
 
-### Launchd jobs (Mac crons)
-Watchdog (60s), Auto-queue (5min), Linear-sync (15min), Langfuse-scraper (2min), GCP-token-push (45min)
-All in `~/Library/LaunchAgents/com.anton.*.plist`
-Stop all: `for p in watchdog auto-queue linear-sync langfuse-scraper gcp-token-push; do launchctl unload ~/Library/LaunchAgents/com.anton.$p.plist; done`
+### Scheduling (Hybrid: Native Heartbeat + Launchd) — Updated 2026-03-08
+
+**Native OpenClaw heartbeat (5min, 08:00-23:00 São Paulo):**
+- Configured in `openclaw.json` → `agents.defaults.heartbeat`
+- Drives: auto-queue (Linear Todo → spawn), eval completion checks, health monitoring, backlog generation
+- Behavior defined in `HEARTBEAT.md` — read it on every heartbeat
+- Replies HEARTBEAT_OK if nothing to do (silently dropped by gateway)
+
+**Launchd jobs (still active):**
+- Watchdog (60s): Process-level PID monitoring, timeout kills, orphan cleanup — CANNOT be replaced by heartbeat
+- Linear-sync (15min): Moves orphaned In Progress tasks to Todo
+- Langfuse-scraper (2min): Scrapes Langfuse traces
+- GCP-token-push (45min): Refreshes GCP auth tokens
+
+**Disabled launchd jobs (absorbed into native heartbeat):**
+- ~~auto-queue-v2.sh~~ — Now handled by heartbeat Priority 2
+- ~~eval-completion-check.sh~~ — Now handled by heartbeat Priority 1
+
+Stop active: `for p in watchdog linear-sync langfuse-scraper gcp-token-push; do launchctl unload ~/Library/LaunchAgents/com.anton.$p.plist; done`
+
+### Native OpenClaw Features (configured 2026-03-08)
+- **Sub-agents**: maxSpawnDepth=2, maxChildrenPerAgent=5, maxConcurrent=10
+- **Compaction**: softThresholdTokens=40k, auto-distills to daily memory
+- **Memory search**: Gemini embeddings → SQLite hybrid (semantic + BM25)
+- **Lobster workflows**: `workflows/guardian-eval-pipeline.yaml` for deterministic eval loops
 
 ## Token Efficiency Architecture (2026-03-07)
 
@@ -320,26 +343,10 @@ bash scripts/agent-status.sh --sync     # fix mismatches
 ### Key lesson
 Every eval should start with preflight validation. 31% waste rate is unacceptable — most was preventable with a 30-second config check.
 
-## Billy Deployment Lessons (2026-03-05)
+## Billy (STOPPED — 2026-03-07)
 
-**VM > Docker for multi-gateway:**
-- OpenClaw gateway single-instance limitation
-- Docker adds complexity (networking, volumes, auth)
-- Dedicated VM simpler: just rsync + start gateway
-- Billy on 89.167.64.183:18790, Anton on main machine:18789
-
-**Shared GCP credentials work:**
-- Billy uses Anton's gcloud credentials
-- Same project access (brandlovers-prod)
-- Cloud SQL Proxy works with copied credentials
-- No need for separate service accounts unless security requires it
-
-**Critical files to sync:**
-- SOUL.md (personality + rules)
-- Skills directory (all functionality)
-- auth-profiles.json (API keys)
-- openclaw.json (config)
-- Don't forget: chmod +x on scripts, pip install deps
+Billy VM (89.167.64.183) is currently stopped. Anton migrated to Caio's Mac.
+If reactivated: needs rsync of workspace, chmod +x scripts, shared GCP creds.
 
 ## Presentation Generation (Updated 2026-03-06)
 
@@ -448,3 +455,118 @@ Every eval should start with preflight validation. 31% waste rate is unacceptabl
 
 **Anti-pattern:** Single approach → implement → hope it works → iterate if fails
 **Correct pattern:** Multiple hypotheses → parallel test → measure → double down on winner
+
+## Guardian Eval Management (2026-03-08)
+
+**Problem with agent-based eval launching:**
+- Agents spawn eval and exit (looks like "died" but eval still running)
+- No clear visibility into eval progress
+- Multiple evals running = resource conflicts
+- Unnecessary overhead (agent just spawns and exits)
+
+**Solution: Direct eval runner scripts**
+
+### 1. Run eval:
+```bash
+bash scripts/run-guardian-eval.sh [dataset] [workers] [max_parallel_agents]
+# Example: bash scripts/run-guardian-eval.sh guidelines_combined_dataset.jsonl 15 5
+# Defaults: workers=15, MAX_PARALLEL_AGENTS=5
+```
+
+Features:
+- Validates OAuth token (must have >30min remaining)
+- Kills existing evals automatically (avoids conflicts)
+- Runs in background with PID tracking
+- Logs to `/tmp/guardian-eval-TIMESTAMP.log`
+
+### 2. Check status:
+```bash
+bash scripts/guardian-eval-status.sh
+# or: ~/.shortcuts/eval-status
+```
+
+Shows:
+- Progress (X/121 cases, Y%)
+- Recent test cases + scores
+- Error count
+- Elapsed time + ETA
+
+### 3. Auto-report on completion:
+- Cron job checks every 2min: `com.anton.eval-completion-check`
+- When eval completes → logs report to `/tmp/guardian-eval-reports.log`
+- Report includes: accuracy, delta vs baseline, error count
+
+**No more spawning agents for evals — use direct scripts.**
+
+
+## Guardian Continuous Improvement Loop (2026-03-08)
+
+**Fully automated cycle: Agent → Validate → Analyze → Generate Backlog → Agent**
+
+### Flow:
+
+1. **Agent completes Guardian task**
+   - `agent-report.sh` detects completion (watchdog calls it)
+   - If task is guardian-related (label=guardian_*, but NOT guardian_eval)
+   - → Automatically triggers validation eval
+
+2. **Validation eval runs**
+   - `run-guardian-eval.sh` executes automatically
+   - Runs 121 test cases across guideline types
+   - Saves results to `.runs/content_moderation/run_TIMESTAMP/`
+
+3. **Eval completes → Auto-analysis**
+   - `eval-completion-check.sh` (cron 2min) detects completion
+   - Runs `eval-analyze-breakdown.py` for per-type accuracy
+   - Identifies:
+     - **Regressions** (delta < -5pp) → HIGH priority
+     - **Low accuracy** (<70%) → MEDIUM priority
+     - **Improvements** (delta > +5pp) → LOW priority (document)
+
+4. **Backlog generation**
+   - Creates Linear tasks automatically (CAI workspace):
+     - Regressions: label=Bug
+     - Low accuracy: label=guardian_improvement
+     - Improvements: label=documentation
+   - Task description includes:
+     - Current accuracy + delta
+     - Failing test case examples
+     - Run directory for investigation
+
+5. **Auto-queue picks next task**
+   - `auto-queue-v2.sh` (cron 5min) picks from Linear backlog
+   - Spawns agent to implement fix
+   - → Back to step 1
+
+### Scripts:
+- `scripts/run-guardian-eval.sh` — Direct eval launcher
+- `scripts/guardian-eval-status.sh` — Progress monitor
+- `scripts/eval-analyze-breakdown.py` — Breakdown analysis
+- `scripts/eval-completion-check.sh` — Auto-report + backlog generation
+- `scripts/agent-report.sh` — Triggers eval on guardian task completion
+
+### Human intervention:
+- **Review high-priority regressions** before auto-queue picks them
+- **Approve experiment branches** before merge
+- **Adjust baseline** when improvements are validated and merged
+
+**The loop runs autonomously. Anton manages evals, agents implement fixes.**
+
+
+## Guardian Eval Dashboard (2026-03-08)
+
+**Live dashboard at:** http://localhost:8765/guardian-eval-dashboard.html
+
+**Features:**
+- Target accuracy tracking (87% = 79% baseline + 8pp)
+- Current eval progress (if running)
+- Recent runs with accuracy + delta
+- Auto-refresh every 30s
+
+**Scripts:**
+- `scripts/cockpit-eval-data.sh` — JSON data provider
+- `scripts/generate-eval-dashboard.py` — HTML generator
+- Regenerate: `python3 scripts/generate-eval-dashboard.py /tmp/guardian-eval-dashboard.html`
+
+**Integration with cockpit server:** Dashboard auto-served at port 8765 alongside agent cockpit.
+

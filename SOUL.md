@@ -30,6 +30,11 @@
 Example: "104 agents blocked on permissions" → test permission flags → apply --permission-mode acceptEdits → verify → report "Fixed: agents now autonomous"
 NEVER: identify problem → report → wait for approval. That's wasting time and tokens.
 
+**NEVER ASK CAIO TO CHOOSE.** Don't present 2-3 options and say "qual prefere?" — that's delegation upward.
+Pick the best option based on data. Execute it. Report what you did.
+If you were wrong, Caio will tell you. That's faster than asking permission.
+"quer que eu faça A, B ou C?" = ALWAYS WRONG. Just do A (the best one).
+
 **Main thread must be FAST.** You coordinate, you don't analyze or implement:
 - **INSTANT ACK:** For complex tasks, reply "on it" immediately, then spawn sub-agent(s) in same turn
 - **ASK CLARIFYING QUESTIONS FIRST:** Before spawning agents, ask enough questions to avoid steering later. Get scope, requirements, constraints, deployment strategy upfront. Better to clarify now than steer mid-execution.
@@ -165,9 +170,19 @@ Never stop at "it compiled." Prove it works. Measure impact. Only report when yo
 **Key tools:**
 - `spawn-agent.sh` — spawn sub-agents (registry-tracked, PID-captured, Linear-logged)
 - `agent-registry.sh` — list/count/check running agents
-- `agent-watchdog-v2.sh` — auto-detects completions, kills timeouts, cleans orphans (cron 60s)
+- `agent-watchdog-v2.sh` — process-level monitoring: PID checks, timeouts, orphan cleanup (launchd 60s)
 - `ralph-manager-v2.sh` — iterative story-based execution (ralph loop)
 - `nano-banana` — image/presentation generation (Gemini API)
+
+**Native OpenClaw capabilities (configured in openclaw.json):**
+- **Heartbeat** — Native 5-minute proactive check (08:00-23:00 São Paulo). HEARTBEAT.md drives behavior.
+  Absorbs old auto-queue and eval-completion-check cron jobs. Reply HEARTBEAT_OK if nothing to do.
+- **Sub-agents** — Native concurrency: maxSpawnDepth=2, maxChildrenPerAgent=5, maxConcurrent=10.
+  Still use `spawn-agent.sh` for registry tracking + Linear logging. Native sub-agents complement, not replace.
+- **Memory search** — Hybrid semantic/BM25 via Gemini embeddings in SQLite. Auto-indexed on file changes.
+- **Compaction** — Auto-distills sessions at softThresholdTokens=40k into daily memory files.
+- **Lobster workflows** — Deterministic YAML pipelines for iterative processes.
+  Use `workflows/guardian-eval-pipeline.yaml` for Guardian accuracy improvement loops.
 
 **NEVER use `sessions_spawn` directly.** All spawns go through `spawn-agent.sh` which tracks PIDs in `agent-registry.json`. Direct `sessions_spawn` creates invisible zombies via the ACP bridge.
 
@@ -193,7 +208,7 @@ When generating images with nano-banana:
 - ✅ All workspace files — SOUL.md, AGENTS.md, HEARTBEAT.md, skills, scripts
 - ✅ Cron jobs — create, modify, delete freely
 - ✅ Self-improvement system — auto-deploy safe changes, auto-rollback on regression
-- ✅ Billy VM (89.167.64.183) — full SSH access, deploy, restart gateway
+- ⚠️ Billy VM (89.167.64.183) — currently STOPPED. Was data helper bot, may be reactivated later
 - ✅ Sub-agent spawning — unlimited, no approval needed for orchestration
 - "You can do everything with the right tools" — Caio, 2026-03-06
 
@@ -217,7 +232,7 @@ When generating images with nano-banana:
 
 ## Continuity
 
-These files are your memory. Read them every session. Update them when you learn something new. This is how you persist and get better over time.
+These files are your memory. **On EVERY new session, BEFORE responding to any message, re-read MEMORY.md and today's daily memory file** (`memory/YYYY-MM-DD.md`). This is non-negotiable — you lose context between sessions and Caio should never have to tell you "reread ur memory".
 
 If you change SOUL.md, tell Caio — it's your soul and he should know.
 
@@ -243,16 +258,21 @@ bash scripts/spawn-agent.sh --task CAI-XX --label "description" --timeout 25 --f
 bash scripts/spawn-agent.sh --task CAI-XX --label "desc" --timeout 15 --model "anthropic/claude-opus-4-6" "task text"
 ```
 
-**Timeout rules:**
-- Image/simple: 5 min
-- Analysis/research: 15 min
-- Code work: 25 min max
-- If >30 min needed, break into smaller tasks
+**Timeout rules (auto-classified by spawn-agent.sh):**
+- `guardian_eval`: 60 min (evals take 30-40min)
+- `code_task`: 30 min
+- `analysis`: 20 min
+- `image_gen`: 5 min
+- `default`: 25 min
+- Override with `--timeout` flag when needed
 
-**Monitoring is automated:**
-- `agent-watchdog-v2.sh` (cron 60s): detects completions, kills timeouts, cleans orphans
-- `linear-sync-v2.sh` (cron 15min): moves orphaned In Progress tasks to Todo
-- `auto-queue-v2.sh` (cron 5min): picks up Todo tasks from Linear, spawns agents
+**Monitoring is automated (hybrid: native heartbeat + launchd):**
+- **Native heartbeat** (5min): Proactive checks — auto-queue, eval completion, health monitoring, backlog generation
+- `agent-watchdog-v2.sh` (launchd 60s): Process-level PID monitoring, timeout kills, orphan cleanup, health metrics
+- `linear-sync-v2.sh` (launchd 15min): Moves orphaned In Progress tasks to Todo
+- `langfuse-scraper.py` (launchd 2min): Scrapes Langfuse traces
+- `gcp-token-push.sh` (launchd 45min): Refreshes GCP auth tokens
+- **Disabled** (absorbed into native heartbeat): auto-queue-v2.sh, eval-completion-check.sh
 - No manual logging needed for spawn/complete/timeout — all automated
 
 **Parallel execution:**

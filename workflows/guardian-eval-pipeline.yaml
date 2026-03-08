@@ -1,0 +1,166 @@
+# Guardian Eval Pipeline — Lobster-compatible deterministic workflow
+# Implements: change → eval → analyze → decide (loop max 3 iterations)
+# Usage: lobster run workflows/guardian-eval-pipeline.yaml --var hypothesis="..." --var task_id="CAI-XX"
+name: guardian-eval-pipeline
+description: |
+  Deterministic Guardian accuracy improvement loop.
+  LLMs do creative work (implement, analyze), YAML handles plumbing (sequencing, conditions, loops).
+
+env:
+  WORKSPACE: /Users/fonsecabc/.openclaw/workspace
+  EVAL_DIR: /Users/fonsecabc/.openclaw/workspace/guardian-agents-api-real
+  BASELINE: "0.79"
+  MAX_ITERATIONS: "3"
+
+vars:
+  hypothesis: ""
+  task_id: ""
+  target_delta_pp: "5.0"
+
+steps:
+  # Step 1: Pre-flight checks (deterministic, no LLM needed)
+  - name: preflight
+    description: Validate auth, config, and dataset before starting
+    command: |
+      echo "=== Guardian Eval Pre-Flight ==="
+      cd $EVAL_DIR
+
+      # Source eval environment
+      source $WORKSPACE/.env.guardian-eval 2>/dev/null || true
+
+      # Check GCP project
+      if [ "$GOOGLE_CLOUD_PROJECT" != "brandlovers-prod" ]; then
+        echo "FAIL: GOOGLE_CLOUD_PROJECT must be brandlovers-prod (got: ${GOOGLE_CLOUD_PROJECT:-unset})"
+        exit 1
+      fi
+      echo "OK: GOOGLE_CLOUD_PROJECT=brandlovers-prod"
+
+      # Check dataset exists
+      DATASET="evals/content_moderation/guidelines_combined_dataset.jsonl"
+      if [ ! -f "$DATASET" ]; then
+        echo "FAIL: Dataset not found: $DATASET"
+        exit 1
+      fi
+      CASES=$(wc -l < "$DATASET" | tr -d ' ')
+      echo "OK: Dataset has $CASES cases"
+
+      # Check eval config
+      if [ ! -f "evals/content_moderation/eval.yaml" ]; then
+        echo "FAIL: Eval config not found"
+        exit 1
+      fi
+      echo "OK: Eval config present"
+      echo "=== Pre-flight passed ==="
+
+  # Step 2: Implement changes (LLM creative work via sub-agent)
+  - name: implement
+    description: Sub-agent implements hypothesis changes
+    command: |
+      bash $WORKSPACE/scripts/spawn-agent.sh \
+        --task "${task_id}" \
+        --label "${task_id}-implement" \
+        --timeout 20 \
+        --cwd "$EVAL_DIR" \
+        "Implement this Guardian accuracy improvement hypothesis:
+
+      Hypothesis: ${hypothesis}
+      Baseline accuracy: 79%
+
+      Instructions:
+      1. Read the relevant agent code in guardian-agents-api-real/
+      2. Implement the changes described in the hypothesis
+      3. Commit changes to current branch
+      4. Do NOT run the eval — just implement and commit
+      5. Log progress via linear-log.sh ${task_id}
+
+      Output: description of changes made and files modified."
+
+      echo "Agent spawned for implementation. Waiting for completion..."
+      # Wait for agent to finish (watchdog handles timeout)
+      while bash $WORKSPACE/scripts/agent-registry.sh has "${task_id}" | grep -q "yes"; do
+        sleep 30
+      done
+      echo "Implementation step complete"
+
+  # Step 3: Run evaluation (deterministic, no LLM needed)
+  - name: evaluate
+    description: Run Guardian eval against full dataset
+    command: |
+      cd $EVAL_DIR
+      source $WORKSPACE/.env.guardian-eval 2>/dev/null || true
+
+      echo "Starting Guardian eval..."
+      python -m evals.run_eval \
+        --config evals/content_moderation/eval.yaml \
+        --dataset evals/content_moderation/guidelines_combined_dataset.jsonl \
+        --workers 10
+
+      echo "Eval complete"
+    timeout: 3600  # 60 minutes max for eval
+
+  # Step 4: Analyze results (deterministic extraction + LLM analysis)
+  - name: analyze
+    description: Extract metrics and analyze breakdown
+    command: |
+      # Find latest run
+      LATEST=$(ls -td $EVAL_DIR/evals/.runs/content_moderation/run_* 2>/dev/null | head -1)
+      if [ -z "$LATEST" ]; then
+        echo "FAIL: No eval run found"
+        exit 1
+      fi
+
+      echo "Analyzing: $LATEST"
+
+      # Extract accuracy
+      python3 -c "
+      import json
+      metrics = json.load(open('$LATEST/metrics.json'))
+      acc = metrics.get('summary_statistics', {}).get('mean_aggregate_score', 0)
+      baseline = float('$BASELINE')
+      delta = acc - baseline
+      print(f'ACCURACY={acc:.4f}')
+      print(f'ACCURACY_PCT={acc*100:.2f}')
+      print(f'DELTA_PP={delta*100:+.1f}')
+      print(f'TARGET_MET={\"yes\" if delta*100 >= float(\"${target_delta_pp}\") else \"no\"}')
+      "
+
+      # Run breakdown analysis
+      python3 $WORKSPACE/scripts/eval-analyze-breakdown.py "$LATEST" "$BASELINE" 2>/dev/null || echo "Breakdown analysis skipped"
+
+      # Mark as reported
+      touch "$LATEST/.reported"
+
+  # Step 5: Decision gate — continue or stop
+  - name: decide
+    description: Check if target improvement reached
+    condition: |
+      # Read latest metrics and check if target met
+      LATEST=$(ls -td $EVAL_DIR/evals/.runs/content_moderation/run_* 2>/dev/null | head -1)
+      python3 -c "
+      import json, sys
+      metrics = json.load(open('$LATEST/metrics.json'))
+      acc = metrics.get('summary_statistics', {}).get('mean_aggregate_score', 0)
+      baseline = float('$BASELINE')
+      target = float('${target_delta_pp}')
+      delta_pp = (acc - baseline) * 100
+      if delta_pp >= target:
+        print(f'TARGET MET: {delta_pp:+.1f}pp >= +{target}pp')
+        sys.exit(0)  # success — stop loop
+      else:
+        print(f'CONTINUE: {delta_pp:+.1f}pp < +{target}pp target')
+        sys.exit(1)  # continue loop
+      "
+
+# Loop configuration: steps implement→evaluate→analyze→decide repeat up to MAX_ITERATIONS
+loop:
+  steps: [implement, evaluate, analyze, decide]
+  max_iterations: 3
+  on_max_iterations: report
+
+# Approval gate for shipping to production
+approval:
+  required_for: [ship]
+  approvers: ["caio"]
+  message: |
+    Guardian eval pipeline completed.
+    Review results before merging to main.
