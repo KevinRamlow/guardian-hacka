@@ -86,13 +86,13 @@ fi
 TEAM_ID=$(curl -s -X POST https://api.linear.app/graphql \
   -H "Authorization: $LINEAR_API_KEY" \
   -H "Content-Type: application/json" \
-  -d '{"query":"query{teams(filter:{key:{eq:\"CAI\"}},first:1){nodes{id}}}"}' \
+  -d '{"query":"query{teams(filter:{key:{eq:\"AUT\"}},first:1){nodes{id}}}"}' \
   2>/dev/null | python3 -c "import json,sys; print(json.load(sys.stdin)['data']['teams']['nodes'][0]['id'])" 2>/dev/null)
 
 TODO_STATE_ID=$(curl -s -X POST https://api.linear.app/graphql \
   -H "Authorization: $LINEAR_API_KEY" \
   -H "Content-Type: application/json" \
-  -d '{"query":"query{workflowStates(filter:{name:{eq:\"Todo\"},team:{key:{eq:\"CAI\"}}},first:1){nodes{id}}}"}' \
+  -d '{"query":"query{workflowStates(filter:{name:{eq:\"Todo\"},team:{key:{eq:\"AUT\"}}},first:1){nodes{id}}}"}' \
   2>/dev/null | python3 -c "import json,sys; print(json.load(sys.stdin)['data']['workflowStates']['nodes'][0]['id'])" 2>/dev/null)
 
 # Escape description for GraphQL

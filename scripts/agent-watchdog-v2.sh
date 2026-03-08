@@ -192,7 +192,7 @@ def requeue_task(task_id):
         issue_id = nodes[0]["id"]
 
         # Get Todo state ID
-        state_query = '{workflowStates(filter:{name:{eq:"Todo"},team:{key:{eq:"CAI"}}},first:1){nodes{id}}}'
+        state_query = '{workflowStates(filter:{name:{eq:"Todo"},team:{key:{eq:"AUT"}}},first:1){nodes{id}}}'
         result2 = subprocess.run(
             ["curl", "-s", "-X", "POST", "https://api.linear.app/graphql",
              "-H", f"Authorization: {LINEAR_API_KEY}",

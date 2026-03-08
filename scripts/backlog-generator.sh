@@ -13,7 +13,7 @@ MIN_BACKLOG=3  # Generate tasks if fewer than this many Todos exist
 TODO_COUNT=$(curl -s -X POST https://api.linear.app/graphql \
   -H "Authorization: $LINEAR_API_KEY" \
   -H "Content-Type: application/json" \
-  -d '{"query":"query{issues(filter:{team:{key:{eq:\"CAI\"}},state:{name:{eq:\"Todo\"}}},first:1){nodes{identifier}}}"}' 2>/dev/null | \
+  -d '{"query":"query{issues(filter:{team:{key:{eq:\"AUT\"}},state:{name:{eq:\"Todo\"}}},first:1){nodes{identifier}}}"}' 2>/dev/null | \
   python3 -c "import json,sys; d=json.load(sys.stdin); print(len(d.get('data',{}).get('issues',{}).get('nodes',[])))" 2>/dev/null || echo "0")
 
 echo "[$(date -u +%H:%M)] Todo count: $TODO_COUNT (min: $MIN_BACKLOG)"
