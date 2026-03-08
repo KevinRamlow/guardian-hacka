@@ -4,6 +4,9 @@
 
 set -euo pipefail
 
+# Ensure PATH includes homebrew (needed when run from launchd)
+export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WORKSPACE_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 STATE_FILE="$SCRIPT_DIR/state.json"
@@ -66,12 +69,13 @@ run_observe() {
     return 1
   fi
   
-  # Run all observer scripts
-  for observer in "$WORKSPACE_ROOT/observers"/*/observer.sh; do
-    if [[ -f "$observer" ]]; then
-      observer_name=$(basename "$(dirname "$observer")")
+  # Run all observer scripts (flat .sh files in observers/)
+  # aggregate-scorecard must run last (depends on other observer outputs)
+  for observer in "$WORKSPACE_ROOT/observers"/*.sh; do
+    if [[ -f "$observer" ]] && [[ "$(basename "$observer")" != "aggregate-scorecard.sh" ]]; then
+      observer_name=$(basename "$observer" .sh)
       echo "Running observer: $observer_name"
-      
+
       if bash "$observer"; then
         echo "✓ $observer_name completed"
       else
@@ -79,6 +83,16 @@ run_observe() {
       fi
     fi
   done
+
+  # Run aggregate last
+  if [[ -f "$WORKSPACE_ROOT/observers/aggregate-scorecard.sh" ]]; then
+    echo "Running observer: aggregate-scorecard"
+    if bash "$WORKSPACE_ROOT/observers/aggregate-scorecard.sh"; then
+      echo "✓ aggregate-scorecard completed"
+    else
+      echo "✗ aggregate-scorecard failed"
+    fi
+  fi
   
   update_state "last_observe"
   echo "Observation complete"
@@ -97,12 +111,12 @@ run_analyze() {
     return 1
   fi
   
-  # Run all analyzer scripts
-  for analyzer in "$WORKSPACE_ROOT/analyzers"/*/analyzer.sh; do
+  # Run all analyzer scripts (flat .sh files in analyzers/)
+  for analyzer in "$WORKSPACE_ROOT/analyzers"/*.sh; do
     if [[ -f "$analyzer" ]]; then
-      analyzer_name=$(basename "$(dirname "$analyzer")")
+      analyzer_name=$(basename "$analyzer" .sh)
       echo "Running analyzer: $analyzer_name"
-      
+
       if bash "$analyzer"; then
         echo "✓ $analyzer_name completed"
       else
@@ -172,8 +186,8 @@ run_full() {
   run_experiment || echo "Experiment step failed or skipped"
   
   # Meta-learning only on first Monday of month
-  local day_of_month=$(date +%d)
-  if [[ "$day_of_month" -le 7 ]] && [[ $(date +%u) -eq 1 ]]; then
+  local day_of_month=$((10#$(date +%d)))
+  if [[ "$day_of_month" -le 7 ]] && [[ $((10#$(date +%u))) -eq 1 ]]; then
     run_meta || echo "Meta-learning step failed or skipped"
   fi
   

@@ -2,13 +2,13 @@
 # hypothesis-generator.sh - Generate improvement hypotheses from top patterns
 
 set -euo pipefail
+source /Users/fonsecabc/.openclaw/workspace/.env.secrets 2>/dev/null || true
 
-SELF_IMPROVEMENT="/root/.openclaw/workspace/self-improvement"
+SELF_IMPROVEMENT="/Users/fonsecabc/.openclaw/workspace/self-improvement"
 ANALYSIS_DIR="$SELF_IMPROVEMENT/analysis"
 PATTERNS_FILE="$ANALYSIS_DIR/patterns.json"
 HYPOTHESES_FILE="$ANALYSIS_DIR/hypotheses.json"
 PROPOSALS_FILE="$ANALYSIS_DIR/improvement-proposals.md"
-ANTHROPIC_API_KEY="[REDACTED]"
 
 echo "=== Hypothesis Generator ==="
 
@@ -25,7 +25,7 @@ echo "Generating hypotheses for top $PATTERN_COUNT patterns..."
 
 if [[ $PATTERN_COUNT -eq 0 ]]; then
   echo "⚠️  No patterns to analyze. Creating empty hypotheses."
-  echo '{"hypotheses":[],"updated":"'"$(date -Iseconds)"'"}' > "$HYPOTHESES_FILE"
+  echo '{"hypotheses":[],"updated":"'"$(date -u +%Y-%m-%dT%H:%M:%SZ)"'"}' > "$HYPOTHESES_FILE"
   echo "# Improvement Proposals\n\nNo patterns identified yet." > "$PROPOSALS_FILE"
   exit 0
 fi
@@ -84,7 +84,7 @@ HYPOTHESES=$(echo "$RESPONSE" | jq -r '.content[0].text' | sed 's/```json//g' | 
 # Save JSON
 OUTPUT=$(jq -n \
   --argjson hypotheses "$HYPOTHESES" \
-  --arg updated "$(date -Iseconds)" \
+  --arg updated "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
   '{
     hypotheses: $hypotheses,
     updated: $updated
@@ -96,7 +96,7 @@ echo "$OUTPUT" > "$HYPOTHESES_FILE"
 {
   echo "# Improvement Proposals"
   echo ""
-  echo "Generated: $(date -Iseconds)"
+  echo "Generated: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
   echo ""
   echo "## Top Patterns"
   echo ""

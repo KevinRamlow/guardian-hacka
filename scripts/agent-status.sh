@@ -40,7 +40,7 @@ if LINEAR_API_KEY:
             ["curl", "-s", "-X", "POST", "https://api.linear.app/graphql",
              "-H", f"Authorization: {LINEAR_API_KEY}",
              "-H", "Content-Type: application/json",
-             "-d", '{"query":"query{issues(filter:{team:{key:{eq:\\"AUT\\"}},state:{name:{in:[\\"Todo\\",\\"In Progress\\",\\"Blocked\\"]}}},first:30,orderBy:updatedAt){nodes{id identifier title state{name}}}}"}'],
+             "-d", '{"query":"query{issues(filter:{team:{key:{eq:\\"AUTO\\"}},state:{name:{in:[\\"Todo\\",\\"In Progress\\",\\"Blocked\\"]}}},first:30,orderBy:updatedAt){nodes{id identifier title state{name}}}}"}'],
             capture_output=True, text=True, timeout=10
         )
         data = json.loads(r.stdout)
@@ -140,7 +140,7 @@ if issues:
                 ["curl", "-s", "-X", "POST", "https://api.linear.app/graphql",
                  "-H", f"Authorization: {LINEAR_API_KEY}",
                  "-H", "Content-Type: application/json",
-                 "-d", '{"query":"{workflowStates(filter:{team:{key:{eq:\\"AUT\\"}}},first:10){nodes{id name}}}"}'],
+                 "-d", '{"query":"{workflowStates(filter:{team:{key:{eq:\\"AUTO\\"}}},first:10){nodes{id name}}}"}'],
                 capture_output=True, text=True, timeout=10
             )
             states = json.loads(r.stdout).get("data", {}).get("workflowStates", {}).get("nodes", [])

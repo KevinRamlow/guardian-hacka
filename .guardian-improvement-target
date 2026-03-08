@@ -1,0 +1,15 @@
+{
+  "target_accuracy": 0.90,
+  "baseline_accuracy": 0.79,
+  "current_accuracy": 0.8512,
+  "target_delta": 0.11,
+  "current_delta": 0.0612,
+  "remaining_delta": 0.0488,
+  "status": "active",
+  "started_at": "2026-03-08T03:12:00Z",
+  "last_eval": "run_20260308_050332",
+  "iterations": 2,
+  "iteration1_result": "+1.65pp (timing +7.7pp, color/paraphrase neutral)",
+  "iteration2_active": ["GUARD-cta-detection-v2"],
+  "note": "TARGET INCREASED: Need +4.88pp (6 cases) to reach 90%. Aggressive parallel execution."
+}

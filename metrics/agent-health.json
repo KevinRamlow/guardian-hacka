@@ -1,16 +1,16 @@
 {
-  "generated_at": "2026-03-08T00:50:39Z",
-  "generated_epoch": 1772931039,
+  "generated_at": "2026-03-08T19:30:10Z",
+  "generated_epoch": 1772998210,
   "window_days": 7,
   "summary": {
-    "total_agents": 1,
+    "total_agents": 9,
     "completed": 0,
     "timeouts": 0,
     "failed": 0,
-    "unknown": 1,
+    "unknown": 9,
     "success_rate_pct": 0.0,
     "avg_duration_min": 0.0,
-    "peak_concurrent": 1,
+    "peak_concurrent": 0,
     "total_cost_usd": 0.0
   },
   "by_task_type": {},

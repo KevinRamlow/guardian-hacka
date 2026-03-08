@@ -3,7 +3,7 @@
 
 set -euo pipefail
 
-SELF_IMPROVEMENT="/root/.openclaw/workspace/self-improvement"
+SELF_IMPROVEMENT="/Users/fonsecabc/.openclaw/workspace/self-improvement"
 ANALYSIS_DIR="$SELF_IMPROVEMENT/analysis"
 FAILURES_DIR="$ANALYSIS_DIR/failures"
 OUTPUT_FILE="$ANALYSIS_DIR/component-heatmap.json"
@@ -14,7 +14,7 @@ echo "=== Root Cause Mapper ==="
 FAILURE_FILES=("$FAILURES_DIR"/*.json)
 if [[ ! -f "${FAILURE_FILES[0]}" ]]; then
   echo "⚠️  No failure files found. Creating empty heatmap."
-  echo '{"components":[],"updated":"'"$(date -Iseconds)"'"}' > "$OUTPUT_FILE"
+  echo '{"components":[],"updated":"'"$(date -u +%Y-%m-%dT%H:%M:%SZ)"'"}' > "$OUTPUT_FILE"
   exit 0
 fi
 
@@ -32,7 +32,7 @@ echo "Total failures: $TOTAL_FAILURES"
 
 if [[ $TOTAL_FAILURES -eq 0 ]]; then
   echo "⚠️  No failures to map. Creating empty heatmap."
-  echo '{"components":[],"updated":"'"$(date -Iseconds)"'"}' > "$OUTPUT_FILE"
+  echo '{"components":[],"updated":"'"$(date -u +%Y-%m-%dT%H:%M:%SZ)"'"}' > "$OUTPUT_FILE"
   exit 0
 fi
 
@@ -85,7 +85,7 @@ AREA_ROLLUP=$(echo "$HEATMAP" | jq 'group_by(.area) | map({
 OUTPUT=$(jq -n \
   --argjson components "$HEATMAP" \
   --argjson areas "$AREA_ROLLUP" \
-  --arg updated "$(date -Iseconds)" \
+  --arg updated "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
   --arg total "$TOTAL_FAILURES" \
   '{
     components: $components,

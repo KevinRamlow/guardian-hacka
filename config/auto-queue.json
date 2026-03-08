@@ -1,6 +1,6 @@
 {
   "maxConcurrent": 3,
-  "teamKey": "CAI",
+  "teamKey": "AUTO",
   "checkIntervalMin": 5,
   "agentTimeoutMin": 30,
   "enabled": true,

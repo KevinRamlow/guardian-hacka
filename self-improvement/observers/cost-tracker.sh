@@ -6,7 +6,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BASE_DIR="$(dirname "$SCRIPT_DIR")"
 METRICS_DIR="$BASE_DIR/metrics/daily-scores"
-MEMORY_DIR="/root/.openclaw/workspace/memory"
+MEMORY_DIR="/Users/fonsecabc/.openclaw/workspace/memory"
 
 TODAY=$(date -u +%Y-%m-%d)
 OUTPUT_FILE="$METRICS_DIR/$TODAY.json"

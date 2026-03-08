@@ -54,7 +54,7 @@ reset_if_needed() {
   
   # Reset daily if more than 24h
   if [[ "$last_daily" != "null" ]]; then
-    local last_daily_ts=$(date -d "$last_daily" +%s)
+    local last_daily_ts=$(date -jf "%Y-%m-%dT%H:%M:%S" "${last_daily%%Z*}" +%s 2>/dev/null || echo 0)
     local diff=$(( now - last_daily_ts ))
     if (( diff > 86400 )); then
       jq '.daily_spend = 0 | .last_reset_daily = "'$(date -u +%Y-%m-%dT%H:%M:%SZ)'"' "$BUDGET_FILE" > "$BUDGET_FILE.tmp"
@@ -64,7 +64,7 @@ reset_if_needed() {
   
   # Reset weekly if more than 7 days
   if [[ "$last_weekly" != "null" ]]; then
-    local last_weekly_ts=$(date -d "$last_weekly" +%s)
+    local last_weekly_ts=$(date -jf "%Y-%m-%dT%H:%M:%S" "${last_weekly%%Z*}" +%s 2>/dev/null || echo 0)
     local diff=$(( now - last_weekly_ts ))
     if (( diff > 604800 )); then
       jq '.weekly_spend = 0 | .last_reset_weekly = "'$(date -u +%Y-%m-%dT%H:%M:%SZ)'"' "$BUDGET_FILE" > "$BUDGET_FILE.tmp"
@@ -75,7 +75,7 @@ reset_if_needed() {
   # Reset monthly if new month
   local current_month=$(date -u +%Y-%m)
   if [[ "$last_monthly" != "null" ]]; then
-    local last_month=$(date -d "$last_monthly" +%Y-%m)
+    local last_month=$(date -jf "%Y-%m-%dT%H:%M:%S" "${last_monthly%%Z*}" +%Y-%m 2>/dev/null || echo "1970-01")
     if [[ "$current_month" != "$last_month" ]]; then
       jq '.monthly_spend = 0 | .last_reset_monthly = "'$(date -u +%Y-%m-%dT%H:%M:%SZ)'"' "$BUDGET_FILE" > "$BUDGET_FILE.tmp"
       mv "$BUDGET_FILE.tmp" "$BUDGET_FILE"

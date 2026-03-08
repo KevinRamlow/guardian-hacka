@@ -1,7 +1,5 @@
 {
   "date": "2026-03-08",
-  "current": {
-  "date": "2026-03-08",
   "conversation_quality": {
     "task_completion": 9,
     "response_speed": 8,
@@ -22,15 +20,4 @@
     "in_progress": 3,
     "avg_cycle_time_hours": 0
   }
-},
-  "rolling_7d": {
-    "task_completion": 9.00,
-    "response_speed": 8.00,
-    "communication_quality": 9.00,
-    "autonomy": 9.00,
-    "proactiveness": 9.00,
-    "completed_tasks_per_day": 27.00,
-    "cost_per_day_usd": .0099
-  },
-  "anomalies": []
 }

@@ -9,7 +9,7 @@ ACTIVE_DIR="$SCRIPT_DIR/active"
 BACKUPS_DIR="$SCRIPT_DIR/backups"
 PROBATION_FILE="$SCRIPT_DIR/probation.json"
 DEPLOYMENT_LOG="$SCRIPT_DIR/deployment-log.json"
-WORKSPACE_ROOT="/root/.openclaw/workspace"
+WORKSPACE_ROOT="/Users/fonsecabc/.openclaw/workspace"
 
 # Ensure directories exist
 mkdir -p "$BACKUPS_DIR"
@@ -70,7 +70,7 @@ deploy_experiment() {
     
     # Set 24h probation
     local deploy_timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-    local probation_end=$(date -u -d "+24 hours" +"%Y-%m-%dT%H:%M:%SZ")
+    local probation_end=$(date -u -v+24H +"%Y-%m-%dT%H:%M:%SZ")
     
     # Add to probation tracking
     jq ".experiments += [{

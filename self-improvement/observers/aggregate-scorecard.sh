@@ -28,7 +28,7 @@ echo "[aggregate-scorecard] Calculating 7-day rolling averages..."
 
 DATES=()
 for i in {0..6}; do
-  DATE=$(date -u -d "$i days ago" +%Y-%m-%d)
+  DATE=$(date -u -v-${i}d +%Y-%m-%d)
   DATES+=("$DATE")
 done
 

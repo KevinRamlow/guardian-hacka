@@ -18,7 +18,7 @@ linear_query() {
 
 update_status() {
   local issue_id="$1" status_name="$2"
-  local state_id=$(linear_query "{workflowStates(filter:{name:{eq:\"$status_name\"},team:{key:{eq:\"AUT\"}}},first:1){nodes{id}}}" | jq -r '.workflowStates.nodes[0].id // empty')
+  local state_id=$(linear_query "{workflowStates(filter:{name:{eq:\"$status_name\"},team:{key:{eq:\"AUTO\"}}},first:1){nodes{id}}}" | jq -r '.workflowStates.nodes[0].id // empty')
   [ -z "$state_id" ] && { echo "  Warning: Status '$status_name' not found"; return 1; }
   linear_query "mutation{issueUpdate(id:\"$issue_id\",input:{stateId:\"$state_id\"}){success}}" > /dev/null
 }
@@ -50,7 +50,7 @@ except:
 echo "Running agents: $(echo "$RUNNING_TASKS" | grep -c . 2>/dev/null || echo 0)"
 
 # Get "In Progress" tasks from Linear
-IN_PROGRESS=$(linear_query '{issues(filter:{team:{key:{eq:"AUT"}},state:{name:{eq:"In Progress"}}},first:20){nodes{id identifier title}}}')
+IN_PROGRESS=$(linear_query '{issues(filter:{team:{key:{eq:"AUTO"}},state:{name:{eq:"In Progress"}}},first:20){nodes{id identifier title}}}')
 IP_COUNT=$(echo "$IN_PROGRESS" | jq '[.issues.nodes[]?] | length')
 echo "In Progress tasks: $IP_COUNT"
 

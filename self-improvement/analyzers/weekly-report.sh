@@ -3,7 +3,7 @@
 
 set -euo pipefail
 
-SELF_IMPROVEMENT="/root/.openclaw/workspace/self-improvement"
+SELF_IMPROVEMENT="/Users/fonsecabc/.openclaw/workspace/self-improvement"
 ANALYSIS_DIR="$SELF_IMPROVEMENT/analysis"
 REPORTS_DIR="$ANALYSIS_DIR/reports"
 TODAY=$(date +%Y-%m-%d)
@@ -28,7 +28,7 @@ echo "Generating weekly report..."
 # Count total failures from last 7 days
 TOTAL_FAILURES=0
 for i in {0..6}; do
-  DATE=$(date -d "$TODAY -$i days" +%Y-%m-%d 2>/dev/null || date -v-${i}d +%Y-%m-%d)
+  DATE=$(date -v-${i}d +%Y-%m-%d)
   FILE="$FAILURES_DIR/$DATE.json"
   if [[ -f "$FILE" ]]; then
     COUNT=$(jq '.failures | length' "$FILE")
@@ -40,8 +40,8 @@ done
 {
   echo "# Weekly Self-Improvement Analysis"
   echo ""
-  echo "**Period:** $(date -d "$TODAY -7 days" +%Y-%m-%d 2>/dev/null || date -v-7d +%Y-%m-%d) to $TODAY"
-  echo "**Generated:** $(date -Iseconds)"
+  echo "**Period:** $(date -v-7d +%Y-%m-%d) to $TODAY"
+  echo "**Generated:** $(date -u +%Y-%m-%dT%H:%M:%SZ)"
   echo ""
   
   echo "---"

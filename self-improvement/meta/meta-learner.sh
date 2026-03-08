@@ -77,8 +77,8 @@ calculate_improvement_velocity() {
     return
   fi
   
-  local first_ts=$(date -d "$first_deployment" +%s)
-  local last_ts=$(date -d "$last_deployment" +%s)
+  local first_ts=$(date -jf "%Y-%m-%dT%H:%M:%S" "${first_deployment%%Z*}" +%s 2>/dev/null || echo 0)
+  local last_ts=$(date -jf "%Y-%m-%dT%H:%M:%S" "${last_deployment%%Z*}" +%s 2>/dev/null || echo 0)
   local weeks=$(echo "scale=2; ($last_ts - $first_ts) / 604800" | bc)
   
   if (( $(echo "$weeks > 0" | bc -l) )); then

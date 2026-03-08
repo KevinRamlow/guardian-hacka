@@ -8,7 +8,7 @@ BASE_DIR="$(dirname "$SCRIPT_DIR")"
 ACTIVE_DIR="$SCRIPT_DIR/active"
 VARIANTS_DIR="$SCRIPT_DIR/variants"
 BASELINES_DIR="$SCRIPT_DIR/baselines"
-WORKSPACE_ROOT="/root/.openclaw/workspace"
+WORKSPACE_ROOT="/Users/fonsecabc/.openclaw/workspace"
 
 # Function to generate variant for experiment
 generate_variant() {

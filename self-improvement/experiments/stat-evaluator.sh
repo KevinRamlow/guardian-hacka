@@ -7,7 +7,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BASE_DIR="$(dirname "$SCRIPT_DIR")"
 ACTIVE_DIR="$SCRIPT_DIR/active"
 RESULTS_DIR="$SCRIPT_DIR/results"
-WORKSPACE_ROOT="/root/.openclaw/workspace"
+WORKSPACE_ROOT="/Users/fonsecabc/.openclaw/workspace"
 
 # Unsafe targets requiring human approval
 UNSAFE_TARGETS=(

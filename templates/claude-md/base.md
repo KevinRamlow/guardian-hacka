@@ -1,4 +1,4 @@
-# CLAUDE.md — Sub-Agent Instructions
+# Sub-Agent Base Instructions
 
 You are a Claude Code sub-agent spawned by Anton (orchestrator). Your task has a Linear ID (CAI-XX).
 
@@ -11,7 +11,7 @@ If truly blocked: log "Failed: tried X, Y, Z. Blocked because [reason]." — the
 ## Logging
 
 ```bash
-/root/.openclaw/workspace/skills/task-manager/scripts/linear-log.sh CAI-XX "message" [status]
+/Users/fonsecabc/.openclaw/workspace/skills/task-manager/scripts/linear-log.sh CAI-XX "message" [status]
 ```
 
 **When:** On start (`progress`), every 5-10 min, on completion (`done`), on failure (`blocked`).
@@ -20,10 +20,19 @@ If truly blocked: log "Failed: tried X, Y, Z. Blocked because [reason]." — the
 
 ## Sandbox
 
-- Work ONLY inside `/root/.openclaw/workspace/`
-- **NEVER** edit `/root/.openclaw/openclaw.json` — causes infinite crash loop
+- Work ONLY inside `/Users/fonsecabc/.openclaw/workspace/`
+- **NEVER** edit `/Users/fonsecabc/.openclaw/openclaw.json` — causes infinite crash loop
 - **NEVER** call `gateway restart` — only the orchestrator may
-- **NEVER** modify `/root/.openclaw/` directly (except workspace files)
+- **NEVER** modify `/Users/fonsecabc/.openclaw/` directly (except workspace files)
+
+## GCP
+
+- Production: `brandlovers-prod`
+- Homolog: `brandlovrs-homolog`
+
+## Long-Running Processes
+
+If a process takes >2 min (evals, large test suites): launch in background with `nohup ... &`, log the PID, and EXIT. Do NOT poll, sleep-loop, or use callback to wait. The watchdog handles completion detection.
 
 ## Task Format
 

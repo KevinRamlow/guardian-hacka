@@ -8,18 +8,18 @@ BASE_DIR="$(dirname "$SCRIPT_DIR")"
 METRICS_DIR="$BASE_DIR/metrics/daily-scores"
 
 # Source Linear API key
-source /root/.openclaw/workspace/.env.linear
+source /Users/fonsecabc/.openclaw/workspace/.env.linear
 
 TODAY=$(date -u +%Y-%m-%d)
 OUTPUT_FILE="$METRICS_DIR/$TODAY.json"
 
-echo "[task-tracker] Querying Linear API for CAI team tasks..."
+echo "[task-tracker] Querying Linear API for AUT team tasks..."
 
 # Query for tasks completed today
 COMPLETED_QUERY='query {
   issues(
     filter: {
-      team: { key: { eq: "CAI" } }
+      team: { key: { eq: "AUTO" } }
       completedAt: { gte: "'$(date -u +%Y-%m-%d)'T00:00:00.000Z" }
     }
   ) {
@@ -43,7 +43,7 @@ COMPLETED_COUNT=$(echo "$COMPLETED_RESPONSE" | jq '.data.issues.nodes | length')
 BLOCKED_QUERY='query {
   issues(
     filter: {
-      team: { key: { eq: "CAI" } }
+      team: { key: { eq: "AUTO" } }
       state: { name: { eq: "Blocked" } }
     }
   ) {
@@ -65,7 +65,7 @@ BLOCKED_COUNT=$(echo "$BLOCKED_RESPONSE" | jq '.data.issues.nodes | length')
 PROGRESS_QUERY='query {
   issues(
     filter: {
-      team: { key: { eq: "CAI" } }
+      team: { key: { eq: "AUTO" } }
       state: { name: { eq: "In Progress" } }
     }
   ) {
@@ -94,8 +94,8 @@ if [[ $COMPLETED_COUNT -gt 0 ]]; then
     CREATED=$(_jq '.createdAt')
     COMPLETED=$(_jq '.completedAt')
     
-    CREATED_TS=$(date -d "$CREATED" +%s)
-    COMPLETED_TS=$(date -d "$COMPLETED" +%s)
+    CREATED_TS=$(date -jf "%Y-%m-%dT%H:%M:%S" "${CREATED%%.*}" +%s 2>/dev/null || echo 0)
+    COMPLETED_TS=$(date -jf "%Y-%m-%dT%H:%M:%S" "${COMPLETED%%.*}" +%s 2>/dev/null || echo 0)
     DIFF=$((COMPLETED_TS - CREATED_TS))
     TOTAL_SECONDS=$((TOTAL_SECONDS + DIFF))
   done

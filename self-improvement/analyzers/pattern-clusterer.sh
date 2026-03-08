@@ -3,7 +3,7 @@
 
 set -euo pipefail
 
-SELF_IMPROVEMENT="/root/.openclaw/workspace/self-improvement"
+SELF_IMPROVEMENT="/Users/fonsecabc/.openclaw/workspace/self-improvement"
 ANALYSIS_DIR="$SELF_IMPROVEMENT/analysis"
 FAILURES_DIR="$ANALYSIS_DIR/failures"
 OUTPUT_FILE="$ANALYSIS_DIR/patterns.json"
@@ -14,7 +14,7 @@ echo "=== Pattern Clusterer ==="
 FAILURE_FILES=("$FAILURES_DIR"/*.json)
 if [[ ! -f "${FAILURE_FILES[0]}" ]]; then
   echo "⚠️  No failure files found. Creating empty patterns."
-  echo '{"patterns":[],"updated":"'"$(date -Iseconds)"'"}' > "$OUTPUT_FILE"
+  echo '{"patterns":[],"updated":"'"$(date -u +%Y-%m-%dT%H:%M:%SZ)"'"}' > "$OUTPUT_FILE"
   exit 0
 fi
 
@@ -32,7 +32,7 @@ echo "Total failures across all files: $TOTAL_FAILURES"
 
 if [[ $TOTAL_FAILURES -eq 0 ]]; then
   echo "⚠️  No failures to cluster. Creating empty patterns."
-  echo '{"patterns":[],"updated":"'"$(date -Iseconds)"'"}' > "$OUTPUT_FILE"
+  echo '{"patterns":[],"updated":"'"$(date -u +%Y-%m-%dT%H:%M:%SZ)"'"}' > "$OUTPUT_FILE"
   exit 0
 fi
 
@@ -82,7 +82,7 @@ TOP_PATTERNS=$(echo "$PATTERNS_SCORED" | jq '.[0:5]')
 # Build output
 OUTPUT=$(jq -n \
   --argjson patterns "$TOP_PATTERNS" \
-  --arg updated "$(date -Iseconds)" \
+  --arg updated "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
   --arg total "$TOTAL_FAILURES" \
   '{
     patterns: $patterns,

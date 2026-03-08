@@ -2,16 +2,16 @@
 # conversation-scorer.sh - Score Anton's conversation quality using Claude Haiku
 
 set -euo pipefail
+source /Users/fonsecabc/.openclaw/workspace/.env.secrets 2>/dev/null || true
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BASE_DIR="$(dirname "$SCRIPT_DIR")"
 METRICS_DIR="$BASE_DIR/metrics/daily-scores"
-MEMORY_DIR="/root/.openclaw/workspace/memory"
-ANTHROPIC_KEY="[REDACTED]"
+MEMORY_DIR="/Users/fonsecabc/.openclaw/workspace/memory"
 
 # Get today and yesterday in YYYY-MM-DD format
 TODAY=$(date -u +%Y-%m-%d)
-YESTERDAY=$(date -u -d "yesterday" +%Y-%m-%d)
+YESTERDAY=$(date -u -v-1d +%Y-%m-%d)
 
 TODAY_FILE="$MEMORY_DIR/$TODAY.md"
 YESTERDAY_FILE="$MEMORY_DIR/$YESTERDAY.md"
@@ -80,7 +80,7 @@ echo "[conversation-scorer] Calling Claude Haiku API..."
 
 # Call Anthropic API
 RESPONSE=$(curl -s https://api.anthropic.com/v1/messages \
-  -H "x-api-key: $ANTHROPIC_KEY" \
+  -H "x-api-key: $ANTHROPIC_API_KEY" \
   -H "anthropic-version: 2023-06-01" \
   -H "content-type: application/json" \
   -d "{

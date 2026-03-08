@@ -4,7 +4,7 @@
 
 After implementing your fix:
 ```bash
-cd /root/.openclaw/workspace
+cd /Users/fonsecabc/.openclaw/workspace
 git add [files you changed]
 git commit -m "fix(CAI-XX): short description"
 git push origin HEAD

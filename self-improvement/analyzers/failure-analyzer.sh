@@ -2,14 +2,14 @@
 # failure-analyzer.sh - Extract and classify failures from memory logs
 
 set -euo pipefail
+source /Users/fonsecabc/.openclaw/workspace/.env.secrets 2>/dev/null || true
 
-WORKSPACE="/root/.openclaw/workspace"
+WORKSPACE="/Users/fonsecabc/.openclaw/workspace"
 SELF_IMPROVEMENT="$WORKSPACE/self-improvement"
 ANALYSIS_DIR="$SELF_IMPROVEMENT/analysis"
 FAILURES_DIR="$ANALYSIS_DIR/failures"
 MEMORY_DIR="$WORKSPACE/memory"
 METRICS_DIR="$SELF_IMPROVEMENT/metrics"
-ANTHROPIC_API_KEY="[REDACTED]"
 
 TODAY=$(date +%Y-%m-%d)
 OUTPUT_FILE="$FAILURES_DIR/$TODAY.json"
@@ -20,7 +20,7 @@ echo "Analyzing last 7 days of memory logs..."
 # Get last 7 days of memory files
 MEMORY_FILES=()
 for i in {0..6}; do
-  DATE=$(date -d "$TODAY -$i days" +%Y-%m-%d 2>/dev/null || date -v-${i}d +%Y-%m-%d)
+  DATE=$(date -v-${i}d +%Y-%m-%d)
   FILE="$MEMORY_DIR/$DATE.md"
   if [[ -f "$FILE" ]]; then
     MEMORY_FILES+=("$FILE")

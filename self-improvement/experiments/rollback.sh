@@ -8,7 +8,7 @@ BASE_DIR="$(dirname "$SCRIPT_DIR")"
 ACTIVE_DIR="$SCRIPT_DIR/active"
 PROBATION_FILE="$SCRIPT_DIR/probation.json"
 METRICS_DIR="$BASE_DIR/metrics/daily-scores"
-WORKSPACE_ROOT="/root/.openclaw/workspace"
+WORKSPACE_ROOT="/Users/fonsecabc/.openclaw/workspace"
 
 # Degradation threshold (percentage points)
 DEGRADATION_THRESHOLD=5

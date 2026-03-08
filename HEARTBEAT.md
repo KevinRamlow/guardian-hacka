@@ -73,15 +73,30 @@ Recommend: [your best next step]
 
 **Priority 3 — Agent Health Monitoring:**
 - If Caio sent you a message you haven't responded to → respond to it
-- Check watchdog alerts: `grep "TIMEOUT\|DEAD\|FAIL" ~/.openclaw/tasks/agent-logs/watchdog.log | tail -5`
-- For each alert → investigate root cause → fix → then tell Caio what you fixed
-- **Agent completion validation (CRITICAL):**
+- **FAILED AGENTS (MANDATORY CHECK):**
+  - Check watchdog alerts: `grep "TIMEOUT\|DEAD\|FAIL" ~/.openclaw/tasks/agent-logs/watchdog.log | tail -5`
+  - For EACH failure: READ stderr log, DIAGNOSE root cause, APPLY fix
+  - Run `bash scripts/diagnose-failure.sh AUTO-XXX` to analyze
+  - Common fixes: auth refresh, config adjustment, re-queue with different model
+  - **NEVER ignore failures** — each one is a learning opportunity
+  - Report to Caio: what failed, why, what you fixed
+- **COMPLETED AGENTS (MANDATORY REPORT):**
   - Check for new completions: `grep "DONE:" ~/.openclaw/tasks/agent-logs/watchdog.log | tail -5`
-  - For each completed agent: READ output, VERIFY claims, TEST if code/fix works
+  - OR check Linear comments for "Done:" messages
+  - For EACH completion, send Caio detailed report:
+    ```
+    **AUTO-XXX: [task title]** ✅
+    - **Tempo:** [actual time from spawn to completion]
+    - **O que fez:**
+      - [bullet list of actual changes made]
+      - [files created/modified]
+      - [commits/tests/validations]
+    ```
+  - Get timing from Linear comments timestamps (spawned vs done)
+  - Read actual output log: `cat ~/.openclaw/tasks/agent-logs/AUTO-XXX-output.log`
   - **Guardian tasks:** agent MUST have run eval + reported accuracy delta
     - Check output for "Validation: X.XX%" substring
     - If missing → agent completed WITHOUT validation → re-queue as "needs validation"
-  - Report to Caio: task name + validation status + proof
 - **System health check (proactive):**
   - Check agent success rate: read `~/.openclaw/workspace/metrics/agent-health.json`
   - If success_rate < 70% → investigate + fix autonomously (following escalation chain)
