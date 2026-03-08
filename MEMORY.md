@@ -228,7 +228,7 @@ Stop active: `for p in watchdog linear-sync langfuse-scraper gcp-token-push; do 
 
 ### Native OpenClaw Features (configured 2026-03-08)
 - **Sub-agents**: maxSpawnDepth=2, maxChildrenPerAgent=5, maxConcurrent=10
-- **Compaction**: softThresholdTokens=40k, auto-distills to daily memory
+- **Compaction**: reserveTokensFloor=20k, auto-distills to daily memory
 - **Memory search**: Gemini embeddings → SQLite hybrid (semantic + BM25)
 - **Lobster workflows**: `workflows/guardian-eval-pipeline.yaml` for deterministic eval loops
 
