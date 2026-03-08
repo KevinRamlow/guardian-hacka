@@ -265,7 +265,7 @@ cat > "$MCP_CONFIG_FILE" << MCPEOF
         "MYSQL_HOST": "10.12.80.3",
         "MYSQL_PORT": "3306",
         "MYSQL_USER": "caio.fonseca",
-        "MYSQL_PASSWORD": "${MYSQL_PASSWORD}",
+        "MYSQL_PASSWORD": "${MYSQL_PASSWORD:-}",
         "MYSQL_DATABASE": "db-maestro-prod"
       }
     }
