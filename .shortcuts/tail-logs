@@ -1,0 +1,7 @@
+#!/bin/bash
+# tail-logs - Recent Anton logs
+
+LINES="${1:-20}"
+
+echo "=== Anton Recent Activity ==="
+ssh anton-mac "tail -${LINES} ~/.openclaw/workspace/logs/anton-auto-loop.log" 2>/dev/null || echo "❌ Cannot tail logs"

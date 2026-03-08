@@ -1,0 +1,7 @@
+#!/bin/bash
+# check-agents - Quick agent status from Mac
+
+ssh anton-mac "bash ~/.openclaw/workspace/scripts/agent-registry.sh list" 2>/dev/null || {
+  echo "❌ Cannot connect to Mac"
+  exit 1
+}
