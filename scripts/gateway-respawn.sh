@@ -47,8 +47,8 @@ NEW_PID=$(pgrep -f "openclaw-gateway" 2>/dev/null | head -1 || true)
 if [ -n "$NEW_PID" ]; then
     echo "$LOG_TAG [$TS] Restarted successfully (PID=$NEW_PID)"
 
-    # Check if port is listening
-    if ss -tlnp | grep -q "$GATEWAY_PORT"; then
+    # Check if port is listening (lsof works on macOS; ss is Linux-only)
+    if lsof -i :"$GATEWAY_PORT" -sTCP:LISTEN > /dev/null 2>&1; then
         echo "$LOG_TAG [$TS] Port $GATEWAY_PORT confirmed listening"
     else
         echo "$LOG_TAG [$TS] WARNING: Gateway running but port $GATEWAY_PORT not listening yet"
@@ -56,16 +56,11 @@ if [ -n "$NEW_PID" ]; then
 else
     echo "$LOG_TAG [$TS] FAILED to restart gateway"
 
-    # Alert via Slack DM if repeated failures
+    # Alert via linear-log.sh if repeated failures (posts to both Linear and Slack)
     if [ "$FAIL_COUNT" -ge 3 ]; then
-        # Use linear-log or direct curl to alert
-        SLACK_TOKEN="${SLACK_BOT_TOKEN:-}"
-        if [ -n "$SLACK_TOKEN" ]; then
-            curl -s -X POST https://slack.com/api/chat.postMessage \
-                -H "Authorization: Bearer $SLACK_TOKEN" \
-                -H "Content-Type: application/json" \
-                -d "{\"channel\":\"D0AK1B981QR\",\"text\":\"CRITICAL: Gateway failed to restart after $FAIL_COUNT attempts. Server may need manual intervention.\"}" \
-                > /dev/null 2>&1
+        LINEAR_LOG="/Users/fonsecabc/.openclaw/workspace/skills/task-manager/scripts/linear-log.sh"
+        if [ -f "$LINEAR_LOG" ]; then
+            bash "$LINEAR_LOG" "CAI-INFRA" "CRITICAL: Gateway failed to restart after $FAIL_COUNT consecutive attempts. Manual intervention may be required." blocked 2>/dev/null || true
         fi
     fi
 fi
