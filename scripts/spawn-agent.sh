@@ -173,7 +173,6 @@ nohup bash -c "
   claude --print --dangerously-skip-permissions --verbose --output-format stream-json \
     --append-system-prompt \"\$(cat '$STABLE_CONTEXT_FILE')\" \
     --model '$SPAWN_MODEL' \
-    --fallback-model claude-sonnet-4-6 \
     --max-budget-usd '$MAX_BUDGET' \
     -p \"\$(cat '$TASK_PATH')\" 2> '$LOGS_DIR/${TASK_ID}-stderr.log' \
     | LOGS_DIR='$LOGS_DIR' python3 '$MONITOR' '${TASK_ID}';
