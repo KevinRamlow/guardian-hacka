@@ -887,6 +887,24 @@ async function fetchEval() {
   try { const r = await fetch('/api/eval'); if (r.ok) { evalData = await r.json(); renderEval(); } } catch {}
   evalTimer = setTimeout(fetchEval, 30000);
 }
+function renderTokens() {
+  const tokens = state.tokens || [];
+  if (!tokens.length) { $('#tokenContent').innerHTML = '<div class="empty-state">No session data</div>'; return; }
+  
+  $('#tokenContent').innerHTML = tokens.map(t => {
+    const pct = t.percent || 0;
+    const color = pct > 80 ? 'var(--accent-red)' : pct > 60 ? 'var(--accent-orange)' : 'var(--accent-green)';
+    return `
+      <div style="margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+          <span style="font-size:12px;font-weight:600">${esc(t.agent)}</span>
+          <span style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono)">${t.used}k/${t.total}k (${pct}%)</span>
+        </div>
+        <div class="eval-bar"><div class="eval-bar-fill" style="width:${pct}%;background:${color}"></div></div>
+      </div>`;
+  }).join('');
+}
+
 function renderEval() {
   if (!evalData || evalData.error) { $('#evalContent').innerHTML = '<div class="empty-state">No eval data</div>'; return; }
   const t = evalData.target||{}, ce = evalData.current_eval||{}, p = ce.progress||{}, runs = evalData.recent_runs||[];
