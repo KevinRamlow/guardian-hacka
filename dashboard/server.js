@@ -738,7 +738,8 @@ function getTokenStatus() {
     const sessions = [];
     const lines = out.split('\n');
     for (const line of lines) {
-      const match = line.match(/agent:([^:]+):[^\s]+\s+\S+\s+\S+\s+ago\s+(\S+)\s+(\d+)k\/(\d+)k\s+\((\d+)%\)/);
+      // Match format: "direct agent:main:main  3m ago  claude-sonnet-4-5 121k/200k (60%)"
+      const match = line.match(/agent:([^:]+):[^\s]+.*?(\S+)\s+(\d+)k\/(\d+)k\s+\((\d+)%\)/);
       if (match) {
         sessions.push({
           agent: match[1],
