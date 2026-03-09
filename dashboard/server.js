@@ -872,35 +872,45 @@ app.get('/api/eval', (req, res) => {
     const latest = fullRuns[0];
     const currentAcc = latest ? latest.accuracy_raw : null;
 
-    // Check if eval is currently running
-    let currentEval = {};
+    // Check for active evals from state.json
+    const activeEvals = [];
     try {
       const state = JSON.parse(fs.readFileSync(STATE_FILE, 'utf-8'));
-      const evalTask = Object.entries(state.tasks || {}).find(([, t]) => t.status === 'eval_running');
-      if (evalTask) {
-        // Try to get progress from log file
-        const logFiles = fs.readdirSync('/tmp').filter(f => f.startsWith('guardian-eval-')).sort().reverse();
-        if (logFiles.length > 0) {
-          const logContent = fs.readFileSync(path.join('/tmp', logFiles[0]), 'utf-8');
-          const progressMatch = logContent.match(/(\d+)\/(\d+)\s/g);
-          if (progressMatch) {
-            const last = progressMatch[progressMatch.length - 1];
-            const [completed, total] = last.trim().split('/').map(Number);
-            currentEval = { progress: { completed, total, percent: Math.round((completed / total) * 100) } };
+      for (const [taskId, task] of Object.entries(state.tasks || {})) {
+        if (task.status !== 'eval_running') continue;
+        
+        const pid = task.processPid;
+        let alive = false;
+        try { process.kill(pid, 0); alive = true; } catch {}
+        
+        // Get progress from eval log
+        let progress = {};
+        try {
+          const logFiles = fs.readdirSync('/tmp').filter(f => f.startsWith('guardian-eval-')).sort().reverse();
+          if (logFiles.length > 0) {
+            const logContent = fs.readFileSync(path.join('/tmp', logFiles[0]), 'utf-8');
+            const progressMatch = logContent.match(/(\d+)\/(\d+)\s/g);
+            if (progressMatch) {
+              const last = progressMatch[progressMatch.length - 1];
+              const [completed, total] = last.trim().split('/').map(Number);
+              progress = { completed, total, percent: Math.round((completed / total) * 100) };
+            }
           }
-        }
+        } catch {}
+
+        activeEvals.push({
+          taskId,
+          pid,
+          alive,
+          dataset: 'guidelines_combined',
+          progress,
+        });
       }
     } catch {}
 
     res.json({
-      target: {
-        target_accuracy: TARGET_ACCURACY,
-        current_accuracy: currentAcc,
-        remaining_pp: currentAcc ? (TARGET_ACCURACY - currentAcc) * 100 : null,
-        iterations: fullRuns.length,
-      },
-      current_eval: currentEval,
-      recent_runs: fullRuns.slice(0, 10), // last 10 full runs
+      active_evals: activeEvals,
+      recent_runs: fullRuns.slice(0, 3), // last 3 completed
     });
   } catch (e) {
     res.status(500).json({ error: e.message });

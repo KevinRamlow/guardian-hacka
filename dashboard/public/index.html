@@ -932,38 +932,50 @@ function renderTokens() {
 
 function renderEval() {
   if (!evalData || evalData.error) { $('#evalContent').innerHTML = '<div class="empty-state">No eval data</div>'; return; }
-  const t = evalData.target||{}, ce = evalData.current_eval||{}, p = ce.progress||{}, runs = evalData.recent_runs||[];
+  const activeEvals = evalData.active_evals || [];
+  const runs = (evalData.recent_runs || []).slice(0, 3); // max 3 completed
   
-  $('#evalCount').textContent = runs.length;
+  $('#evalCount').textContent = activeEvals.length + runs.length;
   
-  // Summary KPIs
-  const summaryHtml = `
-    <div class="eval-summary">
-      <div class="eval-kpi"><div class="eval-kpi-val" style="color:var(--accent-cyan)">${t.target_accuracy?(t.target_accuracy*100).toFixed(1)+'%':'--'}</div><div class="eval-kpi-label">Target</div></div>
-      <div class="eval-kpi"><div class="eval-kpi-val" style="color:var(--accent-green)">${t.current_accuracy?(t.current_accuracy*100).toFixed(1)+'%':'--'}</div><div class="eval-kpi-label">Current</div></div>
-      <div class="eval-kpi"><div class="eval-kpi-val" style="color:var(--accent-orange)">${t.remaining_pp?t.remaining_pp.toFixed(1)+'pp':'--'}</div><div class="eval-kpi-label">Gap</div></div>
-      <div class="eval-kpi"><div class="eval-kpi-val">${t.iterations||'--'}</div><div class="eval-kpi-label">Runs</div></div>
-    </div>`;
+  let html = '';
 
-  // Current eval progress card (if running)
-  const progressHtml = p.percent !== undefined && p.percent < 100 ? `
-    <div class="eval-progress-card">
-      <div class="eval-card-top">
-        <span style="color:var(--accent-cyan);font-weight:600">⏳ Eval Running</span>
-        <span class="eval-card-date">${p.completed||0}/${p.total||0} cases</span>
-      </div>
-      <div class="eval-card-bar"><div class="eval-card-bar-fill" style="width:${p.percent}%"></div></div>
-      <div class="eval-card-meta"><span>${p.percent}% complete</span></div>
-    </div>` : '';
+  // Active evals (like agent cards with progress)
+  if (activeEvals.length) {
+    html += activeEvals.map(ev => {
+      const p = ev.progress || {};
+      const pct = p.percent || 0;
+      return `
+      <div class="eval-card" style="border-color:var(--accent-cyan)">
+        <div class="eval-card-top">
+          <div>
+            <div class="agent-id">${esc(ev.taskId || 'Eval')}</div>
+            <div class="agent-label">${esc(ev.dataset || 'guidelines_combined')}</div>
+          </div>
+          <div class="agent-badges">
+            <span class="badge badge-role" data-role="eval" style="background:var(--accent-cyan);color:#000">running</span>
+          </div>
+        </div>
+        <div class="agent-progress-row">
+          <div class="progress-bar-wrap"><div class="progress-fill healthy" style="width:${pct}%"></div></div>
+          <span class="agent-timing">${p.completed||0}/${p.total||121}</span>
+        </div>
+        <div class="agent-details">
+          <span class="agent-detail">PID <span class="val">${ev.pid||'--'}</span></span>
+          <span class="agent-detail">Alive <span class="val">${ev.alive?'Y':'N'}</span></span>
+          <span class="agent-detail">${pct}%</span>
+        </div>
+      </div>`;
+    }).join('');
+  }
 
-  // Eval run cards
-  const cardsHtml = runs.map(r => {
+  // Completed evals (last 3)
+  html += runs.map(r => {
     const d = parseFloat(r.delta_pp)||0;
     const cls = d > 0 ? 'positive' : d < 0 ? 'negative' : 'neutral';
     const deltaCls = d >= 0 ? 'pos' : 'neg';
     const accRaw = r.accuracy_raw || 0;
-    const barPct = Math.min(100, (accRaw / (t.target_accuracy || 0.87)) * 100);
-    const barColor = accRaw >= (t.target_accuracy||0.87) ? 'var(--accent-green)' : accRaw >= 0.80 ? 'var(--accent-cyan)' : accRaw >= 0.75 ? 'var(--accent-orange)' : 'var(--accent-red)';
+    const barPct = Math.min(100, (accRaw / 0.87) * 100);
+    const barColor = accRaw >= 0.87 ? 'var(--accent-green)' : accRaw >= 0.80 ? 'var(--accent-cyan)' : accRaw >= 0.75 ? 'var(--accent-orange)' : 'var(--accent-red)';
     return `
       <div class="eval-card ${cls}">
         <div class="eval-card-top">
@@ -978,7 +990,8 @@ function renderEval() {
       </div>`;
   }).join('');
 
-  $('#evalContent').innerHTML = summaryHtml + progressHtml + `<div class="eval-grid">${cardsHtml}</div>`;
+  if (!html) html = '<div class="empty-state">No eval data</div>';
+  $('#evalContent').innerHTML = `<div class="eval-grid">${html}</div>`;
 }
 
 // --- Stream ---
