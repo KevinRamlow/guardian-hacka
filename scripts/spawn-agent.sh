@@ -54,10 +54,10 @@ done
 
 # --- Validate --role if specified ---
 if [ -n "$ROLE" ]; then
-  WORKSPACE="/Users/fonsecabc/.openclaw/workspace-${ROLE}"
+  WORKSPACE="/Users/fonsecabc/.openclaw/workspace/workspace-${ROLE}"
   if [ ! -d "$WORKSPACE" ] || [ ! -f "$WORKSPACE/SOUL.md" ]; then
     echo "ERROR: Agent workspace not found: $WORKSPACE" >&2
-    echo "  Available roles: $(ls -d /Users/fonsecabc/.openclaw/workspace-*/ 2>/dev/null | xargs -I{} basename {} | sed 's/workspace-//' | tr '\n' ' ' || echo 'none')" >&2
+    echo "  Available roles: $(ls -d /Users/fonsecabc/.openclaw/workspace/workspace-*/ 2>/dev/null | xargs -I{} basename {} | sed 's/workspace-//' | tr '\n' ' ' || echo 'none')" >&2
     exit 1
   fi
 fi
