@@ -872,7 +872,19 @@ app.get('/api/stream/:taskId', (req, res) => {
   let sessionPath = null;
   let agentId = 'main'; // default
   
-  // Get agent ID and timestamps from state.json to find correct session
+  // Strategy 1: Check stdout log for task ID (most reliable)
+  const stdoutPath = path.join(AGENT_LOGS_DIR, `${taskId}-output.log`);
+  if (fs.existsSync(stdoutPath)) {
+    // Parse stdout to find agent role and session metadata
+    try {
+      const firstLines = fs.readFileSync(stdoutPath, 'utf-8').split('\n').slice(0, 50).join('\n');
+      // Look for task transition messages that mention role
+      const roleMatch = firstLines.match(/agent=([a-z-]+)/i);
+      if (roleMatch) agentId = roleMatch[1];
+    } catch {}
+  }
+
+  // Strategy 2: Get from state.json
   let taskStartEpoch = null;
   try {
     const state = JSON.parse(fs.readFileSync(STATE_FILE, 'utf-8'));
@@ -881,26 +893,53 @@ app.get('/api/stream/:taskId', (req, res) => {
     taskStartEpoch = task?.startedEpoch || task?.createdEpoch;
   } catch {}
 
-  // Find session file that matches this task's timeframe
-  const agentSessionsDir = path.join(OPENCLAW_HOME, 'agents', agentId, 'sessions');
+  // Strategy 3: Search all agent dirs for session containing this task ID
+  let foundByTaskId = false;
   try {
-    const files = fs.readdirSync(agentSessionsDir)
-      .filter(f => f.endsWith('.jsonl'))
-      .map(f => {
-        const fullPath = path.join(agentSessionsDir, f);
-        const mtime = fs.statSync(fullPath).mtimeMs;
-        const mtimeEpoch = Math.floor(mtime / 1000);
-        // Match session file if its mtime is within 5min of task start
-        const isMatch = taskStartEpoch && Math.abs(mtimeEpoch - taskStartEpoch) < 300;
-        return { name: f, mtime, mtimeEpoch, isMatch };
-      })
-      .sort((a, b) => b.mtime - a.mtime);
+    const agentsDir = path.join(OPENCLAW_HOME, 'agents');
+    const agentDirs = fs.readdirSync(agentsDir).filter(d => {
+      const stat = fs.statSync(path.join(agentsDir, d));
+      return stat.isDirectory();
+    });
     
-    // Prefer matched session, fallback to most recent
-    const matched = files.find(f => f.isMatch);
-    const chosen = matched || files[0];
-    if (chosen) sessionPath = path.join(agentSessionsDir, chosen.name);
+    for (const dir of agentDirs) {
+      const sessionsDir = path.join(agentsDir, dir, 'sessions');
+      if (!fs.existsSync(sessionsDir)) continue;
+      
+      const files = fs.readdirSync(sessionsDir).filter(f => f.endsWith('.jsonl'));
+      for (const file of files) {
+        const content = fs.readFileSync(path.join(sessionsDir, file), 'utf-8');
+        if (content.includes(`# Task: ${taskId}`)) {
+          agentId = dir;
+          sessionPath = path.join(sessionsDir, file);
+          foundByTaskId = true;
+          break;
+        }
+      }
+      if (foundByTaskId) break;
+    }
   } catch {}
+
+  // Strategy 4: Time-based matching (least reliable, last resort)
+  if (!foundByTaskId) {
+    const agentSessionsDir = path.join(OPENCLAW_HOME, 'agents', agentId, 'sessions');
+    try {
+      const files = fs.readdirSync(agentSessionsDir)
+        .filter(f => f.endsWith('.jsonl'))
+        .map(f => {
+          const fullPath = path.join(agentSessionsDir, f);
+          const mtime = fs.statSync(fullPath).mtimeMs;
+          const mtimeEpoch = Math.floor(mtime / 1000);
+          const isMatch = taskStartEpoch && Math.abs(mtimeEpoch - taskStartEpoch) < 300;
+          return { name: f, mtime, mtimeEpoch, isMatch };
+        })
+        .sort((a, b) => b.mtime - a.mtime);
+      
+      const matched = files.find(f => f.isMatch);
+      const chosen = matched || files[0];
+      if (chosen) sessionPath = path.join(agentSessionsDir, chosen.name);
+    } catch {}
+  }
 
   // Backfill from OpenClaw native session file
   if (sessionPath && fs.existsSync(sessionPath)) {
