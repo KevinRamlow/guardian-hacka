@@ -219,10 +219,6 @@ else
 fi
 
 echo ""
-echo "=== Syncing with Son of Anton ==="
-bash "$WORKSPACE/scripts/sync-replicants.sh" --to-son || echo "Sync failed (Son may be offline)"
-
-echo ""
 echo "=========================================="
 echo "Anton Meta-Loop Complete"
 echo "Next run: $(date -d '+1 day' 2>/dev/null || date -v+1d 2>/dev/null)"

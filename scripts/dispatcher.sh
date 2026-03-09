@@ -2,7 +2,9 @@
 # dispatcher.sh — Create Linear task + register in state + spawn agent
 # Replaces dispatch-task.sh. Uses task-manager.sh as the single source of truth.
 #
-# Usage: dispatcher.sh --title "Fix X" --desc "Details" [--label Bug] [--timeout 25] [--model M] [--cwd /path]
+# Usage: dispatcher.sh --title "Fix X" --desc "Details" [--label Bug] [--timeout 25]
+#        [--role developer|reviewer|architect|guardian-tuner|debugger]
+#        [--mode yolo|interactive]
 #
 set -euo pipefail
 
@@ -13,7 +15,7 @@ TASK_MGR="/Users/fonsecabc/.openclaw/workspace/scripts/task-manager.sh"
 SPAWNER="/Users/fonsecabc/.openclaw/workspace/scripts/spawn-agent.sh"
 CLASSIFY="/Users/fonsecabc/.openclaw/workspace/scripts/classify-task.sh"
 
-TITLE="" DESCRIPTION="" LABEL="" PROJECT="" TIMEOUT=25 MODEL="" CWD=""
+TITLE="" DESCRIPTION="" LABEL="" PROJECT="" TIMEOUT=25 ROLE="" MODE=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -23,8 +25,8 @@ while [[ $# -gt 0 ]]; do
     --label)       LABEL="$2"; shift 2 ;;
     --project)     PROJECT="$2"; shift 2 ;;
     --timeout)     TIMEOUT="$2"; shift 2 ;;
-    --model)       MODEL="$2"; shift 2 ;;
-    --cwd)         CWD="$2"; shift 2 ;;
+    --role)        ROLE="$2"; shift 2 ;;
+    --mode)        MODE="$2"; shift 2 ;;
     -*)            echo "ERROR: Unknown option: $1" >&2; exit 1 ;;
     *)             [ -n "$TITLE" ] && [ -z "$DESCRIPTION" ] && DESCRIPTION="$1"; shift ;;
   esac
@@ -105,8 +107,8 @@ bash "$TASK_MGR" create --task "$TASK_ID" --label "$(echo "$TITLE" | tr ' ' '-' 
 
 # --- Step 3: Spawn agent ---
 SPAWN_ARGS="--task $TASK_ID --label $(echo "$TITLE" | tr ' ' '-' | cut -c1-30) --timeout $TIMEOUT --source dispatch"
-[ -n "$MODEL" ] && SPAWN_ARGS="$SPAWN_ARGS --model $MODEL"
-[ -n "$CWD" ] && SPAWN_ARGS="$SPAWN_ARGS --cwd $CWD"
+[ -n "$ROLE" ] && SPAWN_ARGS="$SPAWN_ARGS --role $ROLE"
+[ -n "$MODE" ] && SPAWN_ARGS="$SPAWN_ARGS --mode $MODE"
 
 echo "[dispatch] Spawning agent for $TASK_ID..."
 SPAWN_OUTPUT=$(bash "$SPAWNER" $SPAWN_ARGS "$DESCRIPTION" 2>&1)

@@ -23,7 +23,7 @@ source "$WORKSPACE/.env.linear" 2>/dev/null || true
 LINEAR_SCRIPT="$WORKSPACE/skills/linear/scripts/linear.sh"
 DIAGNOSE="$WORKSPACE/scripts/diagnose-failure.sh"
 
-REPLICANTS_CHANNEL="C0AJTTFLN4X"
+REPLICANTS_CHANNEL="D0AK1B981QR"
 TS=$(date -u +"%H:%M:%S")
 
 # --- Read agent logs ---
@@ -127,7 +127,7 @@ if [ "$STATUS" != "done" ]; then
 fi
 
 # Build Slack message (concise)
-SLACK_MSG="<@U0AJU1XN3AT> $EMOJI *$TASK_ID* $HEADLINE"
+SLACK_MSG="$EMOJI *$TASK_ID* $HEADLINE"
 [ -n "$DURATION" ] && SLACK_MSG+=" ($DURATION)"
 if [ "$STATUS" = "done" ] && [ -n "$OUTPUT" ]; then
   # First line of output as summary

@@ -31,7 +31,7 @@
 
 ## Config
 `~/.openclaw/workspace/config/`
-- `auto-queue.json` — auto-queue configuration
+- `auto-queue.json` — auto-queue configuration (used by heartbeat)
 - `timeout-rules.json` — agent timeout rules
 - `cockpit-state.json` — dashboard state
 

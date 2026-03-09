@@ -1,13 +1,18 @@
 #!/bin/bash
-# Spawn Agent — Unified spawn wrapper for all agent creation
-# All spawns go through this script → registry-tracked, PID-captured, Linear-logged
+# Spawn Agent — Spawn OpenClaw native sub-agent for a task
+# All spawns go through this script → state-tracked, PID-captured, Linear-logged
 #
-# Usage: spawn-agent.sh --task CAI-XX [--label desc] [--timeout 25] [--source auto-queue] [--model model] [--cwd dir] [--file path] [--force-spawn] [--force] "task text"
+# Usage: spawn-agent.sh --task CAI-XX [--label desc] [--timeout 25] [--source auto-queue]
+#        [--file path] [--force-spawn] [--force]
+#        [--role developer|reviewer|architect|guardian-tuner|debugger]
+#        [--mode yolo|interactive] "task text"
 #
-# --force / --force-spawn: bypass budget check and dedup check (use for critical spawns)
+# --force / --force-spawn: bypass budget check and dedup check
+# --role: select OpenClaw agent ID (each has dedicated workspace + SOUL.md)
+# --mode yolo|interactive: yolo (default) runs autonomously; interactive posts Slack checkpoints
 #
-# Default model: claude-sonnet-4-6. Use --model to override.
-# All agents stream activity to CAI-XX-activity.jsonl for real-time monitoring.
+# Agents are OpenClaw native sub-agents spawned via `openclaw agent --agent <role>`.
+# The gateway manages lifecycle. Context comes from the agent's workspace SOUL.md.
 set -euo pipefail
 
 REGISTRY="/Users/fonsecabc/.openclaw/workspace/scripts/task-manager.sh"
@@ -15,13 +20,13 @@ LOGGER="/Users/fonsecabc/.openclaw/workspace/scripts/agent-logger.sh"
 LINEAR_LOG="/Users/fonsecabc/.openclaw/workspace/skills/task-manager/scripts/linear-log.sh"
 LOGS_DIR="/Users/fonsecabc/.openclaw/tasks/agent-logs"
 TASKS_DIR="/Users/fonsecabc/.openclaw/tasks/spawn-tasks"
-MONITOR="/Users/fonsecabc/.openclaw/workspace/scripts/agent-stream-monitor.py"
 DEDUP_CHECK="/Users/fonsecabc/.openclaw/workspace/scripts/dedup-check.sh"
 
-DEFAULT_MODEL="claude-sonnet-4-6"
 TIMEOUT_RULES="/Users/fonsecabc/.openclaw/workspace/config/timeout-rules.json"
+INTERACTIVE_TEMPLATE="/Users/fonsecabc/.openclaw/workspace/templates/claude-md/interactive-mode.md"
 
-TASK_ID="" LABEL="" TIMEOUT_MIN=25 EXPLICIT_TIMEOUT=false SOURCE="manual" MODEL="" CWD="/Users/fonsecabc/.openclaw/workspace" TASK_TEXT="" TASK_FILE="" FORCE_SPAWN=false
+TASK_ID="" LABEL="" TIMEOUT_MIN=25 EXPLICIT_TIMEOUT=false SOURCE="manual" TASK_TEXT="" TASK_FILE="" FORCE_SPAWN=false
+ROLE="" AGENT_MODE="yolo"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -29,11 +34,14 @@ while [[ $# -gt 0 ]]; do
     --label)   LABEL="$2"; shift 2 ;;
     --timeout) TIMEOUT_MIN="$2"; EXPLICIT_TIMEOUT=true; shift 2 ;;
     --source)  SOURCE="$2"; shift 2 ;;
-    --model)   MODEL="$2"; shift 2 ;;
-    --cwd)     CWD="$2"; shift 2 ;;
     --file)    TASK_FILE="$2"; shift 2 ;;
     --force-spawn) FORCE_SPAWN=true; shift ;;
     --force)   FORCE_SPAWN=true; shift ;;
+    --role)    ROLE="$2"; shift 2 ;;
+    --mode)    AGENT_MODE="$2"; shift 2 ;;
+    --native)  shift ;;  # Accepted but ignored (always native now)
+    --model)   shift 2 ;; # Accepted but ignored (model comes from agent config)
+    --cwd)     shift 2 ;; # Accepted but ignored (workspace set per agent)
     -*)        echo "ERROR: Unknown option: $1" >&2; exit 1 ;;
     *)         TASK_TEXT="$1"; shift ;;
   esac
@@ -44,8 +52,17 @@ done
 [ -n "$TASK_FILE" ] && { [ -f "$TASK_FILE" ] && TASK_TEXT=$(cat "$TASK_FILE") || { echo "ERROR: File not found: $TASK_FILE" >&2; exit 1; }; }
 [ -z "$LABEL" ] && LABEL="$TASK_ID"
 
+# --- Validate --role if specified ---
+if [ -n "$ROLE" ]; then
+  WORKSPACE="/Users/fonsecabc/.openclaw/workspace-${ROLE}"
+  if [ ! -d "$WORKSPACE" ] || [ ! -f "$WORKSPACE/SOUL.md" ]; then
+    echo "ERROR: Agent workspace not found: $WORKSPACE" >&2
+    echo "  Available roles: $(ls -d /Users/fonsecabc/.openclaw/workspace-*/ 2>/dev/null | xargs -I{} basename {} | sed 's/workspace-//' | tr '\n' ' ' || echo 'none')" >&2
+    exit 1
+  fi
+fi
+
 # --- Adaptive Timeout Classification ---
-# Only auto-classify if --timeout was not explicitly passed
 TASK_TYPE="default"
 if ! $EXPLICIT_TIMEOUT && [ -f "$TIMEOUT_RULES" ]; then
   TIMEOUT_MIN=$(python3 - "$TASK_TEXT" "$LABEL" "$TIMEOUT_RULES" << 'PYEOF'
@@ -54,14 +71,12 @@ text = (sys.argv[1] + " " + sys.argv[2]).lower()
 rules_file = sys.argv[3]
 try:
     rules = json.load(open(rules_file))["rules"]
-    # Check rules in priority order (guardian_eval first, then code_task, etc.)
     for rule_name in ["guardian_eval", "code_task", "analysis", "image_gen"]:
         rule = rules.get(rule_name, {})
         for kw in rule.get("keywords", []):
             if kw.lower() in text:
                 print(rule["timeout_min"])
                 sys.exit(0)
-    # Default
     print(rules.get("default", {}).get("timeout_min", 25))
 except Exception:
     print(25)
@@ -87,68 +102,17 @@ PYEOF
   echo "[spawn] auto-timeout: type=$TASK_TYPE → ${TIMEOUT_MIN}min"
 fi
 
-# --- Model Selection based on task type (if not explicitly set) ---
-if [ -z "$MODEL" ]; then
-  case "$TASK_TYPE" in
-    guardian_eval) SPAWN_MODEL="claude-haiku-4-5-20251001" ;;
-    analysis)     SPAWN_MODEL="claude-haiku-4-5-20251001" ;;
-    code_task)    SPAWN_MODEL="claude-sonnet-4-6" ;;
-    *)            SPAWN_MODEL="claude-sonnet-4-6" ;;
-  esac
-else
-  SPAWN_MODEL="$MODEL"
-fi
-
-# --- Budget Caps per task type ---
-case "$TASK_TYPE" in
-  guardian_eval) MAX_BUDGET="2.00" ;;
-  analysis)     MAX_BUDGET="1.00" ;;
-  code_task)    MAX_BUDGET="3.00" ;;
-  *)            MAX_BUDGET="2.00" ;;
-esac
-
-# --- Tool restrictions per task type ---
-# Block polling tools (Task, TaskOutput, TaskStop) to prevent token waste on long-running processes
-# Block Agent spawning to prevent recursive sub-agent spawning
-DISALLOWED_TOOLS=""
-case "$TASK_TYPE" in
-  guardian_eval)
-    # Evals take 30-40min. Hard-block all polling/waiting tools.
-    DISALLOWED_TOOLS="Task,TaskOutput,TaskStop,TaskCreate,TaskUpdate,Agent,EnterPlanMode,WebSearch,WebFetch"
-    ;;
-  analysis)
-    # Analysis should be quick, no sub-agents or background tasks
-    DISALLOWED_TOOLS="Task,TaskOutput,TaskStop,TaskCreate,TaskUpdate,Agent,EnterPlanMode"
-    ;;
-  *)
-    # All other types: block recursive agent spawning
-    DISALLOWED_TOOLS="Agent,EnterPlanMode"
-    ;;
-esac
-
 # --- Budget Check ---
-# Estimate task cost and verify monthly spend won't exceed configured threshold.
-# Bypass with --force or --force-spawn.
 if ! $FORCE_SPAWN; then
-  BUDGET_CHECK=$(python3 - "$SPAWN_MODEL" "$TIMEOUT_MIN" "$TASK_TYPE" << 'PYEOF'
+  BUDGET_CHECK=$(python3 - "$TIMEOUT_MIN" << 'PYEOF'
 import json, sys
 from pathlib import Path
 
-model = sys.argv[1]
-timeout_min = float(sys.argv[2])
-task_type = sys.argv[3]
+timeout_min = float(sys.argv[1])
+COST_PER_MIN = 0.08  # sonnet rate (all native agents use sonnet)
 
 STATE_FILE = Path("/Users/fonsecabc/.openclaw/tasks/api-usage-state.json")
 BUDGET_FILE = Path("/Users/fonsecabc/.openclaw/workspace/self-improvement/loop/budget-status.json")
-
-# Estimated cost per minute by model (USD/min, empirical from agent usage patterns)
-COST_PER_MIN = {
-    "claude-opus-4-6":          0.50,
-    "claude-sonnet-4-6":        0.08,
-    "claude-sonnet-4-5":        0.08,
-    "claude-haiku-4-5-20251001": 0.02,
-}
-DEFAULT_COST_PER_MIN = 0.08
 
 try:
     state = json.loads(STATE_FILE.read_text())
@@ -159,15 +123,13 @@ except Exception:
 try:
     budget_cfg = json.loads(BUDGET_FILE.read_text())
     monthly_limit = float(budget_cfg.get("monthly_limit", 500.0))
-    # spawn_block_threshold_pct: % of monthly budget at which new spawns are blocked (default 90%)
     block_pct = float(budget_cfg.get("spawn_block_threshold_pct", 90.0))
     spawn_threshold = block_pct / 100.0
 except Exception:
     monthly_limit = 500.0
     spawn_threshold = 0.90
 
-cost_per_min = COST_PER_MIN.get(model, DEFAULT_COST_PER_MIN)
-estimated_cost = cost_per_min * timeout_min
+estimated_cost = COST_PER_MIN * timeout_min
 threshold_usd = monthly_limit * spawn_threshold
 budget_after = monthly_spend + estimated_cost
 
@@ -213,104 +175,71 @@ HAS=$(bash "$REGISTRY" has "$TASK_ID")
 [ "$HAS" = "yes" ] && { echo "ERROR: $TASK_ID already running" >&2; exit 1; }
 [ "$HAS" = "dead" ] && bash "$REGISTRY" remove "$TASK_ID"
 
-# --- Prepare task file for logging/debugging ---
+# --- Build task prompt ---
 mkdir -p "$LOGS_DIR" "$TASKS_DIR"
-TASK_PATH="$TASKS_DIR/${TASK_ID}.md"
-CLAUDE_MD="/Users/fonsecabc/.openclaw/workspace/CLAUDE.md"
-echo "$TASK_TEXT" > "$TASK_PATH"
+FULL_PROMPT_FILE="$TASKS_DIR/${TASK_ID}-full-prompt.md"
 
-# --- Build stable context for --append-system-prompt (cached by API) ---
-STABLE_CONTEXT=""
-TEMPLATE_DIR="/Users/fonsecabc/.openclaw/workspace/templates/claude-md"
-if [ -f "$TEMPLATE_DIR/base.md" ]; then
-  STABLE_CONTEXT="$(cat "$TEMPLATE_DIR/base.md")"
-  # Add task-type-specific template
-  if [ -f "$TEMPLATE_DIR/${TASK_TYPE}.md" ]; then
-    STABLE_CONTEXT+=$'\n'"$(cat "$TEMPLATE_DIR/${TASK_TYPE}.md")"
-  fi
-  # Add error handling
-  if [ -f "$TEMPLATE_DIR/error-handling.md" ]; then
-    STABLE_CONTEXT+=$'\n'"$(cat "$TEMPLATE_DIR/error-handling.md")"
-  fi
-else
-  # Fallback to monolithic CLAUDE.md
-  [ -f "$CLAUDE_MD" ] && STABLE_CONTEXT="$(cat "$CLAUDE_MD")"
-fi
-
-# Add relevant knowledge files
-KNOWLEDGE_DIR="/Users/fonsecabc/.openclaw/workspace/knowledge"
-if echo "$TASK_TEXT $LABEL" | grep -qiE 'guardian|eval|moderation'; then
-  [ -f "$KNOWLEDGE_DIR/guardian-agents-api.map.md" ] && STABLE_CONTEXT+=$'\n'"$(cat "$KNOWLEDGE_DIR/guardian-agents-api.map.md")"
-  [ -f "$KNOWLEDGE_DIR/eval-patterns.md" ] && STABLE_CONTEXT+=$'\n'"$(cat "$KNOWLEDGE_DIR/eval-patterns.md")"
-fi
-[ -f "$KNOWLEDGE_DIR/common-errors.md" ] && STABLE_CONTEXT+=$'\n'"$(cat "$KNOWLEDGE_DIR/common-errors.md")"
-
-# Write stable context to a temp file for nohup (avoids quoting issues)
-STABLE_CONTEXT_FILE="$TASKS_DIR/${TASK_ID}-system-prompt.md"
-echo "$STABLE_CONTEXT" > "$STABLE_CONTEXT_FILE"
-
-# Source credentials for sub-agents
-[ -f /Users/fonsecabc/.openclaw/workspace/.env.secrets ] && source /Users/fonsecabc/.openclaw/workspace/.env.secrets
-[ -f /Users/fonsecabc/.openclaw/workspace/.env.linear ] && source /Users/fonsecabc/.openclaw/workspace/.env.linear
-
-# --- Build MCP config for sub-agents (MySQL access) ---
-MCP_CONFIG_FILE="$TASKS_DIR/${TASK_ID}-mcp.json"
-cat > "$MCP_CONFIG_FILE" << MCPEOF
 {
-  "mcpServers": {
-    "mysql": {
-      "command": "npx",
-      "args": ["-y", "@berthojoris/mcp-mysql-server"],
-      "env": {
-        "MYSQL_HOST": "10.12.80.3",
-        "MYSQL_PORT": "3306",
-        "MYSQL_USER": "caio.fonseca",
-        "MYSQL_PASSWORD": "${MYSQL_PASSWORD:-}",
-        "MYSQL_DATABASE": "db-maestro-prod"
-      }
-    }
-  }
-}
-MCPEOF
+  echo "# Task: $TASK_ID"
+  echo "Timeout: ${TIMEOUT_MIN}min"
+  echo ""
+  echo "$TASK_TEXT"
 
-# Spawn with stream monitoring + MCP servers
-cd "$CWD"
+  # Append interactive mode instructions if needed
+  if [ "$AGENT_MODE" = "interactive" ] && [ -f "$INTERACTIVE_TEMPLATE" ]; then
+    echo ""
+    echo "---"
+    cat "$INTERACTIVE_TEMPLATE"
+  fi
+} > "$FULL_PROMPT_FILE"
 
-# Build disallowed tools flag
-DISALLOW_FLAG=""
-if [ -n "$DISALLOWED_TOOLS" ]; then
-  DISALLOW_FLAG="--disallowedTools $DISALLOWED_TOOLS"
+if [ "$AGENT_MODE" = "interactive" ]; then
+  echo "[spawn] mode: interactive (checkpoints enabled)"
 fi
+
+# --- Spawn native OpenClaw agent ---
+AGENT_ID="${ROLE:-main}"
+TIMEOUT_SEC=$((TIMEOUT_MIN * 60))
 
 nohup bash -c "
-  unset CLAUDECODE;
-  claude --print --dangerously-skip-permissions --verbose --output-format stream-json \
-    --append-system-prompt \"\$(cat '$STABLE_CONTEXT_FILE')\" \
-    --model '$SPAWN_MODEL' \
-    --max-budget-usd '$MAX_BUDGET' \
-    --mcp-config '$MCP_CONFIG_FILE' \
-    $DISALLOW_FLAG \
-    -p \"\$(cat '$TASK_PATH')\" 2> '$LOGS_DIR/${TASK_ID}-stderr.log' \
-    | LOGS_DIR='$LOGS_DIR' python3 '$MONITOR' '${TASK_ID}';
-  echo \"\${PIPESTATUS[0]}\" > '$LOGS_DIR/${TASK_ID}-exit-code';
-  rm -f '$MCP_CONFIG_FILE';
+  openclaw agent \
+    --agent '$AGENT_ID' \
+    --message \"\$(cat '$FULL_PROMPT_FILE')\" \
+    --timeout $TIMEOUT_SEC \
+    --json \
+    > '$LOGS_DIR/${TASK_ID}-output.log' 2> '$LOGS_DIR/${TASK_ID}-stderr.log';
+  EXIT_CODE=\$?;
+  echo \"\$EXIT_CODE\" > '$LOGS_DIR/${TASK_ID}-exit-code';
 " &>/dev/null &
 AGENT_PID=$!
 
 # Verify process started
 sleep 2
 if ! kill -0 "$AGENT_PID" 2>/dev/null; then
-  echo "ERROR: Agent died immediately (PID=$AGENT_PID)" >&2
+  echo "ERROR: Agent died immediately (PID=$AGENT_PID, agent=$AGENT_ID)" >&2
   cat "$LOGS_DIR/${TASK_ID}-stderr.log" 2>/dev/null >&2
   exit 1
 fi
 
-# Register + log
+# Register + store role in state
 bash "$REGISTRY" register "$TASK_ID" "$AGENT_PID" 0 "$LABEL" "$SOURCE" "$TIMEOUT_MIN"
-bash "$LOGGER" "$TASK_ID" spawn "PID=$AGENT_PID timeout=${TIMEOUT_MIN}min src=$SOURCE model=$SPAWN_MODEL budget=$MAX_BUDGET" 2>/dev/null || true
-bash "$LINEAR_LOG" "$TASK_ID" "Agent spawned: $LABEL (timeout=${TIMEOUT_MIN}min, model=$SPAWN_MODEL, budget=\$$MAX_BUDGET)" progress 2>/dev/null || true
+# Set role field in state (register doesn't support it positionally)
+if [ -n "$ROLE" ]; then
+  python3 -c "
+import json
+f = '/Users/fonsecabc/.openclaw/tasks/state.json'
+d = json.load(open(f))
+t = d['tasks'].get('$TASK_ID')
+if t: t['role'] = '$ROLE'
+json.dump(d, open(f, 'w'), indent=2)
+" 2>/dev/null || true
+fi
+bash "$LOGGER" "$TASK_ID" spawn "PID=$AGENT_PID timeout=${TIMEOUT_MIN}min src=$SOURCE agent=$AGENT_ID$([ -n "$ROLE" ] && echo " role=$ROLE")" 2>/dev/null || true
+bash "$LINEAR_LOG" "$TASK_ID" "Agent spawned: $LABEL (timeout=${TIMEOUT_MIN}min, agent=$AGENT_ID$([ -n "$ROLE" ] && echo ", role=$ROLE"))" progress 2>/dev/null || true
 
-BLOCKED_INFO=""
-[ -n "$DISALLOWED_TOOLS" ] && BLOCKED_INFO=" blocked=$DISALLOWED_TOOLS"
-echo "[spawn] $TASK_ID PID=$AGENT_PID timeout=${TIMEOUT_MIN}min model=$SPAWN_MODEL budget=\$$MAX_BUDGET$BLOCKED_INFO"
+ROLE_INFO=""
+[ -n "$ROLE" ] && ROLE_INFO=" role=$ROLE"
+MODE_INFO=""
+[ "$AGENT_MODE" = "interactive" ] && MODE_INFO=" mode=interactive"
+echo "[spawn] $TASK_ID PID=$AGENT_PID timeout=${TIMEOUT_MIN}min agent=$AGENT_ID$ROLE_INFO$MODE_INFO"
 echo "$AGENT_PID"

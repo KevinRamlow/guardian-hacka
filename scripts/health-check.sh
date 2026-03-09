@@ -128,10 +128,7 @@ check_watchdog_status() {
     alert "ERROR" "Watchdog cron job not installed"
   fi
 
-  # Check auto-queue cron
-  if ! crontab -l 2>/dev/null | grep -q "auto-queue-v2.sh"; then
-    alert "WARN" "Auto-queue cron job not installed"
-  fi
+  # Auto-queue is now handled by native heartbeat (no cron needed)
 }
 
 # === Check 3: Orphaned In Progress tasks in Linear ===

@@ -49,7 +49,7 @@ ALERT_COOLDOWN_FILE = "/Users/fonsecabc/.openclaw/workspace/metrics/alert-cooldo
 
 SLACK_BOT_TOKEN = os.environ.get("SLACK_BOT_TOKEN", "")
 LINEAR_API_KEY = os.environ.get("LINEAR_API_KEY", "")
-REPLICANTS_CHANNEL = "C0AJTTFLN4X"
+REPLICANTS_CHANNEL = "D0AK1B981QR"
 
 MIN_OUTPUT_BYTES = 100
 CONSECUTIVE_FAILURE_THRESHOLD = 3
@@ -60,6 +60,8 @@ FAILURE_PATTERNS = [
     r"EACCES", r"API Error", r"usage limits", r"rate limit", r"quota exceeded",
     r"invalid_request_error",
 ]
+
+REVIEW_HOOK = "/Users/fonsecabc/.openclaw/workspace/scripts/review-hook.sh"
 
 now = int(time.time())
 ts = time.strftime("%H:%M", time.gmtime())
@@ -172,6 +174,18 @@ def requeue_task(task_id):
         print(f"  REQUEUED {task_id} → Todo")
     except Exception as e:
         print(f"  REQUEUE FAILED {task_id}: {e}")
+
+
+def trigger_review_hook(task_id):
+    """Trigger adversarial review for completed tasks (if enabled)."""
+    if os.path.exists(REVIEW_HOOK):
+        try:
+            r = subprocess.run(["bash", REVIEW_HOOK, task_id],
+                               capture_output=True, text=True, timeout=30)
+            if r.returncode == 0 and r.stdout.strip():
+                print(f"  REVIEW: {r.stdout.strip()}")
+        except Exception as e:
+            print(f"  REVIEW hook error: {e}")
 
 
 def send_alert(message):
@@ -342,16 +356,19 @@ for task_id, task in list(tasks.items()):
     age_min = (now - started_epoch) // 60
     label = task.get("label", task_id)
 
-    # ── AGENT_RUNNING: Check agent PID ──────────────────────────────────
+    # ── AGENT_RUNNING: Check agent completion via exit-code file ────────
     if status == "agent_running":
-        if not agent_pid or not is_alive(agent_pid):
-            # Agent died — check output quality
+        exit_code_file = f"{LOGS_DIR}/{task_id}-exit-code"
+
+        if os.path.exists(exit_code_file):
+            # Agent completed — exit-code file written on finish
             quality, output_size, detail = check_output_quality(task_id)
 
             if quality in ("success", "small"):
                 print(f"DONE {task_id}: {age_min}min, {output_size}B")
                 run_cmd(["bash", TASK_MGR, "transition", task_id, "done", "--exit-code", "0"])
                 run_cmd(["bash", REPORT, task_id, "done"])
+                trigger_review_hook(task_id)
                 completions += 1
                 consec = {"count": 0, "task_ids": []}
             else:
@@ -374,10 +391,12 @@ for task_id, task in list(tasks.items()):
             changes = True
             continue
 
-        # Agent alive — check timeout
+        # No exit-code yet — check timeout
         if age_min >= timeout_min:
             print(f"TIMEOUT {task_id}: {age_min}min >= {timeout_min}min")
-            run_cmd(["bash", KILL_TREE, str(agent_pid)])
+            # Kill the agent process if PID is tracked
+            if agent_pid and is_alive(agent_pid):
+                run_cmd(["bash", KILL_TREE, str(agent_pid)])
             run_cmd(["bash", TASK_MGR, "transition", task_id, "timeout", "--exit-code", "-1"])
             run_cmd(["bash", REPORT, task_id, "timeout"])
             timeouts += 1
@@ -389,30 +408,7 @@ for task_id, task in list(tasks.items()):
             changes = True
             continue
 
-        # Agent alive — check idle (>10min)
-        if age_min >= 10 and os.path.exists(DETECT_IDLE):
-            try:
-                r = subprocess.run(["bash", DETECT_IDLE, task_id],
-                                   capture_output=True, text=True, timeout=15)
-                idle_result = r.stdout.strip()
-            except Exception:
-                idle_result = "active"
-
-            if idle_result in ("idle_no_output", "idle_no_activity", "loop_same_error"):
-                print(f"IDLE {task_id}: {idle_result} at {age_min}min")
-                run_cmd(["bash", KILL_TREE, str(agent_pid)])
-                run_cmd(["bash", TASK_MGR, "transition", task_id, "failed", "--exit-code", "-2"])
-                run_cmd(["bash", REPORT, task_id, "idle_killed"])
-                failures += 1
-                consec["count"] += 1
-                consec["task_ids"].append(task_id)
-                if task.get("retries", 0) < 2:
-                    run_cmd(["bash", TASK_MGR, "transition", task_id, "todo"])
-                    requeue_task(task_id)
-                changes = True
-                continue
-
-        # Agent alive — 80% timeout warning
+        # 80% timeout warning
         warned = task.get("warned80pct", False)
         warning_threshold = int(timeout_min * 0.8)
         if not warned and age_min >= warning_threshold:
@@ -421,18 +417,16 @@ for task_id, task in list(tasks.items()):
             remaining = timeout_min - age_min
             with open(f"{WARNING_DIR}/{task_id}.warn", "w") as wf:
                 json.dump({"task_id": task_id, "remaining_min": remaining}, wf)
-            # Update warned flag in state
             task["warned80pct"] = True
             changes = True
             run_cmd(["bash", LINEAR_LOG, task_id,
                      f"[{ts}] Timeout warning: {age_min}/{timeout_min}min ({remaining}min left)", "progress"])
             print(f"WARN_80 {task_id}: {remaining}min left")
 
-        # Agent alive — auto-extend timeout if still active
+        # Auto-extend timeout if agent PID is still active
         extensions = task.get("extensions", 0)
         if extensions < 2 and age_min >= timeout_min - 2:
-            activity_log = f"{LOGS_DIR}/{task_id}-activity.jsonl"
-            if os.path.exists(activity_log) and (now - os.path.getmtime(activity_log)) < 120:
+            if agent_pid and is_alive(agent_pid):
                 new_timeout = timeout_min + 10
                 task["timeoutMin"] = new_timeout
                 task["extensions"] = extensions + 1
@@ -539,8 +533,9 @@ try:
                 ppid_r = subprocess.run(["ps", "-o", "ppid=", "-p", str(pid)], capture_output=True, text=True)
                 ppid = int(ppid_r.stdout.strip())
                 parent_r = subprocess.run(["ps", "-o", "comm=", "-p", str(ppid)], capture_output=True, text=True)
-                if "openclaw" in parent_r.stdout.strip():
-                    continue  # Main Anton thread
+                parent_comm = parent_r.stdout.strip()
+                if "openclaw" in parent_comm:
+                    continue  # Main Anton thread or native sub-agent managed by gateway
                 age_r = subprocess.run(["ps", "-o", "etimes=", "-p", str(pid)], capture_output=True, text=True)
                 if int(age_r.stdout.strip()) > 300:
                     subprocess.run(["bash", KILL_TREE, str(pid)], capture_output=True, timeout=10)

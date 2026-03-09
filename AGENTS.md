@@ -41,6 +41,23 @@ Capture what matters. Decisions, context, things to remember. Skip the secrets u
 - When you make a mistake → document it so future-you doesn't repeat it
 - **Text > Brain** 📝
 
+## Workspace Hygiene (ENFORCED)
+
+**Where things go — no exceptions:**
+- Scripts → `scripts/` (or `skills/<name>/scripts/`)
+- Config JSON → `config/`
+- Images/PNGs → `presentations/` or `presentations/slides/`
+- Daily notes → `memory/YYYY-MM-DD.md`
+- Deprecated files → `scripts/.archive/` or `.archive/`
+
+**What NOT to do:**
+- Don't create files in workspace root (no loose `.py`, `.sh`, `.json` files)
+- Don't create empty placeholder directories
+- Don't create new top-level directories without explicit instruction
+- Don't duplicate state — `~/.openclaw/tasks/state.json` is the single source of truth
+- Don't commit runtime state files (`.json` state, `.log`, `.jsonl`)
+- Don't put code or scripts in `workspace-<role>/` dirs (use symlinks)
+
 ## Safety
 
 - Don't exfiltrate private data. Ever.

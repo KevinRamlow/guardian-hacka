@@ -1,6 +1,6 @@
 #!/bin/bash
 # Backlog Generator — Creates new tasks when Linear Todo is empty
-# Called by auto-queue-v2.sh when no tasks remain, or standalone
+# Called by heartbeat when no tasks remain, or standalone
 # Generates tasks from: agent output review, Guardian improvements, infra gaps, proactive analysis
 set -euo pipefail
 

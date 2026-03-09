@@ -114,11 +114,12 @@ Each task carries `history[]` and `learnings[]` — callback agents get full con
 
 | Script | Purpose |
 |--------|---------|
-| `auto-queue-v2.sh` | Auto-queue Linear Todo tasks for spawning. |
 | `queue-control.sh` | Pause/resume auto-queue. |
-| `classify-task.sh` | Auto-classify task type for timeout rules. |
+| `classify-task.sh` | Auto-classify task type for timeout/role rules. |
 | `dedup-check.sh` | Prevent duplicate agent spawns. |
 | `backlog-generator.sh` | Generate new tasks from analysis. |
+
+> **Note:** Auto-queue logic is handled by the native heartbeat (HEARTBEAT.md), not a standalone script.
 
 ### Guardian Eval
 

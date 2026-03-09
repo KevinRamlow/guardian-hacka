@@ -268,10 +268,6 @@ else
 fi
 
 echo ""
-echo "=== Syncing with Son of Anton ==="
-bash "$WORKSPACE/scripts/sync-replicants.sh" --to-son || echo "Sync failed (Son may be offline)"
-
-echo ""
 echo "=========================================="
 echo "Anton Auto-Loop Complete"
 # macOS compatible date (4 hours ahead)

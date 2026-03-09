@@ -36,26 +36,22 @@ dashboard/stats-history.json
 *.bak2
 *.disabled
 
-# Large files
+# Large files / generated media
 *.png
 *.jpg
 *.mp4
 *.zip
+presentations/slides/
+presentations/*.png
 
-# Cloned repos (have their own git)
-backoffice/
+# Local task state (source of truth is ~/.openclaw/tasks/)
+tasks/
+
+# Cloned repos / external workspaces (have their own .git)
 billy-workspace/
-campaign-manager-api/
 clawdbots/
-cockpit/
-creator-ads/
-guardian-ads-treatment/
-guardian-agents-api/
 guardian-agents-api-real/
-guardian-api/
-perfect-web-clone/
 son-of-anton-workspace/
-user-management-api/
 
 # OpenClaw internal
 .openclaw/

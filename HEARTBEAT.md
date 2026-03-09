@@ -1,6 +1,6 @@
 # HEARTBEAT.md
 
-## Alert Routing: All Alerts Go to #replicants (C0AJTTFLN4X)
+## Alert Routing: All Alerts Go to Caio's DM (D0AK1B981QR)
 
 **Use:** `bash scripts/reporter.sh notify "message"`
 

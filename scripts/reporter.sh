@@ -15,7 +15,7 @@ LOGS_DIR="/Users/fonsecabc/.openclaw/tasks/agent-logs"
 WORKSPACE="/Users/fonsecabc/.openclaw/workspace"
 DIAGNOSE="$WORKSPACE/scripts/diagnose-failure.sh"
 LINEAR_SCRIPT="$WORKSPACE/skills/linear/scripts/linear.sh"
-REPLICANTS_CHANNEL="C0AJTTFLN4X"
+REPLICANTS_CHANNEL="D0AK1B981QR"
 
 source "$WORKSPACE/.env.secrets" 2>/dev/null || true
 source "$WORKSPACE/.env.linear" 2>/dev/null || true

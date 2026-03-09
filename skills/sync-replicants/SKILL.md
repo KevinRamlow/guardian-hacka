@@ -1,3 +1,5 @@
+**STATUS: DEPRECATED**
+
 ---
 name: sync-replicants
 description: Bidirectional synchronization between Anton (Mac) and Son of Anton (VPS). Keeps architecture docs, objectives, state files, and memories in sync.

@@ -1,4 +1,7 @@
 #!/bin/bash
+# DEPRECATED: Son of Anton sync disabled. Kept for reference.
+exit 0
+
 # sync-replicants.sh - Bidirectional sync between Anton and Son of Anton
 # Usage: bash scripts/sync-replicants.sh [--dry-run] [--to-son] [--from-son]
 

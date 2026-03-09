@@ -3,7 +3,7 @@
 # Usage: bash scripts/notify-slack.sh "message text" [channel]
 
 MESSAGE="$1"
-CHANNEL="${2:-C0AJTTFLN4X}"  # Default to #replicants
+CHANNEL="${2:-D0AK1B981QR}"  # Default to Caio's DM
 
 if [[ -z "$MESSAGE" ]]; then
   echo "Usage: $0 \"message\""

@@ -89,6 +89,7 @@ d['tasks']['$TASK_ID'] = {
     'processType': None,
     'label': '''$(echo "$LABEL" | sed "s/'/\\\\'/g")''',
     'source': 'manual',
+    'role': None,
     'model': None,
     'timeoutMin': $TIMEOUT_MIN,
     'createdAt': '$NOW',
@@ -121,7 +122,7 @@ print('$TASK_ID')
     [ -z "$NEW_STATUS" ] && { echo "ERROR: new-status required" >&2; exit 1; }
 
     # Parse optional args
-    AGENT_PID="" PROCESS_PID="" PROCESS_TYPE="" RESULT_PATH="" METRICS_PATH="" EXIT_CODE="" CONTEXT="" SOURCE="" MODEL="" TIMEOUT=""
+    AGENT_PID="" PROCESS_PID="" PROCESS_TYPE="" RESULT_PATH="" METRICS_PATH="" EXIT_CODE="" CONTEXT="" SOURCE="" MODEL="" TIMEOUT="" SESSION_ID=""
     while [[ $# -gt 0 ]]; do
       case "$1" in
         --pid)            AGENT_PID="$2"; shift 2 ;;
@@ -134,6 +135,7 @@ print('$TASK_ID')
         --source)         SOURCE="$2"; shift 2 ;;
         --model)          MODEL="$2"; shift 2 ;;
         --timeout)        TIMEOUT="$2"; shift 2 ;;
+        --session-id)     shift 2 ;; # Accepted but ignored (legacy compat)
         *)                shift ;;
       esac
     done
@@ -161,11 +163,12 @@ if task_id not in d['tasks']:
             'status': 'todo',
             'linearId': task_id,
             'agentPid': None,
-            'processPid': None,
+                    'processPid': None,
             'processType': None,
             'label': task_id,
             'source': 'manual',
-            'model': None,
+            'role': None,
+    'model': None,
             'timeoutMin': 25,
             'createdAt': now,
             'createdEpoch': now_epoch,
@@ -549,11 +552,12 @@ if tid not in d['tasks']:
         'status': 'todo',
         'linearId': tid,
         'agentPid': None,
-        'processPid': None,
+            'processPid': None,
         'processType': None,
         'label': '''$(echo "$LABEL" | sed "s/'/\\\\'/g")''',
         'source': '$SOURCE',
-        'model': None,
+        'role': None,
+    'model': None,
         'timeoutMin': $TIMEOUT_MIN,
         'createdAt': now,
         'createdEpoch': now_epoch,
@@ -630,9 +634,7 @@ Commands:
   remove     <task-id>              Remove task
   cleanup    [--max-age 86400]      Remove old completed tasks
   set-max    <n>                    Set max concurrent
-
-Backward-compatible (for spawn-agent.sh):
-  register <taskId> <pid> <bridgePid> <label> <source> <timeoutMin>
+  register   <taskId> <pid> <bridgePid> <label> <source> <timeoutMin>
   count                             Alive agent count
   json                              Raw state file
 EOF

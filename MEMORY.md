@@ -52,48 +52,30 @@
 - Cluster: `bl-cluster` in `us-east1`
 - BigQuery dataset: `guardian`
 
-### Guardian Evals GCP Config (2026-03-07) — AUTOMATED SOLUTION
-
-**Problem (happened 10+ times):**
-- Guardian evals reference media in **prod** GCS buckets (`guardian-ads-production`, `creators-raw-media-prod`)
-- Agents using `GOOGLE_CLOUD_PROJECT=brandlovrs-homolog` get **403 PERMISSION_DENIED**
-- Homolog SA (`service-699439062146@gcp-sa-aiplatform.iam.gserviceaccount.com`) lacks prod bucket access
-
-**Automated solution (2026-03-07 14:00):**
-
-1. **`.env.guardian-eval`** — Source this before ANY Guardian eval:
-   ```bash
-   source /Users/fonsecabc/.openclaw/workspace/.env.guardian-eval
-   ```
-   Sets: `GOOGLE_CLOUD_PROJECT=brandlovers-prod`
-
-2. **`CLAUDE.md` updated** — All agents now have a dedicated "Guardian Eval" section with:
-   - Mandatory `source .env.guardian-eval` before running evals
-   - Clear explanation of why (403 errors if wrong project)
-   - Correct vs wrong examples
-
-3. **`run-guardian-eval.sh`** — Wrapper script for foolproof eval execution:
-   ```bash
-   bash scripts/run-guardian-eval.sh --config eval.yaml --dataset dataset.jsonl --workers 10
-   ```
-   Automatically sources `.env.guardian-eval`, verifies config, activates venv, runs eval
-
-**How to use (agents):**
-```bash
-# Method 1: Manual (with source)
-source .env.guardian-eval
-python3 evals/run_eval.py --config ... --workers 10
-
-# Method 2: Wrapper (automatic)
-bash scripts/run-guardian-eval.sh --config ... --workers 10
-```
-
-**This should never happen again.** If it does, the agent didn't read CLAUDE.md.
+### Guardian Evals GCP Config (2026-03-07)
+- **Problem:** Evals use prod GCS buckets → 403 if project set to homolog
+- **Solution:** Always `source .env.guardian-eval` or use `bash scripts/run-guardian-eval.sh --config ... --workers 10`
+- Both methods set `GOOGLE_CLOUD_PROJECT=brandlovers-prod` automatically. CLAUDE.md has full instructions.
 
 ## Codebase Locations
 - guardian-agents-api: `/Users/fonsecabc/.openclaw/workspace/guardian-agents-api-real/`
-- ClawdBots: `/Users/fonsecabc/.openclaw/workspace/clawdbots/`
 - Workflows: `/Users/fonsecabc/.openclaw/workspace/workflows/`
+
+## Repos — Separated Agent Workspaces (2026-03-09)
+
+Each agent has its own isolated GitHub repo. No cross-contamination of SOUL.md or identity files.
+
+| Repo | Agent | URL |
+|------|-------|-----|
+| `replicants-anton` | Me (Anton) | github.com/fonsecabc/replicants-anton |
+| `replicants-billy` | Billy | github.com/fonsecabc/replicants-billy |
+
+Billy repo is cloned inside my workspace but gitignored — it pushes/pulls independently.
+
+### Security
+All secrets centralized in `.env.secrets` (gitignored). Scripts read from env vars:
+`$GEMINI_API_KEY`, `$SLACK_USER_TOKEN`, `$METABASE_API_KEY`, `$GITHUB_TOKEN`, `$GOG_KEYRING_PASSWORD`
+Git history was scrubbed with `git-filter-repo` — zero secrets in any past commit.
 
 ## CRITICAL RULE: Always Use CreatorAds API (2026-03-06)
 
@@ -144,10 +126,10 @@ The platform is called **CreatorAds** (repo: `brandlovers-team/creator-ads` — 
 - PRs: pt-BR descriptions, tag Manoel + Juani
 - Linear tasks: GUA prefix for Guardian team
 
-## ClawdBots Platform (2026-03-05)
-- **Billy**: Non-tech teams helper (SQL + PowerPoint via nano-banana)
+## ClawdBots / Agent Platform (2026-03-05, updated 2026-03-09)
+- **Billy**: Non-tech teams helper (SQL + PowerPoint via nano-banana) — own repo: `replicants-billy`
+- **Neuron**: Data expert (BigQuery/MySQL) — included in Billy repo under clawdbots/
 - Built, tested locally, not deployed yet
-- Planned: Neuron (data expert), Guardian (moderation optimization)
 
 ## nano-banana
 - Location: `/Users/fonsecabc/.openclaw/workspace/skills/nano-banana/`
@@ -214,22 +196,45 @@ Old jobs removed: watchdog, process-checker, linear-sync, langfuse-scraper, gcp-
 - `spawn-agent.sh` calls `task-manager.sh register` for state tracking
 - `task-manager.sh` supports legacy API: `register`, `count`, `slots`, `has`, `json`
 
-## Token Efficiency Architecture (2026-03-07)
+## BMAD-Inspired Role Architecture (2026-03-09)
 
-**spawn-agent.sh uses `--append-system-prompt` for stable context (cached by API = 90% cheaper).**
+All agents are **OpenClaw native sub-agents** (`openclaw agent --agent <role>`). Each role has a dedicated workspace.
 
-How agents get context now:
-1. `--append-system-prompt` ← base template + task-type template + knowledge files (CACHED)
-2. `-p` ← task description only (VARIABLE)
+### Registered Agents (`openclaw agents list`)
+| Agent | Workspace | Purpose |
+|---|---|---|
+| `developer` | `workspace-developer/` | Code implementation, bug fixes |
+| `reviewer` | `workspace-reviewer/` | Adversarial code review (auto-spawned post-completion) |
+| `architect` | `workspace-architect/` | System design, ADRs |
+| `guardian-tuner` | `workspace-guardian-tuner/` | Guardian accuracy optimization |
+| `debugger` | `workspace-debugger/` | Root cause analysis |
 
-**Knowledge base** (`knowledge/`): Pre-digested codebase maps + patterns. Read, don't explore.
+### How It Works
+- `openclaw agent --agent <role>` — gateway manages lifecycle, SOUL.md loaded from workspace
+- Each workspace has SOUL.md + AGENTS.md + symlinks to shared resources (scripts, skills, knowledge, config, env)
+- Completion detected via exit-code file written when agent finishes
+- PID tracked for timeout kills
+
+### Spawn Examples
+```bash
+bash scripts/dispatcher.sh --title "Fix X" --role developer --timeout 15
+bash scripts/dispatcher.sh --title "Tune Guardian" --role guardian-tuner --timeout 60
+bash scripts/dispatcher.sh --title "Big refactor" --role developer --mode interactive
+```
+
+### Review Hook
+- `review-hook.sh` auto-fires after every task completion via supervisor.sh
+- Config: `config/review-config.json` (enabled, min_output_bytes, require_git_changes)
+- Loop prevention: skips REVIEW-* IDs, review sources, review labels
+
+## Token Efficiency Architecture (2026-03-09)
+
+**Context comes from each agent's workspace SOUL.md** — loaded natively by OpenClaw gateway. No template injection needed.
+
+**Knowledge base** (`knowledge/`): Pre-digested codebase maps + patterns. Symlinked into each workspace.
 - `guardian-agents-api.map.md` — codemap (2K tokens replaces 8K of exploration)
 - `eval-patterns.md`, `auth-patterns.md`, `common-errors.md` — known fixes
-- Auto-injected for guardian tasks, common-errors always included
-
-**Templates** (`templates/claude-md/`): Task-specific instructions instead of monolithic CLAUDE.md.
-- `base.md` + `guardian-eval.md` | `code-fix.md` | `analysis.md` + `error-handling.md`
-- Agent gets only relevant instructions (~800 tokens vs ~2K for full CLAUDE.md)
+- Agents read these from their workspace symlinks as needed
 
 **Codemap generator**: `bash scripts/generate-codemap.sh /path/to/repo > knowledge/repo.map.md`
 Regenerate when repo changes significantly.
@@ -251,84 +256,23 @@ bash scripts/reporter.sh peek AUTO-XX follow   # live tail
 - Agent running >15min with 0 tool calls → check session transcript
 - Systemic failures → pause auto-queue, fix pipeline
 
-## Autonomy Principle (Learned 2026-03-05 19:14 UTC)
+## Autonomy Principle
+- Fix problems immediately, report what you fixed. Exception: destructive prod ops need approval. Full details in SOUL.md.
 
-**Core rule:** When you analyze and find problems, FIX them immediately. Don't ask permission.
-
-**Application:**
-- ClawdBots config (Billy, agents) → full autonomy, just do it
-- GitHub repos (Guardian, etc.) → fix it and send PR
-- "Analyze and find issues" means "analyze, find issues, and FIX them"
-- Report what you FIXED, not what you found
-- Ask forgiveness if wrong, don't ask permission
-
-**Why it matters:**
-- Dramatically speeds up fix cycles
-- Caio expects autonomous problem-solving
-- Waiting for approval creates bottlenecks
-- Sub-agents can work in parallel while you coordinate
-
-**Exception:** Destructive operations on production data or external comms still need approval
-
-## Speed Optimization Results (2026-03-05)
-
-**Context trimming:** -42.2% (28KB → 16KB)
-- Merged IDENTITY.md → SOUL.md (-1.2KB)
-- Compressed TOOLS.md (4.3KB → 3.0KB) 
-- Trimmed MEMORY.md (12.5KB → 2.8KB)
-- **Impact:** 30-40% faster main thread responses
-
-**Instant ack patterns:**
-- Reply "on it" before spawning work
-- Perceived latency drops to <3s
-- User knows you're working immediately
-
-**Batch tool calls:**
-- Combine operations with `&&` chains
-- spawn-and-log.sh: single command for spawn+log
-- Reduces round-trips from 3-5 to 1
-
-**Simplified templates:**
-- Spawn template: 15 lines → 5 lines (66% reduction)
-- Less ceremony = faster execution
-- Focus on essentials only
+## Speed Optimization (2026-03-05)
+- Context trimming (-42%) + instant ack ("on it" before spawning) + batch tool calls (`&&` chains) = 30-40% faster responses
 
 ## Guardian Evals Reliability (2026-03-05)
+- Always run preflight validation before evals (auth, config, GCP project)
+- Long runs (>30 min): use service account JSON, not OAuth (tokens expire ~1h)
+- Classify errors: permanent (skip) vs transient (retry 3x) vs fatal (abort)
+- Save progress incrementally to `/tmp/eval-progress.json`
+- RELIABILITY-CHECKLIST.md at `skills/guardian-evals/` has full details
 
-**Post-mortem from CAI-35 / GUA-1100 (archetype standardization eval):**
+## Billy (STOPPED — 2026-03-07, separated 2026-03-09)
 
-### What happened
-- Goal: +5pp agreement rate (76.8% → 81.8%) via archetype standardization
-- Result: 76.4% (55/80 valid cases) — roughly neutral, -0.4pp
-- 31.25% of cases wasted: 22 auth failures + 3 MAX_TOKENS + 2 config issues
-
-### Root causes
-1. **OAuth expired mid-run** (22/80 = 27.5% lost): User tokens last ~1 hour, eval took 18+ min after config fix delays
-2. **MAX_TOKENS on 3 videos** (test_idx 2, 58): Content too large for model context, infinite retry loop
-3. **Config mismatch caught by Caio** (18:38 UTC): Both BigQuery AND Vertex AI pointing to homolog instead of prod+homolog
-4. **GOOGLE_APPLICATION_CREDENTIALS not in .env**: Only in shell env, lost when subprocess spawned
-5. **tqdm BrokenPipeError**: Progress bar crashed on stdout redirect, killed eval at 79/80
-
-### Solutions implemented
-- **RELIABILITY-CHECKLIST.md** created at `/Users/fonsecabc/.openclaw/workspace/skills/guardian-evals/`
-- **Preflight checkpoint** added to guardian-experiment.yaml workflow
-- **Error classification**: permanent (skip) vs transient (retry 3x) vs fatal (abort)
-- **Partial results tracking**: Save progress to /tmp/eval-progress.json incrementally
-- **AGENTS_RETRY_MAX_ATTEMPTS=3**: Sweet spot (1 too aggressive, 5 too slow)
-
-### Auth requirements
-- **Long runs (>30 min):** MUST use service account JSON (GOOGLE_APPLICATION_CREDENTIALS)
-- **Short runs (<15 min):** User OAuth acceptable
-- **Always:** Validate auth BEFORE starting eval (preflight check)
-- **Need from Caio:** Service account JSON key for brandlovers-prod with Vertex AI + BigQuery access
-
-### Key lesson
-Every eval should start with preflight validation. 31% waste rate is unacceptable — most was preventable with a 30-second config check.
-
-## Billy (STOPPED — 2026-03-07)
-
-Billy VM (89.167.64.183) is currently stopped. Anton migrated to Caio's Mac.
-If reactivated: needs rsync of workspace, chmod +x scripts, shared GCP creds.
+Billy VM (89.167.64.183) is currently stopped. Own repo: `replicants-billy`.
+If reactivated: clone repo, configure .env, chmod +x scripts, shared GCP creds.
 
 ## Presentation Generation (Updated 2026-03-08)
 
@@ -338,15 +282,7 @@ If reactivated: needs rsync of workspace, chmod +x scripts, shared GCP creds.
 3. Upload to Google Slides via `--upload --account caio.fonseca@brandlovers.ai`
 4. Return shareable Google Slides URL
 
-**Templates available** (in `skills/presentations/TEMPLATES.md`):
-1. Circular Process Diagram — cycles, feedback loops
-2. Metrics Dashboard — KPIs, key numbers
-3. Architecture / Flow Diagram — system design, data flows
-4. Title / Cover Slide — presentation covers, section dividers
-5. Comparison / VS — before/after, A vs B
-6. Feature Grid — capabilities, benefits, deliverables
-7. Timeline / Roadmap — milestones, phases, evolution
-8. Linear Process / Pipeline — sequential workflows, funnels
+**8 templates available** in `skills/presentations/TEMPLATES.md`.
 
 **Rules:**
 - Always enhance prompts before generating (better prompt = better slide)
@@ -356,283 +292,50 @@ If reactivated: needs rsync of workspace, chmod +x scripts, shared GCP creds.
 - If Drive auth fails: `gog auth add <email> --services gmail,calendar,drive`
 
 ## Max Tokens Error Handling (2026-03-05)
-
-**Problem:** Some Guardian eval cases hit max tokens, causing infinite retry loops
-
-**Solution:**
-- Detect max tokens error specifically
-- Skip that content item (don't retry)
-- Log: "Skipped media {id}: max tokens exceeded"
-- Continue eval with remaining items
-- Report skipped count at end
-
-**Implementation:**
-- Set AGENTS_RETRY_MAX_ATTEMPTS=3 (compromise)
-- Allows transient error retries (network, rate limits)
-- Caps max tokens errors (no infinite loop)
-- Better than AGENTS_RETRY_MAX_ATTEMPTS=1 (too aggressive)
-
-**Pattern:**
-- Max tokens = input too large, retry won't help
-- Network errors = transient, retry helps
-- Distinguish error types for smart retry logic
+- Max tokens = permanent error (skip item, don't retry). Network errors = transient (retry up to 3x).
+- `AGENTS_RETRY_MAX_ATTEMPTS=3` — sweet spot for balancing retries vs infinite loops.
 
 ## Nano-banana Prompting (2026-03-05)
-
-**Key improvements:**
-- Structured prompts with Vertex AI parameters (enhancePrompt, seed, personGeneration)
-- Templates save 4-5 min per generation (copy-paste approach)
-- Testing showed 3x quality improvement with detailed prompts
-- 8 template categories: profile pics, presentations, social media, diagrams, memes, corporate, logos, hero images
-
-**Optimal settings (always use):**
-- **Temperature: 0.5** - Model performs significantly better and more accurate to prompt
-- **Resolution: 4K** - Highest quality output
-- **Prompt enhancement: ALWAYS** - Never pass raw user prompts unchanged, use your skills to improve clarity, add detail, specify style
-
-**Best practice:**
-- Use templates for consistency
+- **Always:** temp 0.5, resolution 4K, enhance prompts before generating (never pass raw user input)
+- Use templates for consistency (8 categories in `skills/nano-banana/`)
 - Iterate with flash model, finalize with pro
-- Specify aspect ratios explicitly
-- Use enhancePrompt for production quality
-- Always enhance user prompts before generating (better prompt = better output)
 
-**Impact:**
-- Faster image generation (template-based)
-- Higher quality output (structured prompts + optimal settings)
-- Both Anton and Billy have access
-- Billy auto-generates images when users request visuals
-
-## Slack Messaging Troubleshooting (2026-03-05)
-
-**allowFrom ≠ message tool**
-- `allowFrom` controls who can USE the bot (send messages and get responses)
-- Slack message tool/API controls my ability to SEND messages to anyone
-- These are completely independent - allowFrom does NOT affect outbound messaging
-
-**When message tool fails with user IDs:**
-1. Use `conversations.open` API to get channel ID: `curl -X POST https://slack.com/api/conversations.open -d '{"users":"U01HZTCCYHX"}'`
-2. Send directly to channel ID instead of user ID
-3. Example: D0AJY7M31E0 (Rapha's DM) vs U01HZTCCYHX (user ID)
-
-**Before resending messages:**
-- ALWAYS check `conversations.history` first
-- Prevents double/triple texting
-- Command: `curl -X GET "https://slack.com/api/conversations.history?channel={channel_id}&limit=10"`
-
-**Lesson:** Check history before resending to avoid spam. allowFrom is for bot access control, not outbound messaging.
+## Slack Messaging (2026-03-05)
+- `allowFrom` = who can use bot (inbound). Does NOT affect outbound messaging.
+- If message tool fails with user ID: use `conversations.open` to get channel ID first. Always check `conversations.history` before resending to avoid spam.
 
 ## Multi-Hypothesis Orchestration (2026-03-06)
+- For every task: spawn parallel agents testing different hypotheses, measure, double down on winners
+- Full framework in SOUL.md under orchestration principles
 
-**Core principle from Caio:** For every task assigned, orchestrate multiple hypotheses to achieve the result. Run parallel agents testing different approaches until goal is achieved.
+## Guardian Eval Cycle (2026-03-09)
 
-**Example workflow:**
-1. Task: "Improve Guardian agreement rate by 5pp"
-2. Generate hypotheses:
-   - Hypothesis A: Archetype taxonomy standardization
-   - Hypothesis B: Prompt engineering improvements
-   - Hypothesis C: LLM-as-a-judge auto-correction
-   - Hypothesis D: Memory pipeline tuning
-3. Spawn 4 parallel agents, each testing one hypothesis
-4. Measure results objectively (+Xpp improvement each)
-5. Double down on winner(s), kill losers
-6. Iterate until +5pp achieved
+**Cycle:** Agent changes → `eval_running` → supervisor detects completion → `callback_pending` → callback agent with history + learnings
 
-**Why it matters:**
-- Explores solution space faster (parallel vs sequential)
-- Reduces risk of local maxima (single approach bias)
-- Data-driven approach selection (not guess-based)
-- Faster convergence to goal (test multiple paths simultaneously)
-
-**Application:**
-- Guardian improvements: Test multiple accuracy approaches in parallel
-- Billy features: Test multiple UX/implementation patterns
-- Performance optimization: Test multiple optimization strategies
-- Any goal with measurable outcome: Generate hypotheses, test in parallel
-
-**Anti-pattern:** Single approach → implement → hope it works → iterate if fails
-**Correct pattern:** Multiple hypotheses → parallel test → measure → double down on winner
-
-## Guardian Eval Management (2026-03-09 — Unified State Machine)
-
-### Agent workflow for evals:
-```bash
-# 1. Make changes, commit
-# 2. Launch eval
-bash scripts/run-guardian-eval.sh --config ... --workers 10
-EVAL_PID=$(cat /tmp/guardian-eval.pid)
-
-# 3. Transition to eval_running (supervisor handles completion + callback)
-bash scripts/task-manager.sh transition AUTO-XX eval_running \
-  --process-pid $EVAL_PID --process-type eval --context "what changed"
-
-# 4. Exit cleanly — supervisor takes over
-```
-
-### How it works:
-- `supervisor.sh` runs every 30s (launchd: `com.anton.supervisor`)
-- Detects when eval PID dies → reads metrics.json → transitions to `callback_pending`
-- Spawns callback agent with full results + history + learnings
-- Callback agent reviews and continues the cycle
-
-### Feedback loop:
-- Callback agent gets `history[]` (all previous cycles) + `learnings[]` (what worked/didn't)
-- Must update both after analyzing: `task-manager.sh add-history` + `add-learning`
-- Each cycle builds on previous knowledge — no more starting from scratch
-
-
-## Guardian Continuous Improvement Loop (2026-03-09 — Unified)
-
-**Cycle: Agent → eval_running → callback_pending → Agent → ...**
-
-1. Agent implements changes → launches eval → `task-manager.sh transition eval_running`
-2. Supervisor detects completion → `callback_pending`
-3. Callback agent spawned with history + learnings + results
-4. If improvement: commit, done. If regression: refine, launch another eval
-5. Each cycle accumulates knowledge in history[] and learnings[]
+**Agent workflow:**
+1. Launch eval: `bash scripts/run-guardian-eval.sh --config ... --workers 10`
+2. Transition: `bash scripts/task-manager.sh transition AUTO-XX eval_running --process-pid $(cat /tmp/guardian-eval.pid) --process-type eval --context "what changed"`
+3. Exit — supervisor handles completion, spawns callback with `history[]` + `learnings[]`
+4. Callback agent updates both via `add-history` + `add-learning`, continues or commits
 
 
 ## Guardian Eval Dashboard (2026-03-08)
-
-**Live dashboard at:** http://localhost:8765/guardian-eval-dashboard.html
-
-**Features:**
-- Target accuracy tracking (87% = 79% baseline + 8pp)
-- Current eval progress (if running)
-- Recent runs with accuracy + delta
-- Auto-refresh every 30s
-
-**Scripts:**
-- `scripts/cockpit-eval-data.sh` — JSON data provider
-- `scripts/generate-eval-dashboard.py` — HTML generator
-- Regenerate: `python3 scripts/generate-eval-dashboard.py /tmp/guardian-eval-dashboard.html`
-
-**Integration with cockpit server:** Dashboard auto-served at port 8765 alongside agent cockpit.
+- **URL:** http://localhost:8765/guardian-eval-dashboard.html (auto-refresh 30s)
+- Tracks target accuracy (87%), current eval progress, recent runs with delta
+- Part of cockpit server on port 8765
 
 
-## Anton Auto-Loop Integration (2026-03-08)
+## Anton Auto-Loops (2026-03-08)
 
-### Two-Level Self-Training System
+**Guardian Loop (every 4h, launchd: `com.anton.auto-loop`):**
+- Target: 87% accuracy. Spawns 3 agents, fast eval (5 min) + full validation (35 min). Auto-commits if +1pp.
 
-**Inspired by Karpathy's autoresearch** - agent improves product AND itself.
+**Meta Loop (every 24h, launchd: `com.anton.meta-loop`):**
+- Target: 85% agent success rate. Improves templates, scripts, codemaps. Auto-commits if +5%.
 
-**Guardian Loop (every 4h):**
-- Target: 87% accuracy (current: 79.3%)
-- Spawns 3 agents, fast eval (5 min), full validation (35 min)
-- Auto-commits if +1pp improvement
-- Launchd: `com.anton.auto-loop`
+**Key Files:** `OBJECTIVES.md` (control panel), `scripts/anton-auto-loop.sh`, `scripts/anton-meta-loop.sh`, `scripts/fast-eval.sh`
+**Status:** `bash .shortcuts/auto-loop-status`
+**Self-monitored** via BMAD role architecture (supervisor.sh handles completions/health)
 
-**Meta Loop (every 24h):**
-- Target: 85% agent success rate (current: 60%)
-- Spawns 2 meta-agents improving templates, spawn scripts, codemaps
-- Auto-commits if +5% success rate improvement
-- Launchd: `com.anton.meta-loop`
-
-**Key Files:**
-- `OBJECTIVES.md` - Control panel (Guardian + Meta targets)
-- `scripts/anton-auto-loop.sh` - Guardian improvement
-- `scripts/anton-meta-loop.sh` - Meta self-improvement
-- `scripts/fast-eval.sh` - 5-min eval (10% dataset)
-- `.shortcuts/auto-loop-status` - Quick status check
-- `docs/ANTON-ARCHITECTURE.md` - System design
-- `docs/SON-OF-ANTON-SETUP.md` - Son of Anton monitoring setup
-
-**Status Check:**
-```bash
-bash ~/.openclaw/workspace/.shortcuts/auto-loop-status
-```
-
-### Son of Anton Integration
-
-Son of Anton (ClawdBot on 89.167.23.2) monitors Anton's auto-loops:
-
-**Every 4h:**
-- SSH to Mac, check `.anton-auto-state.json` and `.anton-meta-state.json`
-- Post status to #replicants if cycle completed
-- Alert if loops offline or stagnant (no improvement in 3 cycles)
-- Run backlog generator if Linear queue empty
-
-**Daily (09:00 BRT):**
-- Post summary (Guardian progress, Meta improvements, commits, ETA)
-
-**Setup files:**
-- `docs/SON-OF-ANTON-SETUP.md` - Complete monitoring setup
-- `docs/SON-OF-ANTON-HEARTBEAT.md` - ClawdBot HEARTBEAT.md content
-
-**SSH Setup Required:**
-1. Son of Anton generates SSH key
-2. Add public key to Mac's `~/.ssh/authorized_keys`
-3. Test: `ssh caio@<mac-ip> "bash ~/.openclaw/workspace/.shortcuts/auto-loop-status"`
-
-**Environment Variables for Son of Anton:**
-- `ANTON_MAC_IP` - Caio's Mac IP
-- `LINEAR_API_KEY` - For backlog checks
-
-### Expected Results
-
-**Week 1:** Guardian +1-2pp, Meta templates simplified
-**Month 1:** Guardian 87% target, Meta 85% success rate
-**Compounding:** Better platform → better agents → faster improvements
-
-### How It's Different from Today
-
-**Before:** Caio defines goal → Anton spawns agents → Caio reviews → repeat
-**After:** Caio edits OBJECTIVES.md → Anton auto-improves 24/7 → Son of Anton monitors
-
-**Key insight from Karpathy:** Agent should improve BOTH the product AND the platform (itself).
-
-## SSH Auto-Connect Configuration (2026-03-08)
-
-### VMs Conectados
-
-**Son of Anton (ClawdBot):**
-- Host: caio@89.167.23.2
-- Workspace: /home/caio/workspace
-- Role: Monitoring Anton's auto-loops, posting to #replicants
-
-**Billy (OpenClaw):**
-- Host: root@89.167.64.183
-- Workspace: /root/.openclaw/workspace
-- Role: Data helper bot for non-tech teams
-
-**SSH Keys:** Caio added Anton's public key to both VMs → passwordless connection
-
-### Auto-Sync System
-
-**Script:** `scripts/sync-replicants.sh`
-**Schedule:** Every 4 hours via launchd (`com.anton.sync-replicants`)
-**Direction:** Bidirectional (Anton ↔ Son of Anton)
-
-**What syncs:**
-- Docs (architecture, setup)
-- OBJECTIVES.md
-- State files (.anton-auto-state.json, .anton-meta-state.json)
-- Scripts + skills
-
-**What does NOT sync:**
-- memory/ files (each entity keeps own memories)
-- SOUL.md (separate identities)
-
-**Philosophy:** Entities share objective knowledge, keep subjective experiences separate.
-
-### Verification Commands
-
-```bash
-# Check auto-loops status
-bash ~/.openclaw/workspace/.shortcuts/auto-loop-status
-
-# Check sync status
-bash ~/.openclaw/workspace/.shortcuts/sync-status
-
-# Test SSH
-ssh caio@89.167.23.2 "hostname"  # → clawdbot-caio
-ssh root@89.167.64.183 "hostname"  # → ubuntu-4gb-hel1-1
-```
-
-### Integration
-
-**Guardian Loop:** Syncs after each cycle completion
-**Meta Loop:** Syncs after improvements
-**Sync Loop:** Runs independently every 4h
-
-**Result:** Anton works autonomously, Son monitors, both stay synchronized.
+## SSH & Sync (2026-03-08)
+- **VMs:** Billy (`root@89.167.64.183`) — passwordless SSH (currently STOPPED)
