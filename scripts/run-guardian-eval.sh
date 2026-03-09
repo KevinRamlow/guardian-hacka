@@ -1,12 +1,39 @@
 #!/bin/bash
 # Direct Guardian eval runner - no agent wrapper
-# Usage: bash scripts/run-guardian-eval.sh [dataset] [workers] [max_parallel_agents]
+# Usage: bash scripts/run-guardian-eval.sh [--config <path>] [--dataset <path>] [--workers N]
+# Also supports legacy positional args: bash scripts/run-guardian-eval.sh [dataset] [workers] [max_parallel_agents]
 
 set -e
 
-DATASET="${1:-guidelines_combined_dataset.jsonl}"
-WORKERS="${2:-15}"
-MAX_AGENTS="${3:-5}"
+# Defaults
+DATASET="guidelines_combined_dataset.jsonl"
+WORKERS=15
+MAX_AGENTS=5
+CONFIG_PATH=""
+
+# Parse named or positional args
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --config|-c)
+      CONFIG_PATH="$2"; shift 2;;
+    --dataset|-d)
+      DATASET="$2"; shift 2;;
+    --workers|-w)
+      WORKERS="$2"; shift 2;;
+    --*)
+      echo "Unknown option: $1"; exit 1;;
+    *)
+      # Legacy positional: first positional = dataset, second = workers, third = max_agents
+      if [ -z "$_pos1" ]; then _pos1="$1"; DATASET="$1"
+      elif [ -z "$_pos2" ]; then _pos2="$1"; WORKERS="$1"
+      elif [ -z "$_pos3" ]; then _pos3="$1"; MAX_AGENTS="$1"
+      fi
+      shift;;
+  esac
+done
+
+# Strip full path prefix from DATASET if agent passed full path like evals/content_moderation/foo.jsonl
+DATASET=$(basename "$DATASET")
 
 echo "=== Guardian Eval Runner ==="
 echo "Dataset: $DATASET"
@@ -46,8 +73,9 @@ source /Users/fonsecabc/.openclaw/workspace/.env.guardian-eval
 RUN_ID=$(date +%Y%m%d_%H%M%S)
 LOG=/tmp/guardian-eval-${RUN_ID}.log
 
+EVAL_CONFIG="${CONFIG_PATH:-evals/content_moderation/eval.yaml}"
 nohup .venv/bin/python3 evals/run_eval.py \
-  --config evals/content_moderation/eval.yaml \
+  --config "$EVAL_CONFIG" \
   --dataset evals/content_moderation/${DATASET} \
   --workers $WORKERS \
   > $LOG 2>&1 &
