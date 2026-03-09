@@ -721,7 +721,38 @@ async function collectData() {
     lastUpdated: new Date().toISOString(),
   };
 
+  // Add token status
+  const tokens = getTokenStatus();
+  dashboardState.tokens = tokens;
+
   return dashboardState;
+}
+
+function getTokenStatus() {
+  try {
+    const out = execSync('~/.nvm/versions/node/v22.13.1/bin/openclaw sessions list 2>/dev/null', {
+      timeout: 5000,
+      encoding: 'utf-8'
+    }).trim();
+    
+    const sessions = [];
+    const lines = out.split('\n');
+    for (const line of lines) {
+      const match = line.match(/agent:([^:]+):[^\s]+\s+\S+\s+\S+\s+ago\s+(\S+)\s+(\d+)k\/(\d+)k\s+\((\d+)%\)/);
+      if (match) {
+        sessions.push({
+          agent: match[1],
+          model: match[2],
+          used: parseInt(match[3]),
+          total: parseInt(match[4]),
+          percent: parseInt(match[5]),
+        });
+      }
+    }
+    return sessions;
+  } catch {
+    return [];
+  }
 }
 
 // --- WebSocket ---
@@ -837,21 +868,34 @@ app.get('/api/stream/:taskId', (req, res) => {
   let sessionPath = null;
   let agentId = 'main'; // default
   
-  // Get agent ID from state.json
+  // Get agent ID and timestamps from state.json to find correct session
+  let taskStartEpoch = null;
   try {
     const state = JSON.parse(fs.readFileSync(STATE_FILE, 'utf-8'));
     const task = state.tasks[taskId];
     if (task?.role) agentId = task.role;
+    taskStartEpoch = task?.startedEpoch || task?.createdEpoch;
   } catch {}
 
-  // Find most recent session file for this agent
+  // Find session file that matches this task's timeframe
   const agentSessionsDir = path.join(OPENCLAW_HOME, 'agents', agentId, 'sessions');
   try {
     const files = fs.readdirSync(agentSessionsDir)
       .filter(f => f.endsWith('.jsonl'))
-      .map(f => ({ name: f, mtime: fs.statSync(path.join(agentSessionsDir, f)).mtimeMs }))
+      .map(f => {
+        const fullPath = path.join(agentSessionsDir, f);
+        const mtime = fs.statSync(fullPath).mtimeMs;
+        const mtimeEpoch = Math.floor(mtime / 1000);
+        // Match session file if its mtime is within 5min of task start
+        const isMatch = taskStartEpoch && Math.abs(mtimeEpoch - taskStartEpoch) < 300;
+        return { name: f, mtime, mtimeEpoch, isMatch };
+      })
       .sort((a, b) => b.mtime - a.mtime);
-    if (files.length > 0) sessionPath = path.join(agentSessionsDir, files[0].name);
+    
+    // Prefer matched session, fallback to most recent
+    const matched = files.find(f => f.isMatch);
+    const chosen = matched || files[0];
+    if (chosen) sessionPath = path.join(agentSessionsDir, chosen.name);
   } catch {}
 
   // Backfill from OpenClaw native session file
