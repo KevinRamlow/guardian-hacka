@@ -866,9 +866,10 @@ function renderRecent() {
   if (!recent.length) { $('#recentGrid').innerHTML = '<div class="empty-state">No completions in this period</div>'; return; }
   $('#recentGrid').innerHTML = recent.slice(0,20).map(a => {
     const ok = a.status==='done'||a.success;
+    const tid = a.taskId||'--';
     return `
-      <div class="recent-card ${ok?'success':'failure'}" onclick="openLogStream('${esc(a.taskId||'--')}', '${esc(a.label||'--')}')" style="cursor:pointer">
-        <div class="recent-id">${esc(a.taskId||'--')}</div>
+      <div class="recent-card ${ok?'success':'failure'}" onclick="selectAgent('${tid}')" style="cursor:pointer" data-task-id="${tid}">
+        <div class="recent-id">${esc(tid)}</div>
         <div class="recent-label">${esc(a.label||'--')}</div>
         <div class="recent-meta">
           <span class="mono">${a.runtimeMin||'0'}m</span>
