@@ -53,7 +53,14 @@ linear-log.sh AUTO-42 "Done: accuracy 76.8% -> 79.2% (+2.4pp). Files: severity_a
 
 **If your task changes Guardian code** (prompts, agents, archetypes, severity logic):
 
-### Step 1: Run Eval BEFORE Marking Done
+### Step 1: Make Your Code Changes and Commit
+```bash
+cd /Users/fonsecabc/.openclaw/workspace/guardian-agents-api-real
+git add [files you changed]
+git commit -m "feat(AUTO-XX): description of changes"
+```
+
+### Step 2: Launch Eval and Register with Process Manager
 ```bash
 cd /Users/fonsecabc/.openclaw/workspace/guardian-agents-api-real
 source /Users/fonsecabc/.openclaw/workspace/.env.guardian-eval
@@ -61,56 +68,37 @@ bash /Users/fonsecabc/.openclaw/workspace/scripts/run-guardian-eval.sh \
   --config evals/content_moderation/eval.yaml \
   --dataset evals/content_moderation/guidelines_combined_dataset.jsonl \
   --workers 10
+
+# Get the eval PID
+EVAL_PID=$(cat /tmp/guardian-eval.pid)
+
+# Register with process manager — THIS IS THE KEY STEP
+bash /Users/fonsecabc/.openclaw/workspace/scripts/register-eval-process.sh \
+  --task AUTO-XX \
+  --pid $EVAL_PID \
+  --context "Changed [describe what you changed]. Expected impact: [+Xpp]. Files: [list files]. Commit: [hash]"
 ```
+
+### Step 3: Log and EXIT
+```bash
+linear-log.sh AUTO-XX "Code committed. Eval launched (PID=$EVAL_PID). Registered with process manager. Exiting — callback agent will process results." progress
+exit 0
+```
+
+**What happens next (automatically):**
+1. Process-completion-checker runs every 30s, detects eval finish
+2. Reads metrics.json, computes accuracy delta vs baseline
+3. Spawns a fresh callback agent with your task ID + full results
+4. Callback agent reviews results and takes next action (mark done, refine, or block)
 
 For targeted fixes, use subset datasets:
-- CAPTIONS only: create subset with `grep CAPTIONS guidelines_combined_dataset.jsonl > /tmp/captions_only.jsonl`
-- TIME_CONSTRAINTS only: similar grep approach
+- CAPTIONS only: `grep CAPTIONS guidelines_combined_dataset.jsonl > /tmp/captions_only.jsonl`
 - Then run eval with `--dataset /tmp/subset.jsonl`
 
-### Step 2: Measure Impact vs Baseline
-```python
-import json
-
-# Load baseline
-with open("/tmp/guardian-main-baseline-real.json") as f:
-    baseline = json.load(f)
-baseline_acc = baseline["accuracy"] * 100  # 76.86%
-
-# Load your eval results
-run_dir = "<latest-run-directory>"
-with open(f"{run_dir}/metrics.json") as f:
-    metrics = json.load(f)
-new_acc = metrics["summary_statistics"]["mean_aggregate_score"] * 100
-
-delta = new_acc - baseline_acc
-print(f"Baseline: {baseline_acc:.2f}%")
-print(f"New:      {new_acc:.2f}%")
-print(f"Delta:    {delta:+.2f}pp")
-```
-
-### Step 3: Compare vs Expected Impact
-- Task description says "Impact: +Xpp"
-- Your measured delta should be within ±1pp of expected
-- If delta is negative or way off → investigate before claiming done
-
-### Step 4: Log Validation Results
-```bash
-linear-log.sh AUTO-XX "Validation: ${new_acc}% (${delta:+}pp vs baseline). Expected: +Xpp. VALIDATED ✓" done
-```
-
-### What if Validation Fails?
-
-**If delta doesn't match expected:**
-1. Check stderr logs for errors during eval
-2. Review predictions.json for unexpected regressions
-3. Try alternative implementation approach
-4. OR mark as blocked: `linear-log.sh AUTO-XX "BLOCKED: validation failed. Expected +Xpp, got ${delta}pp. Investigated: [what you tried]" blocked`
-
 **Rules:**
-- ✅ Code committed + eval run + delta reported = complete task
+- ✅ Code committed + eval registered with process manager = you're done, exit cleanly
 - ❌ Code committed WITHOUT eval = incomplete task (will be re-queued)
-- ❌ Eval run but delta way off = blocked task (needs investigation)
+- ❌ Polling eval in a loop = FORBIDDEN (wastes tokens, hits timeouts)
 
 **Why this matters:** Shipping unvalidated Guardian changes breaks production accuracy. Every change MUST be measured.
 
@@ -144,7 +132,7 @@ git push origin HEAD
 
 **Example:**
 ```bash
-git add scripts/agent-registry.sh
+git add scripts/task-manager.sh
 git commit -m "fix(AUTO-274): escape apostrophes in task labels"
 git push origin HEAD
 linear-log.sh AUTO-274 "Done: fixed + committed + pushed" done
@@ -195,29 +183,56 @@ fi
 
 **Why this matters:** When a task times out with no output (like EVAL-001), work is lost. Checkpoints let the next agent resume instead of restarting.
 
-## CRITICAL: Do NOT Poll Long-Running Processes
+## CRITICAL: Long-Running Processes — Use the Task Manager
 
-When you launch a long-running process (evals, tests, builds that take >2 minutes):
+**NEVER poll long-running processes.** Use the Task Manager instead.
 
-1. **Launch it in the background** using `nohup` or `&`
-2. **Do NOT loop checking** `progress_meta.json`, `TaskOutput`, `sleep + check`, or `while [ ! -f ... ]`
-3. **Do NOT use `callback`** repeatedly to check status
-4. **Instead:** Launch the process, log "Eval started, run dir: X", then **exit**. The watchdog will detect completion.
+When you need to run something that takes >2 minutes (evals, builds, pipelines, tests):
 
-**Why:** Polling wastes tokens. A 30-min eval checked every 30s = 60 polls × ~500 tokens each = 30K wasted tokens.
-
-**Correct pattern for evals:**
+### Pattern: Launch → Transition to eval_running → Exit → Callback
 ```bash
-# Launch eval in background
-cd /Users/fonsecabc/.openclaw/workspace/guardian-agents-api-real
-source /Users/fonsecabc/.openclaw/workspace/.env.guardian-eval
-nohup python -m evals.run_eval --config evals/content_moderation/eval.yaml --workers 4 > /tmp/eval-output.log 2>&1 &
-EVAL_PID=$!
-echo "Eval PID=$EVAL_PID, output: /tmp/eval-output.log"
+# 1. Launch the process in background
+nohup <your-command> > /tmp/my-process.log 2>&1 &
+PROCESS_PID=$!
 
-# Log and EXIT — do NOT wait
-linear-log.sh AUTO-XX "Eval launched (PID=$EVAL_PID). Results will appear in evals/.runs/content_moderation/. Exiting." done
+# 2. Transition task to eval_running (supervisor will handle completion + callback)
+bash /Users/fonsecabc/.openclaw/workspace/scripts/task-manager.sh transition AUTO-XX eval_running \
+  --process-pid $PROCESS_PID \
+  --process-type eval \
+  --result-path /tmp/my-process.log \
+  --metrics-path /path/to/expected/metrics.json \
+  --context "Description of what was done and what the callback agent should do with results"
+
+# 3. Log and EXIT immediately
+linear-log.sh AUTO-XX "Process launched (PID=$PROCESS_PID). Registered in state. Exiting." progress
+exit 0
 ```
+
+**For evals specifically, use the convenience wrapper:**
+```bash
+bash /Users/fonsecabc/.openclaw/workspace/scripts/register-eval-process.sh \
+  --task AUTO-XX \
+  --pid $EVAL_PID \
+  --context "Changed severity_agent.py to fix CAPTIONS patterns. Expected +2pp."
+```
+
+**After your callback processes results, update the feedback loop:**
+```bash
+# Record what happened this cycle
+bash scripts/task-manager.sh add-history AUTO-XX '{"cycle":1,"accuracy":78.5,"delta":"+2.5pp","action":"what you did"}'
+# Record what you learned
+bash scripts/task-manager.sh add-learning AUTO-XX "what worked or didn't work"
+```
+
+**What you MUST NOT do:**
+- `while [ ! -f metrics.json ]; do sleep 30; done` — FORBIDDEN
+- `TaskOutput` polling — FORBIDDEN
+- `sleep 60 && check` loops — FORBIDDEN
+- Staying alive waiting for a process — FORBIDDEN
+
+**Why:** Polling wastes tokens and hits timeouts. The supervisor checks every 30s via launchd (zero token cost) and spawns a fresh callback agent with full results + history when done.
+
+**Check task status:** `bash scripts/task-manager.sh list`
 
 ## Task Format
 

@@ -1,8 +1,118 @@
 {
-  "date": "2026-03-08",
-  "completedToday": 13,
-  "failedToday": 6,
+  "date": "2026-03-09",
+  "completedToday": 8,
+  "failedToday": 2,
   "recentAgents": [
+    {
+      "sessionKey": "completed:AUTO-LOOP-3-error-patterns",
+      "label": "Error pattern analysis + targeted fixes",
+      "runtimeMs": 462000,
+      "status": "error",
+      "taskId": "AUTO-LOOP-3-error-patterns",
+      "source": "manual",
+      "completedAt": "2026-03-09T13:25:44.265Z",
+      "runtimeMin": "7.7",
+      "success": false
+    },
+    {
+      "sessionKey": "completed:AUTO-LOOP-3-tolerance-tuning",
+      "label": "Tolerance tuning for borderline cases",
+      "runtimeMs": 348000,
+      "status": "done",
+      "taskId": "AUTO-LOOP-3-tolerance-tuning",
+      "source": "manual",
+      "completedAt": "2026-03-09T13:23:52.230Z",
+      "runtimeMin": "5.8",
+      "success": true
+    },
+    {
+      "sessionKey": "completed:AUTO-LOOP-2-routing-optimization",
+      "label": "anton-auto:routing-optimization",
+      "runtimeMs": 414000,
+      "status": "done",
+      "taskId": "AUTO-LOOP-2-routing-optimization",
+      "source": "manual",
+      "completedAt": "2026-03-09T12:56:52.503Z",
+      "runtimeMin": "6.9",
+      "success": true
+    },
+    {
+      "sessionKey": "completed:AUTO-307",
+      "label": "guardian-critical",
+      "runtimeMs": 245999.99999999997,
+      "status": "done",
+      "taskId": "AUTO-307",
+      "source": "manual",
+      "completedAt": "2026-03-09T01:10:49.974Z",
+      "runtimeMin": "4.1",
+      "success": true
+    },
+    {
+      "sessionKey": "completed:AUTO-305",
+      "label": "guardian-accuracy",
+      "runtimeMs": 738000,
+      "status": "error",
+      "taskId": "AUTO-305",
+      "source": "manual",
+      "completedAt": "2026-03-09T00:43:50.295Z",
+      "runtimeMin": "12.3",
+      "success": false
+    },
+    {
+      "sessionKey": "completed:AUTO-306",
+      "label": "guardian-accuracy",
+      "runtimeMs": 300000,
+      "status": "done",
+      "taskId": "AUTO-306",
+      "source": "manual",
+      "completedAt": "2026-03-09T00:37:44.697Z",
+      "runtimeMin": "5.0",
+      "success": true
+    },
+    {
+      "sessionKey": "completed:AUTO-304",
+      "label": "guardian-accuracy",
+      "runtimeMs": 294000,
+      "status": "done",
+      "taskId": "AUTO-304",
+      "source": "manual",
+      "completedAt": "2026-03-09T00:36:16.672Z",
+      "runtimeMin": "4.9",
+      "success": true
+    },
+    {
+      "sessionKey": "completed:AUTO-299",
+      "label": "debug",
+      "runtimeMs": 132000,
+      "status": "done",
+      "taskId": "AUTO-299",
+      "source": "manual",
+      "completedAt": "2026-03-09T00:15:45.885Z",
+      "runtimeMin": "2.2",
+      "success": true
+    },
+    {
+      "sessionKey": "completed:AUTO-292",
+      "label": "fix",
+      "runtimeMs": 84000,
+      "status": "done",
+      "taskId": "AUTO-292",
+      "source": "manual",
+      "completedAt": "2026-03-09T00:15:06.155Z",
+      "runtimeMin": "1.4",
+      "success": true
+    },
+    {
+      "sessionKey": "completed:AUTO-LOOP-1-routing-optimization",
+      "label": "anton-auto:routing-optimization",
+      "runtimeMs": 6000,
+      "status": "done",
+      "taskId": "AUTO-LOOP-1-routing-optimization",
+      "source": "manual",
+      "completedAt": "2026-03-08T20:52:24.846Z",
+      "runtimeMin": "0.1",
+      "success": true
+    },
     {
       "sessionKey": "completed:AUTO-297",
       "label": "AUTO-297-add-archetype-detection-valida",
@@ -55,15 +165,6 @@
       "taskId": "CAI-326",
       "source": "auto-queue",
       "completedAt": "2026-03-08T16:11:13.246Z",
-      "linear": {
-        "title": "⚡ Feature: Budget-aware agent spawn with cost estimation",
-        "state": "Done",
-        "stateColor": "#5e6ad2",
-        "lastCommentAt": "2026-03-08T16:07:21.085Z",
-        "lastCommentPreview": "Agent spawned: CAI-326--feature-budget-aware-agent- (timeout=25min, model=claude-sonnet-4-6, budget=$2.00)",
-        "commentCount": 1,
-        "updatedAt": "2026-03-08T16:10:48.499Z"
-      },
       "runtimeMin": "3.9",
       "success": true
     },
@@ -75,15 +176,6 @@
       "taskId": "CAI-330",
       "source": "auto-queue",
       "completedAt": "2026-03-08T15:56:56.989Z",
-      "linear": {
-        "title": "🛡️ Resiliência: Gateway restart frequency analysis + improvement",
-        "state": "Done",
-        "stateColor": "#5e6ad2",
-        "lastCommentAt": "2026-03-07T18:37:56.392Z",
-        "lastCommentPreview": "Agent spawned: gateway-restart-analysis (timeout=25min, model=claude-sonnet-4-6)",
-        "commentCount": 1,
-        "updatedAt": "2026-03-08T15:56:32.087Z"
-      },
       "runtimeMin": "5.8",
       "success": true
     },
@@ -130,150 +222,6 @@
       "completedAt": "2026-03-08T04:16:58.894Z",
       "runtimeMin": "6.7",
       "success": false
-    },
-    {
-      "sessionKey": "completed:GUARD-color-fix",
-      "label": "guardian_improvement",
-      "runtimeMs": 312000,
-      "status": "error",
-      "taskId": "GUARD-color-fix",
-      "source": "manual",
-      "completedAt": "2026-03-08T04:15:06.864Z",
-      "runtimeMin": "5.2",
-      "success": false
-    },
-    {
-      "sessionKey": "completed:GUARD-paraphrase-fix",
-      "label": "guardian_improvement",
-      "runtimeMs": 192000,
-      "status": "done",
-      "taskId": "GUARD-paraphrase-fix",
-      "source": "manual",
-      "completedAt": "2026-03-08T04:13:22.837Z",
-      "runtimeMin": "3.2",
-      "success": true
-    },
-    {
-      "sessionKey": "completed:GUA-1101-validation-run2",
-      "label": "guardian_eval",
-      "model": "claude",
-      "totalTokens": 0,
-      "runtimeMs": 126000,
-      "status": "done",
-      "taskId": "GUA-1101-validation-run2",
-      "source": "manual",
-      "runtimeMin": "2.1",
-      "cost": "0",
-      "success": true
-    },
-    {
-      "sessionKey": "completed:CAI-341",
-      "label": "p0-captions-fix",
-      "model": "claude",
-      "totalTokens": 0,
-      "runtimeMs": 318000,
-      "status": "error",
-      "taskId": "CAI-341",
-      "source": "manual",
-      "runtimeMin": "5.3",
-      "cost": "0",
-      "success": false
-    },
-    {
-      "sessionKey": "completed:CAI-343",
-      "label": "p1-enable-judge",
-      "model": "claude",
-      "totalTokens": 0,
-      "runtimeMs": 60000,
-      "status": "done",
-      "taskId": "CAI-343",
-      "source": "manual",
-      "runtimeMin": "1.0",
-      "cost": "0",
-      "success": true
-    },
-    {
-      "sessionKey": "completed:CAI-342",
-      "label": "p0-time-must-not-do",
-      "model": "claude",
-      "totalTokens": 0,
-      "runtimeMs": 78000,
-      "status": "done",
-      "taskId": "CAI-342",
-      "source": "manual",
-      "runtimeMin": "1.3",
-      "cost": "0",
-      "success": true
-    },
-    {
-      "sessionKey": "completed:CAI-340",
-      "label": "gua1101-analysis",
-      "model": "claude",
-      "totalTokens": 0,
-      "runtimeMs": 396000,
-      "status": "done",
-      "taskId": "CAI-340",
-      "source": "manual",
-      "runtimeMin": "6.6",
-      "cost": "0",
-      "success": true
-    },
-    {
-      "sessionKey": "completed:CAI-339",
-      "label": "main-eval",
-      "model": "claude",
-      "totalTokens": 0,
-      "runtimeMs": 618000,
-      "status": "error",
-      "taskId": "CAI-339",
-      "source": "manual",
-      "runtimeMin": "10.3",
-      "cost": "0",
-      "success": false,
-      "linear": {
-        "title": "Main branch eval: real baseline measurement",
-        "state": "Done",
-        "stateColor": "#5e6ad2",
-        "lastCommentAt": "2026-03-08T01:21:33.699Z",
-        "lastCommentPreview": "Agent spawned: main-eval (timeout=60min, model=claude-sonnet-4-6, budget=$2.00)",
-        "commentCount": 1,
-        "updatedAt": "2026-03-08T15:34:19.671Z"
-      }
-    },
-    {
-      "sessionKey": "completed:CAI-336",
-      "label": "archetype-anti-error",
-      "model": "claude",
-      "totalTokens": 0,
-      "runtimeMs": 2904000,
-      "status": "done",
-      "taskId": "CAI-336",
-      "source": "manual",
-      "runtimeMin": "48.4",
-      "cost": "0",
-      "success": true,
-      "linear": {
-        "title": "Implement: archetype anti-error injection",
-        "state": "Done",
-        "stateColor": "#5e6ad2",
-        "lastCommentAt": "2026-03-08T00:21:58.120Z",
-        "lastCommentPreview": "Agent spawned: archetype-anti-error (timeout=45min, model=claude-sonnet-4-6)",
-        "commentCount": 1,
-        "updatedAt": "2026-03-08T15:34:19.881Z"
-      }
-    },
-    {
-      "sessionKey": "completed:CAI-999",
-      "label": "env-test",
-      "model": "claude",
-      "totalTokens": 0,
-      "runtimeMs": 6000,
-      "status": "done",
-      "taskId": "CAI-999",
-      "source": "manual",
-      "runtimeMin": "0.1",
-      "cost": "0",
-      "success": true
     }
   ]
 }

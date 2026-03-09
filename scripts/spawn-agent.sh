@@ -10,7 +10,7 @@
 # All agents stream activity to CAI-XX-activity.jsonl for real-time monitoring.
 set -euo pipefail
 
-REGISTRY="/Users/fonsecabc/.openclaw/workspace/scripts/agent-registry.sh"
+REGISTRY="/Users/fonsecabc/.openclaw/workspace/scripts/task-manager.sh"
 LOGGER="/Users/fonsecabc/.openclaw/workspace/scripts/agent-logger.sh"
 LINEAR_LOG="/Users/fonsecabc/.openclaw/workspace/skills/task-manager/scripts/linear-log.sh"
 LOGS_DIR="/Users/fonsecabc/.openclaw/tasks/agent-logs"

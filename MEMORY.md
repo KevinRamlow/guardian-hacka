@@ -154,83 +154,65 @@ The platform is called **CreatorAds** (repo: `brandlovers-team/creator-ads` — 
 - API Key: stored in `.env.secrets` (GEMINI_API_KEY)
 - Tools: generate_image, edit_image, analyze_image
 
-## Agent Management v2 (2026-03-07, updated for Mac)
+## Task Management v3 (2026-03-09 — Unified State Machine)
 
-**Source of truth:** `agent-registry.json` — but MUST stay in sync with Linear and actual processes.
+**Single source of truth:** `state.json` (`/Users/fonsecabc/.openclaw/tasks/state.json`)
 
-**Model tiering (auto-selected by task type):**
-- `guardian_eval` / `analysis` → `claude-haiku-4-5-20251001` (cheap, just runs commands)
-- `code_task` / default → `claude-sonnet-4-6` (needs reasoning)
-- Override with `--model` flag when needed
-- `--fallback-model claude-sonnet-4-6` auto-escalates if Haiku overloaded
-- Budget caps: eval=$2, analysis=$1, code=$3 (`--max-budget-usd`)
-
-### Core commands
-```bash
-# DISPATCH WORK (creates Linear task + spawns agent in ONE command)
-bash scripts/dispatch-task.sh --title "Fix X" --desc "Details..." --label Bug --timeout 25
-
-# Check registry
-bash scripts/agent-registry.sh list
-
-# SYNC CHECK (run before spawning and after completions)
-bash scripts/agent-status.sh          # show all views: Linear + Registry + Processes
-bash scripts/agent-status.sh --sync   # fix mismatches automatically
-
-# Monitor running agents
-bash scripts/agent-peek.sh            # overview of all agents
-bash scripts/agent-peek.sh CAI-XX follow  # live tail activity stream
-
-# Session transcripts (full visibility)
-tail -20 ~/.claude/projects/-Users-fonsecabc--openclaw-workspace/*.jsonl
+### State Machine
+```
+todo → agent_running → [done | failed | blocked | eval_running]
+eval_running → callback_pending → agent_running → ...
 ```
 
-### Sync rules (MANDATORY)
-- `agent-status.sh` is the ONLY way to see the real picture
-- Linear, Registry, and Processes MUST always agree
-- "In Progress" in Linear with no agent running = MISMATCH → fix it
-- Dead PIDs in registry = MISMATCH → fix it
-- Run `agent-status.sh --sync` to auto-fix: orphaned Linear → Blocked, dead registry → removed
+### Core Scripts (5 scripts replace 50+)
+| Script | Purpose |
+|---|---|
+| `task-manager.sh` | State CRUD + transitions. ALL state goes through this. |
+| `dispatcher.sh` | Create Linear task + register state + spawn agent |
+| `supervisor.sh` | Unified launchd (30s): PID checks, completions, callbacks, timeouts, orphans |
+| `reporter.sh` | Report to Linear + Slack + dashboard |
+| `spawn-agent.sh` | Low-level agent spawner (called by dispatcher/supervisor) |
 
-### What streams where
-- `CAI-XX-activity.jsonl` — real-time tool calls/results (via stream-json)
-- `CAI-XX-output.log` — final text output
-- `CAI-XX-stderr.log` — errors
-- `~/.claude/projects/.../*.jsonl` — full session transcripts (always available)
+### Commands
+```bash
+# Dispatch work
+bash scripts/dispatcher.sh --title "Fix X" --desc "Details" --label Bug --timeout 25
 
-**Never use:** `sessions_spawn`, manual Linear API + separate spawn, old v1 scripts, hooks for logging
+# Check state
+bash scripts/task-manager.sh list              # all tasks
+bash scripts/task-manager.sh list --status agent_running  # running only
+bash scripts/task-manager.sh get AUTO-XX       # single task detail
+bash scripts/task-manager.sh slots             # available spawn slots
 
-### Reporting (how Linear + Slack get updated)
-All reporting comes from **actual agent logs on disk**, not hooks:
-- **During execution:** `agent-stream-monitor.py` posts progress to Linear + Slack every 2min (tool count, errors, elapsed time)
-- **On completion/failure:** `agent-report.sh` reads output/stderr/activity logs, posts summary to both
-- **No hooks for logging.** `linear-logger` hook is REMOVED. Only hooks active: boot-md, command-logger, session-memory, slack-thread-router
+# Monitor
+bash scripts/reporter.sh peek                  # overview
+bash scripts/reporter.sh peek AUTO-XX          # detail
+bash scripts/reporter.sh peek AUTO-XX follow   # live tail
 
-### Scheduling (Hybrid: Native Heartbeat + Launchd) — Updated 2026-03-08
+# Feedback loop
+bash scripts/task-manager.sh add-history AUTO-XX '{"cycle":1,"accuracy":78.5}'
+bash scripts/task-manager.sh add-learning AUTO-XX "what worked"
+```
 
-**Native OpenClaw heartbeat (5min, 08:00-23:00 São Paulo):**
-- Configured in `openclaw.json` → `agents.defaults.heartbeat`
-- Drives: auto-queue (Linear Todo → spawn), eval completion checks, health monitoring, backlog generation
-- Behavior defined in `HEARTBEAT.md` — read it on every heartbeat
-- Replies HEARTBEAT_OK if nothing to do (silently dropped by gateway)
+### Feedback Loop (first-class citizen)
+Each task carries `history[]` and `learnings[]`. When a callback agent spawns, it gets:
+1. Full history array (what was tried, accuracy per cycle, deltas)
+2. Learnings (extracted patterns from previous cycles)
+3. Original context
 
-**Launchd jobs (still active):**
-- Watchdog (60s): Process-level PID monitoring, timeout kills, orphan cleanup — CANNOT be replaced by heartbeat
-- Linear-sync (15min): Moves orphaned In Progress tasks to Todo
-- Langfuse-scraper (2min): Scrapes Langfuse traces
-- GCP-token-push (45min): Refreshes GCP auth tokens
+Callback agents must update these after analyzing results.
 
-**Disabled launchd jobs (absorbed into native heartbeat):**
-- ~~auto-queue-v2.sh~~ — Now handled by heartbeat Priority 2
-- ~~eval-completion-check.sh~~ — Now handled by heartbeat Priority 1
+### Scheduling (2 launchd jobs)
+| Job | Interval | What |
+|---|---|---|
+| `com.anton.supervisor` | 30s | PID checks, completions, callbacks, timeouts, orphans, health |
+| `com.anton.infra` | 15min | Linear sync, GCP tokens, Langfuse, state cleanup |
 
-Stop active: `for p in watchdog linear-sync langfuse-scraper gcp-token-push; do launchctl unload ~/Library/LaunchAgents/com.anton.$p.plist; done`
+Old jobs removed: watchdog, process-checker, linear-sync, langfuse-scraper, gcp-token-push
 
-### Native OpenClaw Features (configured 2026-03-08)
-- **Sub-agents**: maxSpawnDepth=2, maxChildrenPerAgent=5, maxConcurrent=10
-- **Compaction**: reserveTokensFloor=20k, auto-distills to daily memory
-- **Memory search**: Gemini embeddings → SQLite hybrid (semantic + BM25)
-- **Lobster workflows**: `workflows/guardian-eval-pipeline.yaml` for deterministic eval loops
+### Backward Compatibility
+- `spawn-agent.sh` calls `task-manager.sh register` for state tracking
+- `task-manager.sh` supports legacy API: `register`, `count`, `slots`, `has`, `json`
 
 ## Token Efficiency Architecture (2026-03-07)
 
@@ -252,22 +234,22 @@ How agents get context now:
 **Codemap generator**: `bash scripts/generate-codemap.sh /path/to/repo > knowledge/repo.map.md`
 Regenerate when repo changes significantly.
 
-## Active Agent Monitoring (2026-03-07)
+## Agent Monitoring (2026-03-09)
 
-**You don't need to manually check agents anymore.** The stream monitor posts progress to Slack + Linear every 2min automatically. But you CAN check:
+**Supervisor runs every 30s** — handles PID checks, completions, callbacks, timeouts automatically.
 
 ```bash
-bash scripts/agent-peek.sh              # all agents overview
-bash scripts/agent-peek.sh CAI-XX       # last 20 events
-bash scripts/agent-peek.sh CAI-XX follow  # live tail
-bash scripts/agent-status.sh            # unified Linear + Registry + Process view
-bash scripts/agent-status.sh --sync     # fix mismatches
+bash scripts/task-manager.sh list              # all tasks + states
+bash scripts/task-manager.sh get AUTO-XX       # single task detail
+bash scripts/reporter.sh peek                  # overview
+bash scripts/reporter.sh peek AUTO-XX          # detail
+bash scripts/reporter.sh peek AUTO-XX follow   # live tail
 ```
 
 **When to intervene:**
-- Progress updates show repeated errors → kill and fix root cause
+- Same task failing 3+ times → investigate root cause
 - Agent running >15min with 0 tool calls → check session transcript
-- 3+ agents failing on same issue → systemic problem, investigate before re-queuing
+- Systemic failures → pause auto-queue, fix pipeline
 
 ## Autonomy Principle (Learned 2026-03-05 19:14 UTC)
 
@@ -348,15 +330,30 @@ Every eval should start with preflight validation. 31% waste rate is unacceptabl
 Billy VM (89.167.64.183) is currently stopped. Anton migrated to Caio's Mac.
 If reactivated: needs rsync of workspace, chmod +x scripts, shared GCP creds.
 
-## Presentation Generation (Updated 2026-03-06)
+## Presentation Generation (Updated 2026-03-08)
 
-**Current approach (per Caio):**
-- Generate images with nano-banana → send in chat
-- Tell user to download and place in sheets/slides manually
-- Message: "estamos trabalhando nisso e em breve vai melhorar"
-- Google Slides integration is WIP — don't try to automate it yet
+**Full pipeline now working:**
+1. Generate slide images with nano-banana (Gemini `gemini-3-pro-image-preview`, 16:9, temp 0.5, 4K)
+2. Build .pptx with `python3 skills/presentations/scripts/build_deck.py`
+3. Upload to Google Slides via `--upload --account caio.fonseca@brandlovers.ai`
+4. Return shareable Google Slides URL
 
-**Still never:** local .pptx files, workspace file paths
+**Templates available** (in `skills/presentations/TEMPLATES.md`):
+1. Circular Process Diagram — cycles, feedback loops
+2. Metrics Dashboard — KPIs, key numbers
+3. Architecture / Flow Diagram — system design, data flows
+4. Title / Cover Slide — presentation covers, section dividers
+5. Comparison / VS — before/after, A vs B
+6. Feature Grid — capabilities, benefits, deliverables
+7. Timeline / Roadmap — milestones, phases, evolution
+8. Linear Process / Pipeline — sequential workflows, funnels
+
+**Rules:**
+- Always enhance prompts before generating (better prompt = better slide)
+- Always use 16:9, always use gemini-3-pro-image-preview
+- Portuguese text is fine — Gemini handles pt-BR well
+- Keep text short — slides should be visual
+- If Drive auth fails: `gog auth add <email> --services gmail,calendar,drive`
 
 ## Max Tokens Error Handling (2026-03-05)
 
@@ -456,101 +453,43 @@ If reactivated: needs rsync of workspace, chmod +x scripts, shared GCP creds.
 **Anti-pattern:** Single approach → implement → hope it works → iterate if fails
 **Correct pattern:** Multiple hypotheses → parallel test → measure → double down on winner
 
-## Guardian Eval Management (2026-03-08)
+## Guardian Eval Management (2026-03-09 — Unified State Machine)
 
-**Problem with agent-based eval launching:**
-- Agents spawn eval and exit (looks like "died" but eval still running)
-- No clear visibility into eval progress
-- Multiple evals running = resource conflicts
-- Unnecessary overhead (agent just spawns and exits)
-
-**Solution: Direct eval runner scripts**
-
-### 1. Run eval:
+### Agent workflow for evals:
 ```bash
-bash scripts/run-guardian-eval.sh [dataset] [workers] [max_parallel_agents]
-# Example: bash scripts/run-guardian-eval.sh guidelines_combined_dataset.jsonl 15 5
-# Defaults: workers=15, MAX_PARALLEL_AGENTS=5
+# 1. Make changes, commit
+# 2. Launch eval
+bash scripts/run-guardian-eval.sh --config ... --workers 10
+EVAL_PID=$(cat /tmp/guardian-eval.pid)
+
+# 3. Transition to eval_running (supervisor handles completion + callback)
+bash scripts/task-manager.sh transition AUTO-XX eval_running \
+  --process-pid $EVAL_PID --process-type eval --context "what changed"
+
+# 4. Exit cleanly — supervisor takes over
 ```
 
-Features:
-- Validates OAuth token (must have >30min remaining)
-- Kills existing evals automatically (avoids conflicts)
-- Runs in background with PID tracking
-- Logs to `/tmp/guardian-eval-TIMESTAMP.log`
+### How it works:
+- `supervisor.sh` runs every 30s (launchd: `com.anton.supervisor`)
+- Detects when eval PID dies → reads metrics.json → transitions to `callback_pending`
+- Spawns callback agent with full results + history + learnings
+- Callback agent reviews and continues the cycle
 
-### 2. Check status:
-```bash
-bash scripts/guardian-eval-status.sh
-# or: ~/.shortcuts/eval-status
-```
-
-Shows:
-- Progress (X/121 cases, Y%)
-- Recent test cases + scores
-- Error count
-- Elapsed time + ETA
-
-### 3. Auto-report on completion:
-- Cron job checks every 2min: `com.anton.eval-completion-check`
-- When eval completes → logs report to `/tmp/guardian-eval-reports.log`
-- Report includes: accuracy, delta vs baseline, error count
-
-**No more spawning agents for evals — use direct scripts.**
+### Feedback loop:
+- Callback agent gets `history[]` (all previous cycles) + `learnings[]` (what worked/didn't)
+- Must update both after analyzing: `task-manager.sh add-history` + `add-learning`
+- Each cycle builds on previous knowledge — no more starting from scratch
 
 
-## Guardian Continuous Improvement Loop (2026-03-08)
+## Guardian Continuous Improvement Loop (2026-03-09 — Unified)
 
-**Fully automated cycle: Agent → Validate → Analyze → Generate Backlog → Agent**
+**Cycle: Agent → eval_running → callback_pending → Agent → ...**
 
-### Flow:
-
-1. **Agent completes Guardian task**
-   - `agent-report.sh` detects completion (watchdog calls it)
-   - If task is guardian-related (label=guardian_*, but NOT guardian_eval)
-   - → Automatically triggers validation eval
-
-2. **Validation eval runs**
-   - `run-guardian-eval.sh` executes automatically
-   - Runs 121 test cases across guideline types
-   - Saves results to `.runs/content_moderation/run_TIMESTAMP/`
-
-3. **Eval completes → Auto-analysis**
-   - `eval-completion-check.sh` (cron 2min) detects completion
-   - Runs `eval-analyze-breakdown.py` for per-type accuracy
-   - Identifies:
-     - **Regressions** (delta < -5pp) → HIGH priority
-     - **Low accuracy** (<70%) → MEDIUM priority
-     - **Improvements** (delta > +5pp) → LOW priority (document)
-
-4. **Backlog generation**
-   - Creates Linear tasks automatically (CAI workspace):
-     - Regressions: label=Bug
-     - Low accuracy: label=guardian_improvement
-     - Improvements: label=documentation
-   - Task description includes:
-     - Current accuracy + delta
-     - Failing test case examples
-     - Run directory for investigation
-
-5. **Auto-queue picks next task**
-   - `auto-queue-v2.sh` (cron 5min) picks from Linear backlog
-   - Spawns agent to implement fix
-   - → Back to step 1
-
-### Scripts:
-- `scripts/run-guardian-eval.sh` — Direct eval launcher
-- `scripts/guardian-eval-status.sh` — Progress monitor
-- `scripts/eval-analyze-breakdown.py` — Breakdown analysis
-- `scripts/eval-completion-check.sh` — Auto-report + backlog generation
-- `scripts/agent-report.sh` — Triggers eval on guardian task completion
-
-### Human intervention:
-- **Review high-priority regressions** before auto-queue picks them
-- **Approve experiment branches** before merge
-- **Adjust baseline** when improvements are validated and merged
-
-**The loop runs autonomously. Anton manages evals, agents implement fixes.**
+1. Agent implements changes → launches eval → `task-manager.sh transition eval_running`
+2. Supervisor detects completion → `callback_pending`
+3. Callback agent spawned with history + learnings + results
+4. If improvement: commit, done. If regression: refine, launch another eval
+5. Each cycle accumulates knowledge in history[] and learnings[]
 
 
 ## Guardian Eval Dashboard (2026-03-08)
@@ -570,3 +509,130 @@ Shows:
 
 **Integration with cockpit server:** Dashboard auto-served at port 8765 alongside agent cockpit.
 
+
+## Anton Auto-Loop Integration (2026-03-08)
+
+### Two-Level Self-Training System
+
+**Inspired by Karpathy's autoresearch** - agent improves product AND itself.
+
+**Guardian Loop (every 4h):**
+- Target: 87% accuracy (current: 79.3%)
+- Spawns 3 agents, fast eval (5 min), full validation (35 min)
+- Auto-commits if +1pp improvement
+- Launchd: `com.anton.auto-loop`
+
+**Meta Loop (every 24h):**
+- Target: 85% agent success rate (current: 60%)
+- Spawns 2 meta-agents improving templates, spawn scripts, codemaps
+- Auto-commits if +5% success rate improvement
+- Launchd: `com.anton.meta-loop`
+
+**Key Files:**
+- `OBJECTIVES.md` - Control panel (Guardian + Meta targets)
+- `scripts/anton-auto-loop.sh` - Guardian improvement
+- `scripts/anton-meta-loop.sh` - Meta self-improvement
+- `scripts/fast-eval.sh` - 5-min eval (10% dataset)
+- `.shortcuts/auto-loop-status` - Quick status check
+- `docs/ANTON-ARCHITECTURE.md` - System design
+- `docs/SON-OF-ANTON-SETUP.md` - Son of Anton monitoring setup
+
+**Status Check:**
+```bash
+bash ~/.openclaw/workspace/.shortcuts/auto-loop-status
+```
+
+### Son of Anton Integration
+
+Son of Anton (ClawdBot on 89.167.23.2) monitors Anton's auto-loops:
+
+**Every 4h:**
+- SSH to Mac, check `.anton-auto-state.json` and `.anton-meta-state.json`
+- Post status to #replicants if cycle completed
+- Alert if loops offline or stagnant (no improvement in 3 cycles)
+- Run backlog generator if Linear queue empty
+
+**Daily (09:00 BRT):**
+- Post summary (Guardian progress, Meta improvements, commits, ETA)
+
+**Setup files:**
+- `docs/SON-OF-ANTON-SETUP.md` - Complete monitoring setup
+- `docs/SON-OF-ANTON-HEARTBEAT.md` - ClawdBot HEARTBEAT.md content
+
+**SSH Setup Required:**
+1. Son of Anton generates SSH key
+2. Add public key to Mac's `~/.ssh/authorized_keys`
+3. Test: `ssh caio@<mac-ip> "bash ~/.openclaw/workspace/.shortcuts/auto-loop-status"`
+
+**Environment Variables for Son of Anton:**
+- `ANTON_MAC_IP` - Caio's Mac IP
+- `LINEAR_API_KEY` - For backlog checks
+
+### Expected Results
+
+**Week 1:** Guardian +1-2pp, Meta templates simplified
+**Month 1:** Guardian 87% target, Meta 85% success rate
+**Compounding:** Better platform → better agents → faster improvements
+
+### How It's Different from Today
+
+**Before:** Caio defines goal → Anton spawns agents → Caio reviews → repeat
+**After:** Caio edits OBJECTIVES.md → Anton auto-improves 24/7 → Son of Anton monitors
+
+**Key insight from Karpathy:** Agent should improve BOTH the product AND the platform (itself).
+
+## SSH Auto-Connect Configuration (2026-03-08)
+
+### VMs Conectados
+
+**Son of Anton (ClawdBot):**
+- Host: caio@89.167.23.2
+- Workspace: /home/caio/workspace
+- Role: Monitoring Anton's auto-loops, posting to #replicants
+
+**Billy (OpenClaw):**
+- Host: root@89.167.64.183
+- Workspace: /root/.openclaw/workspace
+- Role: Data helper bot for non-tech teams
+
+**SSH Keys:** Caio added Anton's public key to both VMs → passwordless connection
+
+### Auto-Sync System
+
+**Script:** `scripts/sync-replicants.sh`
+**Schedule:** Every 4 hours via launchd (`com.anton.sync-replicants`)
+**Direction:** Bidirectional (Anton ↔ Son of Anton)
+
+**What syncs:**
+- Docs (architecture, setup)
+- OBJECTIVES.md
+- State files (.anton-auto-state.json, .anton-meta-state.json)
+- Scripts + skills
+
+**What does NOT sync:**
+- memory/ files (each entity keeps own memories)
+- SOUL.md (separate identities)
+
+**Philosophy:** Entities share objective knowledge, keep subjective experiences separate.
+
+### Verification Commands
+
+```bash
+# Check auto-loops status
+bash ~/.openclaw/workspace/.shortcuts/auto-loop-status
+
+# Check sync status
+bash ~/.openclaw/workspace/.shortcuts/sync-status
+
+# Test SSH
+ssh caio@89.167.23.2 "hostname"  # → clawdbot-caio
+ssh root@89.167.64.183 "hostname"  # → ubuntu-4gb-hel1-1
+```
+
+### Integration
+
+**Guardian Loop:** Syncs after each cycle completion
+**Meta Loop:** Syncs after improvements
+**Sync Loop:** Runs independently every 4h
+
+**Result:** Anton works autonomously, Son monitors, both stay synchronized.

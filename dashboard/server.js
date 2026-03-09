@@ -50,6 +50,8 @@ const wss = new WebSocketServer({ server });
 // --- Paths ---
 const OPENCLAW_HOME = process.env.HOME ? path.join(process.env.HOME, '.openclaw') : '/Users/fonsecabc/.openclaw';
 const REGISTRY_FILE = path.join(OPENCLAW_HOME, 'tasks/agent-registry.json');
+const PROCESS_REGISTRY_FILE = path.join(OPENCLAW_HOME, 'tasks/process-registry.json');
+const STATE_FILE = path.join(OPENCLAW_HOME, 'tasks/state.json');
 const AGENT_LOGS_DIR = path.join(OPENCLAW_HOME, 'tasks/agent-logs');
 const WORKSPACE = path.join(OPENCLAW_HOME, 'workspace');
 
@@ -164,6 +166,78 @@ function readRegistry() {
   }
 }
 
+function readProcessRegistry() {
+  try {
+    const data = JSON.parse(fs.readFileSync(PROCESS_REGISTRY_FILE, 'utf-8'));
+    const nowS = Math.floor(Date.now() / 1000);
+    const processes = [];
+    for (const [procId, p] of Object.entries(data.processes || {})) {
+      const alive = p.pid ? isProcessAlive(p.pid) : false;
+      const ageMin = ((nowS - (p.startedEpoch || nowS)) / 60).toFixed(1);
+      processes.push({
+        id: procId,
+        pid: p.pid,
+        type: p.type,
+        taskId: p.taskId,
+        status: p.status,
+        alive,
+        ageMin: parseFloat(ageMin),
+        timeoutMin: p.timeoutMin || 120,
+        callbackType: p.callbackType || 'none',
+        callbackDispatched: p.callbackDispatched || false,
+        exitCode: p.exitCode,
+        startedAt: p.startedAt,
+        completedAt: p.completedAt,
+        resultPath: p.resultPath,
+        metricsPath: p.metricsPath,
+      });
+    }
+    return processes;
+  } catch {
+    return [];
+  }
+}
+
+function readUnifiedState() {
+  try {
+    const data = JSON.parse(fs.readFileSync(STATE_FILE, 'utf-8'));
+    const nowS = Math.floor(Date.now() / 1000);
+    const tasks = [];
+    for (const [taskId, t] of Object.entries(data.tasks || {})) {
+      const pid = t.agentPid || t.processPid;
+      const alive = pid ? isProcessAlive(pid) : false;
+      const epoch = t.startedEpoch || t.createdEpoch || nowS;
+      const ageMin = ((nowS - epoch) / 60).toFixed(1);
+      tasks.push({
+        taskId,
+        status: t.status,
+        label: t.label || taskId,
+        agentPid: t.agentPid,
+        processPid: t.processPid,
+        processType: t.processType,
+        alive,
+        ageMin: parseFloat(ageMin),
+        timeoutMin: t.timeoutMin || 25,
+        source: t.source || 'unknown',
+        model: t.model,
+        callbackType: t.callbackType || 'dispatch',
+        exitCode: t.exitCode,
+        retries: t.retries || 0,
+        extensions: t.extensions || 0,
+        historyCount: (t.history || []).length,
+        lastHistory: (t.history || []).slice(-1)[0] || null,
+        learnings: t.learnings || [],
+        createdAt: t.createdAt,
+        startedAt: t.startedAt,
+        completedAt: t.completedAt,
+      });
+    }
+    return { tasks, maxConcurrent: data.maxConcurrent || 3 };
+  } catch {
+    return { tasks: [], maxConcurrent: 3 };
+  }
+}
+
 function isProcessAlive(pid) {
   try { process.kill(pid, 0); return true; } catch { return false; }
 }
@@ -256,6 +330,26 @@ function getCachedSystemHealth() {
     systemHealthCache.lastCheck = Date.now();
   }
   return systemHealthCache.data;
+}
+
+// --- Remote Data (Son of Anton VM, cached 30s) ---
+let remoteCache = { data: { online: false, gateway: 'offline', processCount: 0 }, lastCheck: 0 };
+
+function collectRemoteData() {
+  if (Date.now() - remoteCache.lastCheck < 30000 && remoteCache.lastCheck > 0) return remoteCache.data;
+  try {
+    const out = execSync(
+      'ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 -o BatchMode=yes caio@89.167.23.2 "curl -s -o /dev/null -w \'%{http_code}\' http://localhost:18790/ 2>/dev/null; echo; ps aux | grep -cE \'openclaw\'"',
+      { timeout: 10000, encoding: 'utf-8' }
+    ).trim();
+    const lines = out.split('\n').map(l => l.trim()).filter(Boolean);
+    const gwCode = lines[0] || '000';
+    const procs = parseInt(lines[1]) || 0;
+    remoteCache = { data: { online: gwCode === '200', gateway: gwCode === '200' ? 'ok' : 'down', processCount: procs }, lastCheck: Date.now() };
+  } catch {
+    remoteCache = { data: { online: false, gateway: 'offline', processCount: 0 }, lastCheck: Date.now() };
+  }
+  return remoteCache.data;
 }
 
 // --- Linear Integration ---
@@ -528,11 +622,21 @@ async function collectData() {
   // 8. System health
   const system = getCachedSystemHealth();
 
+  // 8b. Remote (Son of Anton)
+  let remote = { online: false, gateway: 'offline', processCount: 0 };
+  try { remote = await collectRemoteData(); } catch {}
+
   // 9. Compute avg runtime from recent completed agents
   const completedRecent = enrichedRecent.filter(a => a.runtimeMin && parseFloat(a.runtimeMin) > 0);
   const avgRuntimeMin = completedRecent.length > 0
     ? (completedRecent.reduce((s, a) => s + parseFloat(a.runtimeMin), 0) / completedRecent.length).toFixed(1)
     : '0';
+
+  // 10. Process Manager data
+  const processes = readProcessRegistry();
+
+  // 11. Unified state (v2)
+  const unifiedState = readUnifiedState();
 
   dashboardState = {
     active: enrichedActive,
@@ -548,6 +652,9 @@ async function collectData() {
       recentTotal: enrichedRecent.length,
     },
     alerts,
+    remote,
+    processes,
+    unifiedState,
     lastUpdated: new Date().toISOString(),
   };
 
@@ -589,7 +696,7 @@ wss.on('connection', (ws) => {
         if (agent?.pid) {
           try { process.kill(agent.pid, 9); } catch {}
         }
-        safeExecSync(`bash ${WORKSPACE}/scripts/agent-registry.sh remove "${taskId}" 2>/dev/null`);
+        safeExecSync(`bash ${WORKSPACE}/scripts/task-manager.sh remove "${taskId}" 2>/dev/null`);
         await pollAndBroadcast();
       }
 
