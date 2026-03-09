@@ -202,7 +202,7 @@ AGENT_ID="${ROLE:-main}"
 TIMEOUT_SEC=$((TIMEOUT_MIN * 60))
 
 nohup bash -c "
-  openclaw agent \
+  ~/.nvm/versions/node/v22.13.1/bin/openclaw agent \
     --agent '$AGENT_ID' \
     --message \"\$(cat '$FULL_PROMPT_FILE')\" \
     --timeout $TIMEOUT_SEC \
