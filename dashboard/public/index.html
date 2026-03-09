@@ -549,7 +549,14 @@ html, body {
       <div class="agents-grid" id="agentsGrid"></div>
     </div>
 
-    <!-- source breakdown + processes removed -->
+    <div class="section" id="evalSection">
+      <div class="section-header">
+        <span class="section-title">Guardian Eval Runs</span>
+        <div class="section-line"></div>
+        <span class="section-badge" id="evalCount">0</span>
+      </div>
+      <div id="evalContent"><div class="empty-state">No eval data</div></div>
+    </div>
 
     <div class="section">
       <div class="section-header">
@@ -558,15 +565,6 @@ html, body {
         <span class="section-badge" id="recentCount">0</span>
       </div>
       <div class="recent-grid" id="recentGrid"></div>
-    </div>
-
-    <div class="section" id="evalSection">
-      <div class="section-header">
-        <span class="section-title">Guardian Eval Runs</span>
-        <div class="section-line"></div>
-        <span class="section-badge" id="evalCount">0</span>
-      </div>
-      <div id="evalContent"><div class="empty-state">No eval data</div></div>
     </div>
   </div>
 
