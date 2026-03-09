@@ -56,3 +56,4 @@ user-management-api/
 
 # OpenClaw internal
 .openclaw/
+.archive/
