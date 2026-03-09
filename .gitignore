@@ -44,7 +44,9 @@ dashboard/stats-history.json
 
 # Cloned repos (have their own git)
 backoffice/
+billy-workspace/
 campaign-manager-api/
+clawdbots/
 cockpit/
 creator-ads/
 guardian-ads-treatment/
@@ -52,6 +54,7 @@ guardian-agents-api/
 guardian-agents-api-real/
 guardian-api/
 perfect-web-clone/
+son-of-anton-workspace/
 user-management-api/
 
 # OpenClaw internal
