@@ -718,12 +718,9 @@ async function collectData() {
     billy,
     processes,
     github,
+    tokens: getTokenStatus(),
     lastUpdated: new Date().toISOString(),
   };
-
-  // Add token status
-  const tokens = getTokenStatus();
-  dashboardState.tokens = tokens;
 
   return dashboardState;
 }
