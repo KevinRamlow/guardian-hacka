@@ -909,7 +909,6 @@ function renderEval() {
 }
 
 // --- Stream ---
-function openLogStream(taskId, label) { selectAgent(taskId); }
 function selectAgent(tid) {
   if (selectedTaskId===tid) { closeStream(); return; }
   selectedTaskId = tid; openStream(tid); render();
