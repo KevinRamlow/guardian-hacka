@@ -867,103 +867,67 @@ app.get('/api/stream/:taskId', (req, res) => {
     return [];
   }
 
-  // Find OpenClaw native session file for this agent
-  // Task format: AUTO-XXX, agent role stored in state.json
-  let sessionPath = null;
-  let agentId = 'main'; // default
-  
-  // Strategy 1: Check stdout log for agent role
-  const logPath = path.join(AGENT_LOGS_DIR, `${taskId}-output.log`);
-  if (fs.existsSync(logPath)) {
-    try {
-      const firstLines = fs.readFileSync(logPath, 'utf-8').split('\n').slice(0, 50).join('\n');
-      const roleMatch = firstLines.match(/agent=([a-z-]+)/i);
-      if (roleMatch) agentId = roleMatch[1];
-    } catch {}
-  }
-
-  // Strategy 2: Get from state.json
-  let taskStartEpoch = null;
-  try {
-    const state = JSON.parse(fs.readFileSync(STATE_FILE, 'utf-8'));
-    const task = state.tasks[taskId];
-    if (task?.role) agentId = task.role;
-    taskStartEpoch = task?.startedEpoch || task?.createdEpoch;
-  } catch {}
-
-  // Strategy 3: Search all agent dirs for session containing this task ID
-  let foundByTaskId = false;
-  try {
-    const agentsDir = path.join(OPENCLAW_HOME, 'agents');
-    const agentDirs = fs.readdirSync(agentsDir).filter(d => {
-      const stat = fs.statSync(path.join(agentsDir, d));
-      return stat.isDirectory();
-    });
-    
-    for (const dir of agentDirs) {
-      const sessionsDir = path.join(agentsDir, dir, 'sessions');
-      if (!fs.existsSync(sessionsDir)) continue;
-      
-      const files = fs.readdirSync(sessionsDir).filter(f => f.endsWith('.jsonl'));
-      for (const file of files) {
-        const content = fs.readFileSync(path.join(sessionsDir, file), 'utf-8');
-        if (content.includes(`# Task: ${taskId}`)) {
-          agentId = dir;
-          sessionPath = path.join(sessionsDir, file);
-          foundByTaskId = true;
-          break;
-        }
-      }
-      if (foundByTaskId) break;
-    }
-  } catch {}
-
-  // Strategy 4: Time-based matching (least reliable, last resort)
-  if (!foundByTaskId) {
-    const agentSessionsDir = path.join(OPENCLAW_HOME, 'agents', agentId, 'sessions');
-    try {
-      const files = fs.readdirSync(agentSessionsDir)
-        .filter(f => f.endsWith('.jsonl'))
-        .map(f => {
-          const fullPath = path.join(agentSessionsDir, f);
-          const mtime = fs.statSync(fullPath).mtimeMs;
-          const mtimeEpoch = Math.floor(mtime / 1000);
-          const isMatch = taskStartEpoch && Math.abs(mtimeEpoch - taskStartEpoch) < 300;
-          return { name: f, mtime, mtimeEpoch, isMatch };
-        })
-        .sort((a, b) => b.mtime - a.mtime);
-      
-      const matched = files.find(f => f.isMatch);
-      const chosen = matched || files[0];
-      if (chosen) sessionPath = path.join(agentSessionsDir, chosen.name);
-    } catch {}
-  }
-
-  // Backfill from OpenClaw native session file
-  if (sessionPath && fs.existsSync(sessionPath)) {
-    try {
-      const lines = fs.readFileSync(sessionPath, 'utf-8').trim().split('\n').slice(-60);
-      const events = [];
-      for (const line of lines) {
-        for (const ev of parseOpenClawSessionLine(line)) events.push(ev);
-      }
-      for (const ev of events.slice(-30)) {
-        res.write(`data: ${JSON.stringify(ev)}\n\n`);
-      }
-    } catch {}
-  }
-
-  // Fallback: read stdout log if no session found
+  // --- 1. Output log is the primary per-task source (always correct) ---
   const stdoutPath = path.join(AGENT_LOGS_DIR, `${taskId}-output.log`);
-  if (!sessionPath && fs.existsSync(stdoutPath)) {
+  let sentFromLog = false;
+  if (fs.existsSync(stdoutPath)) {
     try {
-      const lines = fs.readFileSync(stdoutPath, 'utf-8').trim().split('\n').slice(-30);
-      for (const line of lines) {
-        if (line.trim()) {
-          res.write(`data: ${JSON.stringify({ event: line.substring(0, 300) })}\n\n`);
+      const content = fs.readFileSync(stdoutPath, 'utf-8').trim();
+      if (content.length > 0) {
+        const lines = content.split('\n').slice(-30);
+        for (const line of lines) {
+          if (line.trim()) {
+            res.write(`data: ${JSON.stringify({ event: line.substring(0, 300) })}\n\n`);
+          }
         }
+        sentFromLog = true;
       }
     } catch {}
+  }
+
+  // --- 2. Session file fallback: ONLY when matched by exact task ID ---
+  // (Never guess by time — that shows wrong logs for the card)
+  if (!sentFromLog) {
+    let sessionPath = null;
+    try {
+      const agentsDir = path.join(OPENCLAW_HOME, 'agents');
+      const agentDirs = fs.readdirSync(agentsDir).filter(d => {
+        try { return fs.statSync(path.join(agentsDir, d)).isDirectory(); } catch { return false; }
+      });
+
+      for (const dir of agentDirs) {
+        const sessionsDir = path.join(agentsDir, dir, 'sessions');
+        if (!fs.existsSync(sessionsDir)) continue;
+        const files = fs.readdirSync(sessionsDir).filter(f => f.endsWith('.jsonl'));
+        for (const file of files) {
+          const raw = fs.readFileSync(path.join(sessionsDir, file), 'utf-8');
+          if (raw.includes(`# Task: ${taskId}`)) {
+            sessionPath = path.join(sessionsDir, file);
+            break;
+          }
+        }
+        if (sessionPath) break;
+      }
+    } catch {}
+
+    if (sessionPath && fs.existsSync(sessionPath)) {
+      try {
+        const lines = fs.readFileSync(sessionPath, 'utf-8').trim().split('\n').slice(-60);
+        const events = [];
+        for (const line of lines) {
+          for (const ev of parseOpenClawSessionLine(line)) events.push(ev);
+        }
+        for (const ev of events.slice(-30)) {
+          res.write(`data: ${JSON.stringify(ev)}\n\n`);
+        }
+        sentFromLog = true;
+      } catch {}
+    }
+  }
+
+  // --- 3. Nothing found ---
+  if (!sentFromLog) {
+    res.write(`data: ${JSON.stringify({ event: '[No logs found for this task]' })}\n\n`);
   }
 
   // OLD SYSTEM ARCHIVED - No longer reading from:

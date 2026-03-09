@@ -441,6 +441,23 @@ html, body {
 .stream-event.done { color: var(--accent-cyan); font-weight: 600; }
 .stream-event .ts { color: var(--text-muted); font-size: 9px; margin-right: 5px; }
 
+/* ═══════════ SKELETON LOADING ═══════════ */
+@keyframes skeleton-pulse {
+  0% { opacity: 0.08; }
+  50% { opacity: 0.15; }
+  100% { opacity: 0.08; }
+}
+.skeleton-line {
+  height: 12px;
+  border-radius: 4px;
+  background: var(--text-muted);
+  animation: skeleton-pulse 1.2s ease-in-out infinite;
+  margin-bottom: 6px;
+}
+.skeleton-line:nth-child(odd) { width: 85%; }
+.skeleton-line:nth-child(even) { width: 60%; }
+.skeleton-line:nth-child(3n) { width: 72%; }
+
 /* ═══════════ RESPONSIVE ═══════════ */
 @media (max-width: 1100px) {
   .app { flex-direction: column; }
@@ -929,28 +946,25 @@ function renderEval() {
 // --- Stream ---
 function selectAgent(tid) {
   if (selectedTaskId===tid) { closeStream(); return; }
-  
-  // Force close existing connection before opening new one
   closeSSE();
-  
-  // Small delay ensures cleanup completes (prevents rapid-click bug)
-  setTimeout(() => {
-    selectedTaskId = tid;
-    openStream(tid);
-    render();
-  }, 50);
+  selectedTaskId = tid;
+  openStream(tid);
+  render();
 }
+function skeletonHTML() {
+  return Array.from({length:8}, () => '<div class="skeleton-line"></div>').join('');
+}
+let streamGotData = false;
 function openStream(tid) {
-  closeSSE(); // Double-check
-  
-  $('#streamBody').innerHTML = '<div style="color:var(--text-muted);padding:10px">Loading...</div>';
+  closeSSE();
+  streamGotData = false;
+  $('#streamBody').innerHTML = skeletonHTML();
   $('#streamTitle').textContent = `Stream: ${tid}`;
   $('#streamOverlay').classList.add('open');
-  
+
   eventSource = new EventSource(`/api/stream/${encodeURIComponent(tid)}`);
-  eventSource.onopen = () => { $('#streamBody').innerHTML = ''; console.log('[stream]', tid); };
-  eventSource.onmessage = e => { try { appendEv(JSON.parse(e.data)); } catch {} };
-  eventSource.onerror = () => { closeSSE(); appendEv({ event: '[Connection closed]' }); };
+  eventSource.onmessage = e => { try { if (!streamGotData) { streamGotData=true; $('#streamBody').innerHTML=''; } appendEv(JSON.parse(e.data)); } catch {} };
+  eventSource.onerror = () => { closeSSE(); if (!streamGotData) { streamGotData=true; $('#streamBody').innerHTML=''; } appendEv({ event: '[Connection closed]' }); };
 }
 function appendEv(d) {
   const body = $('#streamBody'), el = document.createElement('div');
