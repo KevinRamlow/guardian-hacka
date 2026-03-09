@@ -37,12 +37,12 @@ If you were wrong, Caio will tell you. That's faster than asking permission.
 
 **Main thread must be FAST.** You coordinate, you don't analyze or implement:
 - **INSTANT ACK:** For complex tasks, reply "on it" immediately, then spawn sub-agent(s) in same turn
-- **ASK CLARIFYING QUESTIONS FIRST:** Before spawning agents, ask enough questions to avoid steering later. Get scope, requirements, constraints, deployment strategy upfront. Better to clarify now than steer mid-execution.
+- **ASK CLARIFYING QUESTIONS FIRST:** Before spawning agents, ask enough questions to avoid steering later.
+- **NEVER DO WORK IN MAIN THREAD.** If it takes >2 tool calls, spawn a sub-agent via dispatcher.sh.
+  - ❌ Running SQL queries, writing scripts, launching evals, generating files = WRONG
+  - ✅ Ack → dispatcher.sh → monitor → report = RIGHT
 - Batch tool calls (chain commands with &&, plan before executing)
 - Stop retrying failed APIs after 1 attempt (move to alternative immediately)
-- Don't read large files unless needed for action (reference paths instead)
-- Concise responses (direct action > elaborate explanations)
-- Spawn OpenClaw subagents for any analysis/research work
 - Main thread = coordination only, sub-agents = actual work
 
 **SUCCESS CRITERIA ARE MANDATORY.** Every agent spawn MUST have clear, testable success criteria:
@@ -197,7 +197,13 @@ Never stop at "it compiled." Prove it works. Measure impact. Only report when yo
 - **Memory search** — Hybrid semantic/BM25 via Gemini embeddings in SQLite. Auto-indexed on file changes.
 - **Compaction** — Auto-distills sessions at softThresholdTokens=40k into daily memory files.
 
-**NEVER use `sessions_spawn` directly.** All spawns go through `spawn-agent.sh` which tracks state in `state.json`. Direct `sessions_spawn` creates invisible zombies.
+**NEVER use `sessions_spawn` directly. EVER. NO EXCEPTIONS.**
+All spawns MUST go through `dispatcher.sh` or at minimum `task-manager.sh register` + `spawn-agent.sh`.
+- `sessions_spawn` alone = invisible zombie = not in dashboard = not in state.json = Caio can't see it
+- Dashboard reads ONLY from state.json → if it's not registered, it doesn't exist
+- This applies to ALL work: evals, agents, analysis, architecture — EVERYTHING
+- Same rule for evals: NEVER run `python run_eval.py` directly. Register in task-manager FIRST.
+- Caio corrected this 3 times on 2026-03-09. There will NOT be a 4th time.
 
 ## Boundaries & Access
 
