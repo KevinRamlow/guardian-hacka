@@ -929,15 +929,28 @@ function renderEval() {
 // --- Stream ---
 function selectAgent(tid) {
   if (selectedTaskId===tid) { closeStream(); return; }
-  selectedTaskId = tid; openStream(tid); render();
+  
+  // Force close existing connection before opening new one
+  closeSSE();
+  
+  // Small delay ensures cleanup completes (prevents rapid-click bug)
+  setTimeout(() => {
+    selectedTaskId = tid;
+    openStream(tid);
+    render();
+  }, 50);
 }
 function openStream(tid) {
-  closeSSE(); $('#streamBody').innerHTML = '';
+  closeSSE(); // Double-check
+  
+  $('#streamBody').innerHTML = '<div style="color:var(--text-muted);padding:10px">Loading...</div>';
   $('#streamTitle').textContent = `Stream: ${tid}`;
   $('#streamOverlay').classList.add('open');
+  
   eventSource = new EventSource(`/api/stream/${encodeURIComponent(tid)}`);
+  eventSource.onopen = () => { $('#streamBody').innerHTML = ''; console.log('[stream]', tid); };
   eventSource.onmessage = e => { try { appendEv(JSON.parse(e.data)); } catch {} };
-  eventSource.onerror = () => appendEv({ event: '[reconnecting...]' });
+  eventSource.onerror = () => { closeSSE(); appendEv({ event: '[Connection closed]' }); };
 }
 function appendEv(d) {
   const body = $('#streamBody'), el = document.createElement('div');
