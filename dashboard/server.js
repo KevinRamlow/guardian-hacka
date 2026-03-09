@@ -730,7 +730,7 @@ async function collectData() {
 
 function getTokenStatus() {
   try {
-    const out = execSync('~/.nvm/versions/node/v22.13.1/bin/openclaw sessions list 2>/dev/null', {
+    const out = execSync('~/.nvm/versions/node/v22.13.1/bin/openclaw sessions 2>/dev/null', {
       timeout: 5000,
       encoding: 'utf-8'
     }).trim();
