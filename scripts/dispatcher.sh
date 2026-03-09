@@ -85,14 +85,28 @@ TODO_STATE_ID=$(curl -s -X POST https://api.linear.app/graphql \
   -d '{"query":"query{workflowStates(filter:{name:{eq:\"Todo\"},team:{key:{eq:\"AUTO\"}}},first:1){nodes{id}}}"}' \
   2>/dev/null | python3 -c "import json,sys; print(json.load(sys.stdin)['data']['workflowStates']['nodes'][0]['id'])" 2>/dev/null)
 
-ESCAPED_DESC=$(echo "$DESCRIPTION" | python3 -c "import sys,json; print(json.dumps(sys.stdin.read().strip())[1:-1])")
-ESCAPED_TITLE=$(echo "$TITLE" | python3 -c "import sys,json; print(json.dumps(sys.stdin.read().strip())[1:-1])")
+RESULT=$(python3 << PYEOF
+import json, sys, subprocess
+title = """$TITLE"""
+desc = """$DESCRIPTION"""
+team_id = "$TEAM_ID"
+state_id = "$TODO_STATE_ID"
+label_mut = "$LABEL_MUTATION"
+project_mut = "$PROJECT_MUTATION"
 
-RESULT=$(curl -s -X POST https://api.linear.app/graphql \
-  -H "Authorization: $LINEAR_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d "{\"query\":\"mutation{issueCreate(input:{teamId:\\\"$TEAM_ID\\\",title:\\\"$ESCAPED_TITLE\\\",description:\\\"$ESCAPED_DESC\\\",stateId:\\\"$TODO_STATE_ID\\\"$LABEL_MUTATION$PROJECT_MUTATION}){success issue{identifier title}}}\"}" \
-  2>/dev/null)
+mutation = f'mutation{{issueCreate(input:{{teamId:"{team_id}",title:{json.dumps(title)},description:{json.dumps(desc)},stateId:"{state_id}"{label_mut}{project_mut}}}){{success issue{{identifier title}}}}}}'
+payload = json.dumps({"query": mutation})
+
+result = subprocess.run(
+    ["curl", "-s", "-X", "POST", "https://api.linear.app/graphql",
+     "-H", "Authorization: $LINEAR_API_KEY",
+     "-H", "Content-Type: application/json",
+     "-d", payload],
+    capture_output=True, text=True
+)
+print(result.stdout)
+PYEOF
+)
 
 TASK_ID=$(echo "$RESULT" | python3 -c "import json,sys; print(json.load(sys.stdin).get('data',{}).get('issueCreate',{}).get('issue',{}).get('identifier',''))" 2>/dev/null)
 
