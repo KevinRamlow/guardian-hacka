@@ -700,6 +700,10 @@ async function collectData() {
   let github = [];
   try { github = await fetchGithubCommits(); } catch {}
 
+  console.log('[collectData] Building dashboard state...');
+  const tokens = getTokenStatus();
+  console.log('[collectData] Got tokens:', tokens);
+  
   dashboardState = {
     active: enrichedActive,
     recent: enrichedRecent,
@@ -718,7 +722,7 @@ async function collectData() {
     billy,
     processes,
     github,
-    tokens: getTokenStatus(),
+    tokens,
     lastUpdated: new Date().toISOString(),
   };
 
