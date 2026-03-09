@@ -39,12 +39,13 @@ done
 echo "[dispatch] Creating Linear task: $TITLE"
 
 LABEL_IDS=()
-AUTO_LABELS=$(bash "$CLASSIFY" "$TITLE" "$DESCRIPTION" 2>/dev/null || echo "")
-if [ -n "$AUTO_LABELS" ]; then
-  for label_id in $AUTO_LABELS; do
-    LABEL_IDS+=("$label_id")
-  done
-fi
+# Disabled: AUTO team has no labels yet
+# AUTO_LABELS=$(bash "$CLASSIFY" "$TITLE" "$DESCRIPTION" 2>/dev/null || echo "")
+# if [ -n "$AUTO_LABELS" ]; then
+#   for label_id in $AUTO_LABELS; do
+#     LABEL_IDS+=("$label_id")
+#   done
+# fi
 
 if [ -n "$LABEL" ]; then
   MANUAL_LABEL_ID=$(curl -s -X POST https://api.linear.app/graphql \
