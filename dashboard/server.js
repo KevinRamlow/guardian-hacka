@@ -872,13 +872,11 @@ app.get('/api/stream/:taskId', (req, res) => {
   let sessionPath = null;
   let agentId = 'main'; // default
   
-  // Strategy 1: Check stdout log for task ID (most reliable)
-  const stdoutPath = path.join(AGENT_LOGS_DIR, `${taskId}-output.log`);
-  if (fs.existsSync(stdoutPath)) {
-    // Parse stdout to find agent role and session metadata
+  // Strategy 1: Check stdout log for agent role
+  const logPath = path.join(AGENT_LOGS_DIR, `${taskId}-output.log`);
+  if (fs.existsSync(logPath)) {
     try {
-      const firstLines = fs.readFileSync(stdoutPath, 'utf-8').split('\n').slice(0, 50).join('\n');
-      // Look for task transition messages that mention role
+      const firstLines = fs.readFileSync(logPath, 'utf-8').split('\n').slice(0, 50).join('\n');
       const roleMatch = firstLines.match(/agent=([a-z-]+)/i);
       if (roleMatch) agentId = roleMatch[1];
     } catch {}
