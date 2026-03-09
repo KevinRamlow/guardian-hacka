@@ -49,7 +49,6 @@ const wss = new WebSocketServer({ server });
 
 // --- Paths ---
 const OPENCLAW_HOME = process.env.HOME ? path.join(process.env.HOME, '.openclaw') : '/Users/fonsecabc/.openclaw';
-const REGISTRY_FILE = path.join(OPENCLAW_HOME, 'tasks/agent-registry.json');
 const PROCESS_REGISTRY_FILE = path.join(OPENCLAW_HOME, 'tasks/process-registry.json');
 const STATE_FILE = path.join(OPENCLAW_HOME, 'tasks/state.json');
 const AGENT_LOGS_DIR = path.join(OPENCLAW_HOME, 'tasks/agent-logs');
@@ -154,16 +153,8 @@ function getHealthStatus(agent) {
 }
 
 function extractTaskId(label) {
-  const match = (label || '').match(/\b(CAI-\d+)\b/);
+  const match = (label || '').match(/\b((?:CAI|AUTO|REVIEW)-\d+)\b/);
   return match ? match[1] : null;
-}
-
-function readRegistry() {
-  try {
-    return JSON.parse(fs.readFileSync(REGISTRY_FILE, 'utf-8'));
-  } catch {
-    return { agents: {}, maxConcurrent: 3 };
-  }
 }
 
 function readProcessRegistry() {
@@ -219,7 +210,7 @@ function readUnifiedState() {
         ageMin: parseFloat(ageMin),
         timeoutMin: t.timeoutMin || 25,
         source: t.source || 'unknown',
-        model: t.model,
+        role: t.role || null,
         callbackType: t.callbackType || 'dispatch',
         exitCode: t.exitCode,
         retries: t.retries || 0,
@@ -251,25 +242,35 @@ function getOutputSize(taskId) {
 }
 
 function getLastActivity(taskId) {
+  // Read from OpenClaw native stdout log (replaces old activity.jsonl)
   try {
-    const activityPath = path.join(AGENT_LOGS_DIR, `${taskId}-activity.jsonl`);
-    if (!fs.existsSync(activityPath)) return null;
-    const stat = fs.statSync(activityPath);
-    const lines = fs.readFileSync(activityPath, 'utf-8').trim().split('\n').slice(-10);
+    const stdoutPath = path.join(AGENT_LOGS_DIR, `${taskId}-output.log`);
+    if (!fs.existsSync(stdoutPath)) return null;
+    const stat = fs.statSync(stdoutPath);
+    const lines = fs.readFileSync(stdoutPath, 'utf-8').trim().split('\n').slice(-20);
+    
     const tools = [];
-    let lastSummary = '';
+    let lastEvent = '';
+    
+    // Parse stdout for tool calls and events
     for (const line of lines) {
-      try {
-        const e = JSON.parse(line);
-        if (e._summary) {
-          if (e._summary.startsWith('TOOL_START:')) tools.push(e._summary.replace('TOOL_START: ', ''));
-          lastSummary = e._summary;
-        }
-      } catch {}
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+      
+      // Detect tool calls in output
+      if (trimmed.includes('tool_use') || trimmed.includes('[tool]')) {
+        try {
+          const toolMatch = trimmed.match(/name[":]+\s*([a-z_]+)/i);
+          if (toolMatch) tools.push(toolMatch[1]);
+        } catch {}
+      }
+      
+      lastEvent = trimmed.substring(0, 200);
     }
+    
     return {
       tools: [...new Set(tools)],
-      lastEvent: lastSummary,
+      lastEvent,
       eventCount: lines.length,
       fileSize: stat.size,
       lastModified: stat.mtimeMs,
@@ -332,24 +333,81 @@ function getCachedSystemHealth() {
   return systemHealthCache.data;
 }
 
-// --- Remote Data (Son of Anton VM, cached 30s) ---
+// --- Remote Data (VMs, cached 30s) ---
 let remoteCache = { data: { online: false, gateway: 'offline', processCount: 0 }, lastCheck: 0 };
+let billyCache = { data: { online: false, gateway: 'offline', processCount: 0, framework: 'OpenClaw' }, lastCheck: 0 };
 
-function collectRemoteData() {
-  if (Date.now() - remoteCache.lastCheck < 30000 && remoteCache.lastCheck > 0) return remoteCache.data;
+function collectRemoteVM(host, user, port, cache) {
+  if (Date.now() - cache.lastCheck < 30000 && cache.lastCheck > 0) return cache.data;
   try {
     const out = execSync(
-      'ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 -o BatchMode=yes caio@89.167.23.2 "curl -s -o /dev/null -w \'%{http_code}\' http://localhost:18790/ 2>/dev/null; echo; ps aux | grep -cE \'openclaw\'"',
+      `ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 -o BatchMode=yes ${user}@${host} "curl -s -o /dev/null -w '%{http_code}' http://localhost:${port}/ 2>/dev/null; echo; ps aux | grep -cE 'openclaw|clawdbot'"`,
       { timeout: 10000, encoding: 'utf-8' }
     ).trim();
     const lines = out.split('\n').map(l => l.trim()).filter(Boolean);
     const gwCode = lines[0] || '000';
     const procs = parseInt(lines[1]) || 0;
-    remoteCache = { data: { online: gwCode === '200', gateway: gwCode === '200' ? 'ok' : 'down', processCount: procs }, lastCheck: Date.now() };
+    cache.data = { online: gwCode === '200', gateway: gwCode === '200' ? 'ok' : 'down', processCount: procs };
+    cache.lastCheck = Date.now();
   } catch {
-    remoteCache = { data: { online: false, gateway: 'offline', processCount: 0 }, lastCheck: Date.now() };
+    cache.data = { online: false, gateway: 'offline', processCount: 0 };
+    cache.lastCheck = Date.now();
   }
-  return remoteCache.data;
+  return cache.data;
+}
+
+function collectRemoteData() {
+  // Son of Anton VM removed — no remote VM to collect
+  return { online: false, gateway: 'offline', processCount: 0 };
+}
+
+function collectBillyData() {
+  return collectRemoteVM('89.167.64.183', 'root', 18790, billyCache);
+}
+
+// --- GitHub Integration (cached 5min) ---
+const GITHUB_TOKEN = process.env.GITHUB_TOKEN || '';
+let githubCache = { data: [], lastFetch: 0 };
+const GITHUB_CACHE_TTL = 300000; // 5min
+
+async function fetchGithubCommits() {
+  if (Date.now() - githubCache.lastFetch < GITHUB_CACHE_TTL && githubCache.data.length) {
+    return githubCache.data;
+  }
+  if (!GITHUB_TOKEN) return [];
+
+  const repos = [
+    { owner: 'fonsecabc', repo: 'replicants-anton', agent: 'Anton' },
+    { owner: 'fonsecabc', repo: 'replicants-billy', agent: 'Billy' },
+  ];
+
+  const allCommits = [];
+  for (const r of repos) {
+    try {
+      const resp = await fetch(`https://api.github.com/repos/${r.owner}/${r.repo}/commits?per_page=10`, {
+        headers: { 'Authorization': `token ${GITHUB_TOKEN}`, 'Accept': 'application/vnd.github.v3+json' },
+      });
+      if (!resp.ok) continue;
+      const commits = await resp.json();
+      for (const c of commits) {
+        allCommits.push({
+          repo: r.repo,
+          agent: r.agent,
+          sha: c.sha?.substring(0, 7),
+          message: c.commit?.message?.split('\n')[0]?.substring(0, 80),
+          author: c.commit?.author?.name,
+          date: c.commit?.author?.date,
+          url: c.html_url,
+        });
+      }
+    } catch (e) {
+      console.log(`[GitHub] Error fetching ${r.repo}:`, e.message);
+    }
+  }
+
+  allCommits.sort((a, b) => new Date(b.date) - new Date(a.date));
+  githubCache = { data: allCommits.slice(0, 30), lastFetch: Date.now() };
+  return githubCache.data;
 }
 
 // --- Linear Integration ---
@@ -485,78 +543,79 @@ const completedAgentsToday = new Map();
 async function collectData() {
   checkMidnightReset();
 
-  const registry = readRegistry();
-  const nowS = Math.floor(Date.now() / 1000);
+  const { tasks: stateTasks, maxConcurrent } = readUnifiedState();
 
-  // 1. Build active agents from registry
+  // 1. Build active + recent from state.json (single source of truth)
   const active = [];
-  for (const [taskId, a] of Object.entries(registry.agents || {})) {
-    const alive = isProcessAlive(a.pid);
-    const ageMin = (nowS - (a.spawnedEpoch || nowS)) / 60;
-    const timeoutMin = a.timeoutMin || 25;
-    const outputSize = getOutputSize(taskId);
+  const recent = [];
 
-    if (!alive) {
-      if (!completedAgentsToday.has(taskId)) {
-        const completedAgent = {
-          taskId,
-          label: a.label || taskId,
-          runtimeMin: ageMin.toFixed(1),
-          completedAt: new Date().toISOString(),
+  for (const t of stateTasks) {
+    if (t.status === 'agent_running') {
+      const runtimeMs = t.ageMin * 60000;
+      active.push({
+        sessionKey: `state:${t.taskId}`,
+        label: t.label,
+        runtimeMs,
+        status: 'running',
+        taskId: t.taskId,
+        pid: t.agentPid,
+        source: t.source,
+        role: t.role,
+        timeoutMin: t.timeoutMin,
+        alive: t.alive,
+        retries: t.retries,
+        extensions: t.extensions,
+        learnings: t.learnings,
+      });
+    } else if (['done', 'failed', 'timeout', 'error'].includes(t.status)) {
+      // Track for today's counters
+      if (!completedAgentsToday.has(t.taskId)) {
+        const outputSize = getOutputSize(t.taskId);
+        const isDone = t.status === 'done' && outputSize > 0;
+        completedAgentsToday.set(t.taskId, {
+          taskId: t.taskId,
+          label: t.label,
+          runtimeMin: t.ageMin.toFixed(1),
+          completedAt: t.completedAt || new Date().toISOString(),
           outputSize,
-          status: outputSize > 0 ? 'done' : 'error',
-          source: a.source || 'unknown',
-        };
-        completedAgentsToday.set(taskId, completedAgent);
-        if (outputSize > 0) persistentStats.completedToday++;
+          status: isDone ? 'done' : 'error',
+          source: t.source,
+          role: t.role,
+        });
+        if (isDone) persistentStats.completedToday++;
         else persistentStats.failedToday++;
         saveStatsToDisk();
       }
-      continue;
+
+      const cached = completedAgentsToday.get(t.taskId);
+      recent.push({
+        sessionKey: `completed:${t.taskId}`,
+        label: cached.label,
+        runtimeMs: parseFloat(cached.runtimeMin) * 60000,
+        status: cached.status,
+        taskId: t.taskId,
+        source: cached.source,
+        role: cached.role || t.role,
+        completedAt: cached.completedAt,
+      });
     }
-
-    active.push({
-      sessionKey: `registry:${taskId}`,
-      label: a.label || taskId,
-      runtimeMs: ageMin * 60000,
-      status: 'running',
-      taskId,
-      pid: a.pid,
-      source: a.source || 'unknown',
-      timeoutMin,
-    });
-  }
-
-  // 2. Build recent completions
-  const recent = [];
-  const sortedCompleted = [...completedAgentsToday.values()]
-    .sort((a, b) => new Date(b.completedAt) - new Date(a.completedAt))
-    .slice(0, 20);
-
-  for (const c of sortedCompleted) {
-    recent.push({
-      sessionKey: `completed:${c.taskId}`,
-      label: c.label,
-      runtimeMs: parseFloat(c.runtimeMin) * 60000,
-      status: c.status,
-      taskId: c.taskId,
-      source: c.source,
-      completedAt: c.completedAt,
-    });
   }
 
   // Also load from persistent stats (survives restarts)
   for (const r of (persistentStats.recentAgents || [])) {
-    if (!completedAgentsToday.has(r.taskId)) {
+    if (!completedAgentsToday.has(r.taskId) && !recent.find(x => x.taskId === r.taskId)) {
       recent.push(r);
     }
   }
 
-  // 3. Fetch Linear data for agents with CAI-IDs
+  // Sort recent by completion time descending
+  recent.sort((a, b) => new Date(b.completedAt || 0) - new Date(a.completedAt || 0));
+
+  // 2. Fetch Linear data for agents with task IDs
   const taskIds = [...new Set(
     [...active, ...recent]
       .map(a => extractTaskId(a.label) || a.taskId)
-      .filter(id => id && /^CAI-\d+$/.test(id))
+      .filter(id => id && /^(CAI|AUTO|REVIEW)-\d+$/.test(id))
   )];
   let linearData = {};
   const limitedTaskIds = taskIds.slice(0, 15);
@@ -564,7 +623,7 @@ async function collectData() {
     try { linearData = await fetchLinearUpdates(limitedTaskIds); } catch (e) { console.error('Linear fetch error:', e.message); }
   }
 
-  // 4. Enrich active agents
+  // 3. Enrich active agents
   const enrichedActive = active.map(a => {
     try {
       const health = getHealthStatus(a);
@@ -588,8 +647,8 @@ async function collectData() {
     }
   });
 
-  // 5. Enrich recent
-  const enrichedRecent = recent.slice(0, 20).map(a => {
+  // 4. Enrich recent
+  const enrichedRecent = recent.slice(0, 100).map(a => {
     try {
       const taskId = a.taskId || extractTaskId(a.label);
       const linear = taskId ? linearData[taskId] : null;
@@ -601,10 +660,10 @@ async function collectData() {
   });
 
   // Save recent agents for persistence
-  persistentStats.recentAgents = enrichedRecent.slice(0, 20);
+  persistentStats.recentAgents = enrichedRecent.slice(0, 100);
   saveStatsToDisk();
 
-  // 6. Alerts
+  // 5. Alerts
   const alerts = enrichedActive
     .filter(a => a.health?.alert)
     .map(a => ({
@@ -615,28 +674,31 @@ async function collectData() {
       timestamp: new Date().toISOString(),
     }));
 
-  // 7. Langfuse (best-effort)
+  // 6. Langfuse (best-effort)
   let langfuseData = null;
   try { langfuseData = await fetchLangfuseMetrics(); } catch {}
 
-  // 8. System health
+  // 7. System health
   const system = getCachedSystemHealth();
 
-  // 8b. Remote (Son of Anton)
+  // 7b. Remote VMs
   let remote = { online: false, gateway: 'offline', processCount: 0 };
-  try { remote = await collectRemoteData(); } catch {}
+  try { remote = collectRemoteData(); } catch {}
+  let billy = { online: false, gateway: 'offline', processCount: 0 };
+  try { billy = collectBillyData(); } catch {}
 
-  // 9. Compute avg runtime from recent completed agents
+  // 8. Compute avg runtime from recent completed agents
   const completedRecent = enrichedRecent.filter(a => a.runtimeMin && parseFloat(a.runtimeMin) > 0);
   const avgRuntimeMin = completedRecent.length > 0
     ? (completedRecent.reduce((s, a) => s + parseFloat(a.runtimeMin), 0) / completedRecent.length).toFixed(1)
     : '0';
 
-  // 10. Process Manager data
+  // 9. Process Manager data
   const processes = readProcessRegistry();
 
-  // 11. Unified state (v2)
-  const unifiedState = readUnifiedState();
+  // 10. GitHub commits (best-effort, cached)
+  let github = [];
+  try { github = await fetchGithubCommits(); } catch {}
 
   dashboardState = {
     active: enrichedActive,
@@ -645,7 +707,7 @@ async function collectData() {
     system,
     stats: {
       totalActive: enrichedActive.length,
-      maxConcurrent: registry.maxConcurrent || 3,
+      maxConcurrent,
       completedToday: persistentStats.completedToday,
       failedToday: persistentStats.failedToday,
       avgRuntimeMin,
@@ -653,8 +715,9 @@ async function collectData() {
     },
     alerts,
     remote,
+    billy,
     processes,
-    unifiedState,
+    github,
     lastUpdated: new Date().toISOString(),
   };
 
@@ -690,18 +753,18 @@ wss.on('connection', (ws) => {
       const msg = JSON.parse(raw);
 
       if (msg.action === 'kill' && msg.sessionKey) {
-        const taskId = msg.sessionKey.replace('registry:', '').replace('completed:', '');
-        const reg = readRegistry();
-        const agent = reg.agents?.[taskId];
-        if (agent?.pid) {
-          try { process.kill(agent.pid, 9); } catch {}
+        const taskId = msg.sessionKey.replace('state:', '').replace('completed:', '');
+        const { tasks } = readUnifiedState();
+        const task = tasks.find(t => t.taskId === taskId);
+        if (task?.agentPid) {
+          try { process.kill(task.agentPid, 9); } catch {}
         }
         safeExecSync(`bash ${WORKSPACE}/scripts/task-manager.sh remove "${taskId}" 2>/dev/null`);
         await pollAndBroadcast();
       }
 
       if (msg.action === 'note' && msg.sessionKey && msg.message) {
-        const taskId = msg.sessionKey.replace('registry:', '');
+        const taskId = msg.sessionKey.replace('state:', '');
         safeExecSync(`bash ${WORKSPACE}/skills/task-manager/scripts/linear-log.sh "${taskId}" "${msg.message.replace(/"/g, '\\"')}" 2>/dev/null`);
         await pollAndBroadcast();
       }
@@ -738,16 +801,15 @@ app.get('/api/eval', (req, res) => {
 // Stream live agent activity via SSE
 app.get('/api/stream/:taskId', (req, res) => {
   const taskId = req.params.taskId;
-  const activityPath = path.join(AGENT_LOGS_DIR, `${taskId}-activity.jsonl`);
-  const sessionDir = path.join(process.env.HOME || '/Users/fonsecabc', '.claude/projects/-Users-fonsecabc--openclaw-workspace');
-
+  
   res.writeHead(200, {
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-cache',
     'Connection': 'keep-alive',
   });
 
-  function parseSessionLine(line) {
+  // Parse OpenClaw native session format (from ~/.openclaw/agents/{agentId}/sessions/)
+  function parseOpenClawSessionLine(line) {
     try {
       const e = JSON.parse(line);
       const msg = e.message || {};
@@ -758,51 +820,47 @@ app.get('/api/stream/:taskId', (req, res) => {
         const events = [];
         for (const p of content) {
           if (p?.type === 'text' && p.text) events.push({ event: `[text] ${p.text.substring(0, 300)}` });
-          else if (p?.type === 'toolCall') events.push({ event: `[tool] ${p.toolName || p.name || '?'}(${JSON.stringify(p.arguments || {}).substring(0, 100)})` });
-          else if (p?.type === 'thinking') events.push({ event: `[think] ...` });
+          else if (p?.type === 'tool_use') events.push({ event: `[tool] ${p.name || '?'}(${JSON.stringify(p.input || {}).substring(0, 100)})` });
         }
-        if (msg.model) events.push({ event: `[meta] model=${msg.model} tokens=${msg.usage?.totalTokens || '?'}` });
+        if (msg.model) events.push({ event: `[meta] model=${msg.model} tokens=${msg.usage?.total_tokens || '?'}` });
         return events;
       }
-      if (role === 'toolResult') {
-        const c = typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content || '');
-        return [{ event: `[result] ${c.substring(0, 150)}` }];
+      if (role === 'user' && typeof content === 'string' && content.startsWith('# Task:')) {
+        return [{ event: `[task] ${content.split('\n')[0].replace('# Task: ', '')}` }];
       }
     } catch {}
     return [];
   }
 
-  function parseActivityLine(line) {
-    try {
-      const e = JSON.parse(line);
-      if (e._summary) return [{ ts: e._ts, event: e._summary }];
-      if (e.type === 'content_block_start') {
-        const block = e.content_block || {};
-        if (block.type === 'tool_use') return [{ ts: e._ts, event: `[tool] ${block.name}` }];
-      }
-      if (e.type === 'result') return [{ ts: e._ts, event: `[done] result received` }];
-      if (e.type === 'error') return [{ ts: e._ts, event: `[error] ${JSON.stringify(e.error).substring(0, 150)}` }];
-    } catch {}
-    return [];
-  }
-
-  // Find session file
+  // Find OpenClaw native session file for this agent
+  // Task format: AUTO-XXX, agent role stored in state.json
   let sessionPath = null;
+  let agentId = 'main'; // default
+  
+  // Get agent ID from state.json
   try {
-    const files = fs.readdirSync(sessionDir)
-      .filter(f => f.endsWith('.jsonl') && !f.includes('.deleted'))
-      .map(f => ({ name: f, mtime: fs.statSync(path.join(sessionDir, f)).mtimeMs }))
-      .sort((a, b) => b.mtime - a.mtime);
-    if (files.length > 0) sessionPath = path.join(sessionDir, files[0].name);
+    const state = JSON.parse(fs.readFileSync(STATE_FILE, 'utf-8'));
+    const task = state.tasks[taskId];
+    if (task?.role) agentId = task.role;
   } catch {}
 
-  // Backfill from session file
+  // Find most recent session file for this agent
+  const agentSessionsDir = path.join(OPENCLAW_HOME, 'agents', agentId, 'sessions');
+  try {
+    const files = fs.readdirSync(agentSessionsDir)
+      .filter(f => f.endsWith('.jsonl'))
+      .map(f => ({ name: f, mtime: fs.statSync(path.join(agentSessionsDir, f)).mtimeMs }))
+      .sort((a, b) => b.mtime - a.mtime);
+    if (files.length > 0) sessionPath = path.join(agentSessionsDir, files[0].name);
+  } catch {}
+
+  // Backfill from OpenClaw native session file
   if (sessionPath && fs.existsSync(sessionPath)) {
     try {
       const lines = fs.readFileSync(sessionPath, 'utf-8').trim().split('\n').slice(-60);
       const events = [];
       for (const line of lines) {
-        for (const ev of parseSessionLine(line)) events.push(ev);
+        for (const ev of parseOpenClawSessionLine(line)) events.push(ev);
       }
       for (const ev of events.slice(-30)) {
         res.write(`data: ${JSON.stringify(ev)}\n\n`);
@@ -810,57 +868,46 @@ app.get('/api/stream/:taskId', (req, res) => {
     } catch {}
   }
 
-  // Backfill from activity file
-  if (fs.existsSync(activityPath)) {
+  // Fallback: read stdout log if no session found
+  const stdoutPath = path.join(AGENT_LOGS_DIR, `${taskId}-output.log`);
+  if (!sessionPath && fs.existsSync(stdoutPath)) {
     try {
-      const lines = fs.readFileSync(activityPath, 'utf-8').trim().split('\n').slice(-20);
+      const lines = fs.readFileSync(stdoutPath, 'utf-8').trim().split('\n').slice(-30);
       for (const line of lines) {
-        for (const ev of parseActivityLine(line)) {
-          res.write(`data: ${JSON.stringify(ev)}\n\n`);
+        if (line.trim()) {
+          res.write(`data: ${JSON.stringify({ event: line.substring(0, 300) })}\n\n`);
         }
       }
     } catch {}
   }
 
-  // Watch for new data
-  let sessionLastSize = sessionPath && fs.existsSync(sessionPath) ? fs.statSync(sessionPath).size : 0;
-  let activityLastSize = fs.existsSync(activityPath) ? fs.statSync(activityPath).size : 0;
-
+  // OLD SYSTEM ARCHIVED - No longer reading from:
+  // - ~/.claude/projects/ (Claude Desktop sessions)
+  // - activity.jsonl (old v1/v2 system)
+  
+  // Keep connection alive - watch for updates
+  let lastSize = fs.existsSync(stdoutPath) ? fs.statSync(stdoutPath).size : 0;
+  
   const watcher = setInterval(() => {
-    if (sessionPath) {
+    if (fs.existsSync(stdoutPath)) {
       try {
-        const stat = fs.statSync(sessionPath);
-        if (stat.size > sessionLastSize) {
-          const fd = fs.openSync(sessionPath, 'r');
-          const buf = Buffer.alloc(Math.min(stat.size - sessionLastSize, 20000));
-          fs.readSync(fd, buf, 0, buf.length, sessionLastSize);
+        const stat = fs.statSync(stdoutPath);
+        if (stat.size > lastSize) {
+          const fd = fs.openSync(stdoutPath, 'r');
+          const buf = Buffer.alloc(Math.min(stat.size - lastSize, 10000));
+          fs.readSync(fd, buf, 0, buf.length, lastSize);
           fs.closeSync(fd);
-          sessionLastSize = stat.size;
-          for (const line of buf.toString('utf-8').trim().split('\n')) {
-            for (const ev of parseSessionLine(line)) {
-              res.write(`data: ${JSON.stringify(ev)}\n\n`);
+          lastSize = stat.size;
+          
+          const newLines = buf.toString('utf-8').trim().split('\n');
+          for (const line of newLines) {
+            if (line.trim()) {
+              res.write(`data: ${JSON.stringify({ event: line.substring(0, 300) })}\n\n`);
             }
           }
         }
       } catch {}
     }
-
-    try {
-      if (!fs.existsSync(activityPath)) return;
-      const stat = fs.statSync(activityPath);
-      if (stat.size > activityLastSize) {
-        const fd = fs.openSync(activityPath, 'r');
-        const buf = Buffer.alloc(stat.size - activityLastSize);
-        fs.readSync(fd, buf, 0, buf.length, activityLastSize);
-        fs.closeSync(fd);
-        activityLastSize = stat.size;
-        for (const line of buf.toString('utf-8').trim().split('\n')) {
-          for (const ev of parseActivityLine(line)) {
-            res.write(`data: ${JSON.stringify(ev)}\n\n`);
-          }
-        }
-      }
-    } catch {}
   }, 1500);
 
   req.on('close', () => clearInterval(watcher));
