@@ -747,8 +747,10 @@ function getTokenStatus() {
         });
       }
     }
+    console.log(`[tokens] Found ${sessions.length} sessions`);
     return sessions;
-  } catch {
+  } catch (err) {
+    console.error('[tokens] Error:', err.message);
     return [];
   }
 }
