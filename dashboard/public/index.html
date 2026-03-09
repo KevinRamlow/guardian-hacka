@@ -390,6 +390,27 @@ html, body {
 .commit-author { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
 
 /* ═══════════ EVAL in sidebar ═══════════ */
+.eval-summary { display: flex; gap: 16px; margin-bottom: 12px; flex-wrap: wrap; }
+.eval-kpi { background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px 16px; text-align: center; min-width: 100px; }
+.eval-kpi-val { font-size: 20px; font-weight: 700; font-family: var(--font-mono); }
+.eval-kpi-label { font-size: 9px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); margin-top: 2px; }
+.eval-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px; }
+.eval-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 12px; position: relative; overflow: hidden; }
+.eval-card::before { content:''; position:absolute; left:0; top:0; width:3px; height:100%; }
+.eval-card.positive::before { background: var(--accent-green); }
+.eval-card.negative::before { background: var(--accent-red); }
+.eval-card.neutral::before { background: var(--text-muted); }
+.eval-card-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.eval-card-date { font-size: 11px; color: var(--text-muted); font-family: var(--font-mono); }
+.eval-card-acc { font-size: 18px; font-weight: 700; font-family: var(--font-mono); }
+.eval-card-delta { font-size: 12px; font-weight: 600; font-family: var(--font-mono); padding: 2px 6px; border-radius: 4px; }
+.eval-card-delta.pos { color: var(--accent-green); background: rgba(0,255,100,0.1); }
+.eval-card-delta.neg { color: var(--accent-red); background: rgba(255,80,80,0.1); }
+.eval-card-bar { height: 4px; background: var(--bg-inset); border-radius: 2px; overflow: hidden; margin: 8px 0 4px; }
+.eval-card-bar-fill { height: 100%; border-radius: 2px; transition: width 0.5s; }
+.eval-card-meta { display: flex; justify-content: space-between; font-size: 9px; color: var(--text-muted); }
+.eval-progress-card { background: var(--bg-card); border: 1px solid var(--accent-cyan); border-radius: 8px; padding: 12px; margin-bottom: 10px; }
+.eval-progress-card .eval-card-bar-fill { background: linear-gradient(90deg, var(--accent-cyan), var(--accent-blue)); }
 .eval-metrics { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 10px; }
 .eval-m { text-align: center; }
 .eval-m-val { font-size: 18px; font-weight: 700; font-family: var(--font-mono); }
@@ -553,6 +574,15 @@ html, body {
       </div>
       <div class="recent-grid" id="recentGrid"></div>
     </div>
+
+    <div class="section" id="evalSection">
+      <div class="section-header">
+        <span class="section-title">Guardian Eval Runs</span>
+        <div class="section-line"></div>
+        <span class="section-badge" id="evalCount">0</span>
+      </div>
+      <div id="evalContent"><div class="empty-state">No eval data</div></div>
+    </div>
   </div>
 
   <!-- RIGHT: Sidebar -->
@@ -561,10 +591,7 @@ html, body {
       <div class="sidebar-title">LLM Observability</div>
       <div id="langfuseContent"><div class="empty-state">No data</div></div>
     </div>
-    <div class="sidebar-section" id="evalSection">
-      <div class="sidebar-title">Guardian Eval</div>
-      <div id="evalContent"><div class="empty-state">No eval data</div></div>
-    </div>
+    <!-- eval moved to main content area -->
     <div class="sidebar-section" style="flex:1;overflow-y:auto">
       <div class="sidebar-title">GitHub Activity</div>
       <div id="githubContent"><div class="empty-state">Loading...</div></div>
@@ -925,22 +952,52 @@ function renderTokens() {
 function renderEval() {
   if (!evalData || evalData.error) { $('#evalContent').innerHTML = '<div class="empty-state">No eval data</div>'; return; }
   const t = evalData.target||{}, ce = evalData.current_eval||{}, p = ce.progress||{}, runs = evalData.recent_runs||[];
-  $('#evalContent').innerHTML = `
-    <div class="eval-metrics">
-      <div class="eval-m"><div class="eval-m-val" style="color:var(--accent-cyan)">${t.target_accuracy?(t.target_accuracy*100).toFixed(1)+'%':'--'}</div><div class="eval-m-label">Target</div></div>
-      <div class="eval-m"><div class="eval-m-val" style="color:var(--accent-green)">${t.current_accuracy?(t.current_accuracy*100).toFixed(1)+'%':'--'}</div><div class="eval-m-label">Current</div></div>
-      <div class="eval-m"><div class="eval-m-val" style="color:var(--accent-orange)">${t.remaining_pp?t.remaining_pp.toFixed(1)+'pp':'--'}</div><div class="eval-m-label">Gap</div></div>
-      <div class="eval-m"><div class="eval-m-val">${t.iterations||'--'}</div><div class="eval-m-label">Iterations</div></div>
-    </div>
-    ${p.percent!==undefined?`
-      <div class="eval-bar-label"><span>${p.completed||0}/${p.total||0}</span><span>${p.percent||0}%</span></div>
-      <div class="eval-bar"><div class="eval-bar-fill" style="width:${p.percent||0}%"></div></div>
-    `:''}
-    ${runs.map(r => {
-      const d = parseFloat(r.delta_pp)||0;
-      return `<div class="eval-run"><span class="eval-run-name">${esc(r.run_name)}</span><span class="eval-run-acc">${esc(r.accuracy)}</span><span class="eval-run-delta ${d>=0?'pos':'neg'}">${d>=0?'+':''}${r.delta_pp}</span></div>`;
-    }).join('')}
-  `;
+  
+  $('#evalCount').textContent = runs.length;
+  
+  // Summary KPIs
+  const summaryHtml = `
+    <div class="eval-summary">
+      <div class="eval-kpi"><div class="eval-kpi-val" style="color:var(--accent-cyan)">${t.target_accuracy?(t.target_accuracy*100).toFixed(1)+'%':'--'}</div><div class="eval-kpi-label">Target</div></div>
+      <div class="eval-kpi"><div class="eval-kpi-val" style="color:var(--accent-green)">${t.current_accuracy?(t.current_accuracy*100).toFixed(1)+'%':'--'}</div><div class="eval-kpi-label">Current</div></div>
+      <div class="eval-kpi"><div class="eval-kpi-val" style="color:var(--accent-orange)">${t.remaining_pp?t.remaining_pp.toFixed(1)+'pp':'--'}</div><div class="eval-kpi-label">Gap</div></div>
+      <div class="eval-kpi"><div class="eval-kpi-val">${t.iterations||'--'}</div><div class="eval-kpi-label">Runs</div></div>
+    </div>`;
+
+  // Current eval progress card (if running)
+  const progressHtml = p.percent !== undefined && p.percent < 100 ? `
+    <div class="eval-progress-card">
+      <div class="eval-card-top">
+        <span style="color:var(--accent-cyan);font-weight:600">⏳ Eval Running</span>
+        <span class="eval-card-date">${p.completed||0}/${p.total||0} cases</span>
+      </div>
+      <div class="eval-card-bar"><div class="eval-card-bar-fill" style="width:${p.percent}%"></div></div>
+      <div class="eval-card-meta"><span>${p.percent}% complete</span></div>
+    </div>` : '';
+
+  // Eval run cards
+  const cardsHtml = runs.map(r => {
+    const d = parseFloat(r.delta_pp)||0;
+    const cls = d > 0 ? 'positive' : d < 0 ? 'negative' : 'neutral';
+    const deltaCls = d >= 0 ? 'pos' : 'neg';
+    const accRaw = r.accuracy_raw || 0;
+    const barPct = Math.min(100, (accRaw / (t.target_accuracy || 0.87)) * 100);
+    const barColor = accRaw >= (t.target_accuracy||0.87) ? 'var(--accent-green)' : accRaw >= 0.80 ? 'var(--accent-cyan)' : accRaw >= 0.75 ? 'var(--accent-orange)' : 'var(--accent-red)';
+    return `
+      <div class="eval-card ${cls}">
+        <div class="eval-card-top">
+          <span class="eval-card-acc">${esc(r.accuracy)}</span>
+          <span class="eval-card-delta ${deltaCls}">${d>=0?'+':''}${r.delta_pp}pp</span>
+        </div>
+        <div class="eval-card-bar"><div class="eval-card-bar-fill" style="width:${barPct.toFixed(0)}%;background:${barColor}"></div></div>
+        <div class="eval-card-meta">
+          <span>${esc(r.run_name)}</span>
+          <span>${r.total_tests} cases</span>
+        </div>
+      </div>`;
+  }).join('');
+
+  $('#evalContent').innerHTML = summaryHtml + progressHtml + `<div class="eval-grid">${cardsHtml}</div>`;
 }
 
 // --- Stream ---
