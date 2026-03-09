@@ -819,15 +819,89 @@ app.use(express.static(path.join(__dirname, 'public')));
 // --- API ---
 app.get('/api/state', (req, res) => res.json(dashboardState));
 
-// Guardian eval data endpoint
+// Guardian eval data endpoint — reads directly from eval runs directory
 app.get('/api/eval', (req, res) => {
   try {
-    const { execSync } = require('child_process');
-    const data = execSync('bash ' + path.join(WORKSPACE, 'scripts/cockpit-eval-data.sh'), {
-      timeout: 10000,
-      encoding: 'utf-8',
+    const EVAL_RUNS_DIR = path.join(WORKSPACE, 'guardian-agents-api-real/evals/.runs/content_moderation');
+    const TARGET_ACCURACY = 0.87; // 87% target
+
+    // Read all run directories with metrics.json
+    const runs = [];
+    if (fs.existsSync(EVAL_RUNS_DIR)) {
+      const dirs = fs.readdirSync(EVAL_RUNS_DIR)
+        .filter(d => d.startsWith('run_'))
+        .sort()
+        .reverse(); // newest first
+
+      for (const dir of dirs) {
+        const metricsPath = path.join(EVAL_RUNS_DIR, dir, 'metrics.json');
+        if (!fs.existsSync(metricsPath)) continue;
+        try {
+          const m = JSON.parse(fs.readFileSync(metricsPath, 'utf-8'));
+          const stats = m.summary_statistics || m;
+          const acc = stats.mean_aggregate_score;
+          const total = stats.total_tests;
+          if (acc == null || total == null || total < 20) continue; // skip tiny/broken runs
+
+          const ts = dir.replace('run_', '');
+          const dateStr = ts.replace(/(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})/, '$1-$2-$3 $4:$5');
+          runs.push({
+            run_name: dateStr,
+            accuracy: (acc * 100).toFixed(1) + '%',
+            accuracy_raw: acc,
+            total_tests: total,
+            timestamp: ts,
+            dir: dir,
+          });
+        } catch {}
+      }
+    }
+
+    // Calculate deltas between consecutive runs (same dataset size)
+    const fullRuns = runs.filter(r => r.total_tests >= 100); // only 121-case runs
+    for (let i = 0; i < fullRuns.length; i++) {
+      if (i < fullRuns.length - 1) {
+        const delta = (fullRuns[i].accuracy_raw - fullRuns[i + 1].accuracy_raw) * 100;
+        fullRuns[i].delta_pp = delta.toFixed(1);
+      } else {
+        fullRuns[i].delta_pp = '0.0'; // first run, no delta
+      }
+    }
+
+    // Current accuracy = latest full run
+    const latest = fullRuns[0];
+    const currentAcc = latest ? latest.accuracy_raw : null;
+
+    // Check if eval is currently running
+    let currentEval = {};
+    try {
+      const state = JSON.parse(fs.readFileSync(STATE_FILE, 'utf-8'));
+      const evalTask = Object.entries(state.tasks || {}).find(([, t]) => t.status === 'eval_running');
+      if (evalTask) {
+        // Try to get progress from log file
+        const logFiles = fs.readdirSync('/tmp').filter(f => f.startsWith('guardian-eval-')).sort().reverse();
+        if (logFiles.length > 0) {
+          const logContent = fs.readFileSync(path.join('/tmp', logFiles[0]), 'utf-8');
+          const progressMatch = logContent.match(/(\d+)\/(\d+)\s/g);
+          if (progressMatch) {
+            const last = progressMatch[progressMatch.length - 1];
+            const [completed, total] = last.trim().split('/').map(Number);
+            currentEval = { progress: { completed, total, percent: Math.round((completed / total) * 100) } };
+          }
+        }
+      }
+    } catch {}
+
+    res.json({
+      target: {
+        target_accuracy: TARGET_ACCURACY,
+        current_accuracy: currentAcc,
+        remaining_pp: currentAcc ? (TARGET_ACCURACY - currentAcc) * 100 : null,
+        iterations: fullRuns.length,
+      },
+      current_eval: currentEval,
+      recent_runs: fullRuns.slice(0, 10), // last 10 full runs
     });
-    res.json(JSON.parse(data));
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
