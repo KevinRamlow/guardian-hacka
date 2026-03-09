@@ -32,13 +32,13 @@ echo "Cycle: $CYCLE"
 echo "Baseline: $BASELINE%"
 
 # Check if objectives file exists
-if [[ ! -f "$WORKSPACE/OBJECTIVES.md" ]]; then
+if [[ ! -f "$WORKSPACE/docs/OBJECTIVES.md" ]]; then
   echo "ERROR: OBJECTIVES.md not found. Exiting."
   exit 1
 fi
 
 # Extract target from OBJECTIVES.md (macOS compatible)
-TARGET=$(grep -A1 "target:" "$WORKSPACE/OBJECTIVES.md" | grep -Eo '[0-9]+' | head -1)
+TARGET=$(grep -A1 "target:" "$WORKSPACE/docs/OBJECTIVES.md" | grep -Eo '[0-9]+' | head -1)
 echo "Target: $TARGET%"
 
 # Notify cycle start
@@ -47,7 +47,7 @@ bash "$WORKSPACE/scripts/notify-slack.sh" "[ANTON] Guardian Loop Cycle $CYCLE st
 # Check if target reached (using awk for float comparison)
 if awk -v b="$BASELINE" -v t="$TARGET" 'BEGIN {exit !(b >= t)}'; then
   echo "🎯 TARGET REACHED! Baseline $BASELINE% >= Target $TARGET%"
-  echo "Stopping auto-loop. Edit OBJECTIVES.md to set new target."
+  echo "Stopping auto-loop. Edit docs/OBJECTIVES.md to set new target."
   exit 0
 fi
 
@@ -56,7 +56,7 @@ echo ""
 echo "=== Generating Hypotheses ==="
 
 # Read priority areas from OBJECTIVES.md
-PRIORITY_AREA=$(grep -A3 "Priority Areas" "$WORKSPACE/OBJECTIVES.md" | grep "###" | head -1 | sed 's/###//g' | xargs)
+PRIORITY_AREA=$(grep -A3 "Priority Areas" "$WORKSPACE/docs/OBJECTIVES.md" | grep "###" | head -1 | sed 's/###//g' | xargs)
 echo "Focus area: $PRIORITY_AREA"
 
 # Define hypothesis templates

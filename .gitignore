@@ -4,6 +4,11 @@ auth-profiles.json
 *.key
 *.pem
 .my.cnf
+.gcp-credentials.json
+.gcp-access-token
+.gcp-access-token.json
+.gcp-env
+.env.secrets
 
 # Runtime
 node_modules/
@@ -12,6 +17,24 @@ __pycache__/
 *.pyc
 /data/
 /tmp/
+.DS_Store
+
+# Runtime state (never track)
+.anton-auto-state.json
+.linear-sync-state.json
+.guardian-improvement-target
+memory/*-state.json
+memory/slack-dm-state.json
+metrics/*.json
+tasks/*.json
+config/cockpit-state.json
+config/slack-linear-threads.json
+dashboard/stats-history.json
+
+# Backup files
+*.bak
+*.bak2
+*.disabled
 
 # Large files
 *.png
@@ -19,22 +42,17 @@ __pycache__/
 *.mp4
 *.zip
 
-# OpenClaw internal
-.openclaw/
-
 # Cloned repos (have their own git)
 backoffice/
 campaign-manager-api/
+cockpit/
 creator-ads/
 guardian-ads-treatment/
 guardian-agents-api/
-guardian-api/
-user-management-api/
-clawdbots/
-guardian-agents-api/
-.gcp-credentials.json
-.gcp-access-token
-.gcp-access-token.json
-.gcp-env
-.env.secrets
 guardian-agents-api-real/
+guardian-api/
+perfect-web-clone/
+user-management-api/
+
+# OpenClaw internal
+.openclaw/

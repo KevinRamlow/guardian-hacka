@@ -38,7 +38,7 @@ ANTON_TO_SON=(
   "docs/SON-OF-ANTON-HEARTBEAT.md"
   
   # Objectives (Son monitors progress toward these)
-  "OBJECTIVES.md"
+  "docs/OBJECTIVES.md"
   
   # State files (Son reads these - READ ONLY)
   ".anton-auto-state.json"
