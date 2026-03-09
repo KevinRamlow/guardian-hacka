@@ -867,7 +867,7 @@ function renderRecent() {
   $('#recentGrid').innerHTML = recent.slice(0,20).map(a => {
     const ok = a.status==='done'||a.success;
     return `
-      <div class="recent-card ${ok?'success':'failure'}">
+      <div class="recent-card ${ok?'success':'failure'}" onclick="openLogStream('${esc(a.taskId||'--')}', '${esc(a.label||'--')}')" style="cursor:pointer">
         <div class="recent-id">${esc(a.taskId||'--')}</div>
         <div class="recent-label">${esc(a.label||'--')}</div>
         <div class="recent-meta">
@@ -908,6 +908,7 @@ function renderEval() {
 }
 
 // --- Stream ---
+function openLogStream(taskId, label) { selectAgent(taskId); }
 function selectAgent(tid) {
   if (selectedTaskId===tid) { closeStream(); return; }
   selectedTaskId = tid; openStream(tid); render();
