@@ -368,6 +368,8 @@ for task_id, task in list(tasks.items()):
                 print(f"DONE {task_id}: {age_min}min, {output_size}B")
                 run_cmd(["bash", TASK_MGR, "transition", task_id, "done", "--exit-code", "0"])
                 run_cmd(["bash", REPORT, task_id, "done"])
+                # Link logs to Linear for debugging
+                run_cmd(["bash", "/Users/fonsecabc/.openclaw/workspace/scripts/link-logs-to-linear.sh", task_id])
                 trigger_review_hook(task_id)
                 completions += 1
                 consec = {"count": 0, "task_ids": []}
@@ -375,6 +377,8 @@ for task_id, task in list(tasks.items()):
                 print(f"FAIL {task_id}: {age_min}min, {quality} ({detail[:100]})")
                 run_cmd(["bash", TASK_MGR, "transition", task_id, "failed", "--exit-code", "1"])
                 run_cmd(["bash", REPORT, task_id, "failed"])
+                # Link logs to Linear for debugging
+                run_cmd(["bash", "/Users/fonsecabc/.openclaw/workspace/scripts/link-logs-to-linear.sh", task_id])
                 failures += 1
                 consec["count"] += 1
                 consec["task_ids"].append(task_id)
