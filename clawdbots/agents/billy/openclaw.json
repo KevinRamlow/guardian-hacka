@@ -11,7 +11,7 @@
       "enabled": true,
       "mode": "socket",
       "botToken": "[REDACTED_SLACK_BOT]",
-      "appToken": "REDACTED_SLACK_APP_TOKEN_BILLY",
+      "appToken": "${SLACK_APP_TOKEN}",
       "dmPolicy": "allowlist",
       "groupPolicy": "allowlist",
       "allowFrom": ["U04PHF0L65P"]

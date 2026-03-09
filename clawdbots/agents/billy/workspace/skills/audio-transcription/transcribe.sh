@@ -8,7 +8,10 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PYTHON_SCRIPT="$SCRIPT_DIR/scripts/transcribe.py"
 
 # Default API key (can be overridden by env var)
-export GEMINI_API_KEY="${GEMINI_API_KEY:-REDACTED_GEMINI_KEY}"
+if [ -z "$GEMINI_API_KEY" ]; then
+    echo "ERROR: GEMINI_API_KEY not set. Source .env.secrets first." >&2
+    exit 1
+fi
 
 # Check if python script exists
 if [ ! -f "$PYTHON_SCRIPT" ]; then

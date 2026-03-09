@@ -3,18 +3,18 @@
 ## Current Setup
 
 ### Slack
-- Token: REDACTED_SLACK_USER_TOKEN
+- Token: $SLACK_USER_TOKEN (see .env.secrets)
 - User: caio.fonseca (U04PHF0L65P)
 - Channels: #tech-gua-ma-internal (team), #guardian-alerts (prod), Luca DM (U0388ARSD9N)
 
 ### Google (GOG)
 - Accounts: caio.fonseca@brandlovrs.com, caiobragadafonseca@gmail.com
-- Keyring: REDACTED_GOG_KEYRING
-- Env: source /root/.openclaw/workspace/.env.gog
+- Keyring: $GOG_KEYRING_PASSWORD (see .env.secrets)
+- Env: source ~/.openclaw/workspace/.env.gog
 
 ### GitHub
 - Account: fonsecabc
-- Token: REDACTED_GITHUB_TOKEN (configured 2026-03-05)
+- Token: $GITHUB_TOKEN (see .env.secrets)
 - Scopes: repo, read:org, read:user, notifications
 - Key repos: guardian-agents-api, guardian-api, guardian-ads-treatment (all in brandlovers-team org)
 - guardian-agents-api cloned locally at `/root/.openclaw/workspace/guardian-agents-api/`
@@ -54,7 +54,7 @@
 
 ### Metabase
 - URL: https://metabase.brandlovers.ai (behind Cloudflare Access — not directly reachable)
-- API Key: REDACTED_METABASE_KEY
+- API Key: $METABASE_API_KEY (see .env.secrets)
 - MCP config at: /root/.claude/mcp_config.json
 - mcporter configured at: /root/.openclaw/workspace/config/mcporter.json
 - **Status**: Not usable from server (Cloudflare Access blocks API calls)

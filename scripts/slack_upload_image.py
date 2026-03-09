@@ -18,7 +18,7 @@ from pathlib import Path
 
 # Caio's Slack DM channel ID (retrieved via conversations.list API)
 DEFAULT_CHANNEL_ID = "D04NQ9ZQTMM"
-TOKEN = "REDACTED_SLACK_USER_TOKEN"
+TOKEN = os.environ.get("SLACK_USER_TOKEN", "")
 
 
 def upload_to_slack(file_path: str, title: str, channel_id: str = DEFAULT_CHANNEL_ID, token: str = TOKEN) -> dict:

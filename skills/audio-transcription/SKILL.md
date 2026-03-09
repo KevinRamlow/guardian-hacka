@@ -49,7 +49,7 @@ The skill automatically reads `GEMINI_API_KEY` from:
 2. Environment variable `GEMINI_API_KEY`
 3. Falls back to the key in wrapper script
 
-**Current API key:** REDACTED_GEMINI_KEY
+**Current API key:** Set via `$GEMINI_API_KEY` env var (see .env.secrets)
 
 ## Models
 

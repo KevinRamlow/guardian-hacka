@@ -5,7 +5,7 @@
       "args": ["-y", "metabase-ai-assistant"],
       "env": {
         "METABASE_URL": "https://metabase.brandlovers.ai",
-        "METABASE_API_KEY": "REDACTED_METABASE_KEY",
+        "METABASE_API_KEY": "${METABASE_API_KEY}",
         "MB_METADATA_ENABLED": "true"
       }
     },
@@ -21,7 +21,7 @@
     "nano-banana": {
       "command": "nano-banana-pro-mcp",
       "env": {
-        "GEMINI_API_KEY": "REDACTED_GEMINI_KEY"
+        "GEMINI_API_KEY": "${GEMINI_API_KEY}"
       }
     }
   }

@@ -11,7 +11,10 @@ import base64
 import requests
 
 # Default API key from env or config
-API_KEY = os.environ.get("GEMINI_API_KEY", "REDACTED_GEMINI_KEY")
+API_KEY = os.environ.get("GEMINI_API_KEY", "")
+if not API_KEY:
+    print(json.dumps({"success": False, "error": "GEMINI_API_KEY not set. Source .env.secrets first."}), file=sys.stderr)
+    sys.exit(1)
 
 # Model mappings
 MODEL_MAP = {
