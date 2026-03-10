@@ -16,6 +16,22 @@ if [ ${#MISSING[@]} -gt 0 ]; then
   exit 1
 fi
 
+# ── Git identity & auth (needed for agents to commit/push) ──
+GIT_AUTHOR_NAME="${GIT_AUTHOR_NAME:-Anton [bot]}"
+GIT_AUTHOR_EMAIL="${GIT_AUTHOR_EMAIL:-anton-bot@fonsecabc.dev}"
+
+git config --global user.name "${GIT_AUTHOR_NAME}"
+git config --global user.email "${GIT_AUTHOR_EMAIL}"
+git config --global safe.directory '*'
+
+if [ -n "${GITHUB_TOKEN:-}" ]; then
+  git config --global url."https://x-access-token:${GITHUB_TOKEN}@github.com/".insteadOf "https://github.com/"
+  git config --global url."https://x-access-token:${GITHUB_TOKEN}@github.com/".insteadOf "git@github.com:"
+  echo "Git: configured HTTPS auth via GITHUB_TOKEN"
+else
+  echo "WARN: GITHUB_TOKEN not set — git push to GitHub will fail" >&2
+fi
+
 # ── Setup sub-agent workspaces (idempotent) ──
 bash "${OPENCLAW_HOME}/workspace/scripts/setup-workspaces.sh"
 
