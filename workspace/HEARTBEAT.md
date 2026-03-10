@@ -103,7 +103,7 @@ Kill unregistered `claude` processes older than 5 minutes:
 
 ### Priority 6 — Proactive
 
-- If Caio sent a message → respond to it
+- **DO NOT respond to Caio's messages here.** The gateway already routes DMs to you as normal chat turns. Responding to them again in the heartbeat = double processing = double tokens. If you see an unread message from Caio during heartbeat, IGNORE IT — it was already handled (or will be handled) by the normal chat flow.
 - If success_rate < 70% → investigate + fix autonomously
 - If same task failing 3+ times → stop re-queueing, investigate root cause
 - Generate 1-2 PRD tasks per day, add to Linear AUTO as Todo

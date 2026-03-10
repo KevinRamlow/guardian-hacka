@@ -157,9 +157,8 @@
       "enabled": true,
       "userTokenReadOnly": true,
       "groupPolicy": "allowlist",
-      "blockStreaming": true,
-      "streaming": "block",
-      "nativeStreaming": false,
+      "streaming": "off",
+      "nativeStreaming": true,
       "dmPolicy": "allowlist",
       "allowFrom": [
         "U04PHF0L65P",
