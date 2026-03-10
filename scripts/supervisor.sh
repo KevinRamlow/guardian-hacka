@@ -387,8 +387,7 @@ for task_id, task in list(tasks.items()):
                 run_cmd(["bash", TASK_MGR, "transition", task_id, "done", "--exit-code", "0"])
                 run_cmd(["bash", REPORT, task_id, "done"])
                 # Mark as reported to prevent duplicate alerts
-                run_cmd(["bash", TASK_MGR, "set-field", task_id, "reportedAt", 
-                         __import__('datetime').datetime.utcnow().isoformat() + "Z"])
+                mark_reported(task_id)
                 # Link logs to Linear for debugging
                 run_cmd(["bash", "/Users/fonsecabc/.openclaw/workspace/scripts/link-logs-to-linear.sh", task_id])
                 trigger_review_hook(task_id)
@@ -403,8 +402,7 @@ for task_id, task in list(tasks.items()):
                 run_cmd(["bash", TASK_MGR, "transition", task_id, "failed", "--exit-code", "1"])
                 run_cmd(["bash", REPORT, task_id, "failed"])
                 # Mark as reported
-                run_cmd(["bash", TASK_MGR, "set-field", task_id, "reportedAt",
-                         __import__('datetime').datetime.utcnow().isoformat() + "Z"])
+                mark_reported(task_id)
                 # Link logs to Linear for debugging
                 run_cmd(["bash", "/Users/fonsecabc/.openclaw/workspace/scripts/link-logs-to-linear.sh", task_id])
                 failures += 1
