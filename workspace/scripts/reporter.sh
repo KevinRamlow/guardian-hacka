@@ -1,20 +1,19 @@
 #!/bin/bash
-# reporter.sh — Unified reporting from state.json to Linear + Slack + dashboard
-# Replaces agent-report.sh + agent-peek.sh + notify-slack.sh
+# reporter.sh — Task monitoring + notifications
 #
 # Usage:
-#   reporter.sh report <task-id> <status>         Post completion report to Linear + Slack
-#   reporter.sh peek [task-id] [follow]            Monitor tasks (overview or single)
-#   reporter.sh notify "message"                   Post to #replicants
-#   reporter.sh summary                            Daily summary of all tasks
+#   reporter.sh peek [task-id] [follow]   Monitor tasks (overview or single)
+#   reporter.sh notify "message"          Post to Caio's DM
+#   reporter.sh summary                   Full system summary
+#
+# NOTE: Completion reporting is handled by supervisor.sh (Linear via linear-log.sh,
+#       Slack via heartbeat). No separate report command needed.
 #
 set -euo pipefail
 
 TASK_MGR="${OPENCLAW_HOME:-$HOME/.openclaw}/workspace/scripts/task-manager.sh"
 LOGS_DIR="${OPENCLAW_HOME:-$HOME/.openclaw}/tasks/agent-logs"
 WORKSPACE="${OPENCLAW_HOME:-$HOME/.openclaw}/workspace"
-DIAGNOSE="$WORKSPACE/scripts/diagnose-failure.sh"
-LINEAR_SCRIPT="$WORKSPACE/skills/linear/scripts/linear.sh"
 REPLICANTS_CHANNEL="D0AK1B981QR"
 
 OC_HOME="${OPENCLAW_HOME:-$HOME/.openclaw}"; source "$OC_HOME/.env" 2>/dev/null || true
@@ -23,134 +22,6 @@ CMD="${1:-help}"
 shift || true
 
 case "$CMD" in
-
-  report)
-    TASK_ID="${1:?task-id required}"
-    STATUS="${2:?status required: done|failed|timeout|idle_killed}"
-
-    TS=$(date -u +"%H:%M:%S")
-
-    # Read agent logs
-    OUTPUT=""
-    [ -f "$LOGS_DIR/${TASK_ID}-output.log" ] && OUTPUT=$(head -c 1000 "$LOGS_DIR/${TASK_ID}-output.log" 2>/dev/null || true)
-    STDERR=""
-    [ -f "$LOGS_DIR/${TASK_ID}-stderr.log" ] && STDERR=$(head -c 500 "$LOGS_DIR/${TASK_ID}-stderr.log" 2>/dev/null || true)
-
-    # Activity summary
-    ACTIVITY_SUMMARY=""
-    if [ -f "$LOGS_DIR/${TASK_ID}-activity.jsonl" ]; then
-      ACTIVITY_SUMMARY=$(python3 -c "
-import json, os
-f = '$LOGS_DIR/${TASK_ID}-activity.jsonl'
-if not os.path.exists(f): exit()
-lines = open(f).readlines()
-tools = set()
-for l in lines[-50:]:
-    try:
-        e = json.loads(l)
-        s = e.get('_summary','')
-        if s.startswith('TOOL_START:'): tools.add(s.replace('TOOL_START: ',''))
-    except: pass
-if tools: print(f'Tools: {\", \".join(sorted(tools))}')
-print(f'Events: {len(lines)}')
-" 2>/dev/null || true)
-    fi
-
-    # Duration
-    DURATION=""
-    TASK_DATA=$(bash "$TASK_MGR" get "$TASK_ID" 2>/dev/null || echo "{}")
-    STARTED_EPOCH=$(echo "$TASK_DATA" | python3 -c "import json,sys; print(json.load(sys.stdin).get('startedEpoch',0))" 2>/dev/null || echo "0")
-    if [ "$STARTED_EPOCH" -gt 0 ]; then
-      NOW_EPOCH=$(date +%s)
-      DURATION_MIN=$(( (NOW_EPOCH - STARTED_EPOCH) / 60 ))
-      DURATION="${DURATION_MIN}min"
-    fi
-
-    # History context
-    HISTORY_COUNT=$(echo "$TASK_DATA" | python3 -c "import json,sys; print(len(json.load(sys.stdin).get('history',[])))" 2>/dev/null || echo "0")
-
-    # Diagnosis for failures
-    DIAGNOSIS=""
-    if [ "$STATUS" != "done" ] && [ -f "$DIAGNOSE" ]; then
-      DIAGNOSIS=$(bash "$DIAGNOSE" "$TASK_ID" 2>/dev/null | python3 -c "
-import json,sys
-try:
-  d = json.loads(sys.stdin.read())
-  print(f'Error: {d[\"error_class\"]}')
-  print(f'Fix: {d[\"fix\"]}')
-except: pass
-" 2>/dev/null || true)
-    fi
-
-    # Build report
-    case "$STATUS" in
-      done)         LINEAR_STATUS="done"; EMOJI=":white_check_mark:"; HEADLINE="Agent completed" ;;
-      failed)       LINEAR_STATUS="blocked"; EMOJI=":x:"; HEADLINE="Agent failed" ;;
-      timeout)      LINEAR_STATUS="blocked"; EMOJI=":hourglass:"; HEADLINE="Agent timed out" ;;
-      idle_killed)  LINEAR_STATUS="blocked"; EMOJI=":skull:"; HEADLINE="Agent killed (idle)" ;;
-      *)            LINEAR_STATUS="blocked"; EMOJI=":question:"; HEADLINE="Agent: $STATUS" ;;
-    esac
-
-    # Linear comment
-    LINEAR_MSG="[$TS] $HEADLINE"
-    [ -n "$DURATION" ] && LINEAR_MSG+=" ($DURATION)"
-    [ "$HISTORY_COUNT" -gt 0 ] && LINEAR_MSG+=" [cycle $HISTORY_COUNT]"
-    [ -n "$ACTIVITY_SUMMARY" ] && LINEAR_MSG+=$'\n'"$ACTIVITY_SUMMARY"
-    if [ "$STATUS" = "done" ] && [ -n "$OUTPUT" ]; then
-      LINEAR_MSG+=$'\n'"---"$'\n'"${OUTPUT:0:800}"
-    fi
-    if [ "$STATUS" != "done" ]; then
-      [ -n "$DIAGNOSIS" ] && LINEAR_MSG+=$'\n'"$DIAGNOSIS"
-      [ -n "$STDERR" ] && LINEAR_MSG+=$'\n'"Stderr: ${STDERR:0:300}"
-    fi
-
-    # Slack message
-    SLACK_MSG="$EMOJI *$TASK_ID* $HEADLINE"
-    [ -n "$DURATION" ] && SLACK_MSG+=" ($DURATION)"
-    [ "$HISTORY_COUNT" -gt 0 ] && SLACK_MSG+=" [cycle $HISTORY_COUNT]"
-    if [ "$STATUS" = "done" ] && [ -n "$OUTPUT" ]; then
-      FIRST_LINE=$(echo "$OUTPUT" | head -1 | head -c 200)
-      SLACK_MSG+=$'\n'"$FIRST_LINE"
-    fi
-    if [ "$STATUS" != "done" ] && [ -n "$DIAGNOSIS" ]; then
-      SLACK_MSG+=$'\n'"$DIAGNOSIS"
-    fi
-
-    # Post to Linear
-    if [ -n "$LINEAR_API_KEY" ] && [ -f "$LINEAR_SCRIPT" ]; then
-      bash "$LINEAR_SCRIPT" comment "$TASK_ID" "$LINEAR_MSG" 2>/dev/null || true
-      bash "$LINEAR_SCRIPT" status "$TASK_ID" "$LINEAR_STATUS" 2>/dev/null || true
-    fi
-
-    # Wake main session with completion context (replaces direct Slack posting)
-    # Main thread will process the completion and take action
-    OUTPUT_PREVIEW=""
-    if [ -f "$LOGS_DIR/${TASK_ID}-output.log" ]; then
-      OUTPUT_PREVIEW=$(tail -20 "$LOGS_DIR/${TASK_ID}-output.log" 2>/dev/null | head -c 500)
-    fi
-    WAKE_TEXT="Agent completion: ${TASK_ID} ${STATUS}. Title: ${LABEL:-unknown}. Duration: ${DURATION:-?}."
-    if [ "$STATUS" = "done" ]; then
-      WAKE_TEXT="$WAKE_TEXT Output preview: ${OUTPUT_PREVIEW:-empty}"
-    elif [ -n "$DIAGNOSIS" ]; then
-      WAKE_TEXT="$WAKE_TEXT Diagnosis: ${DIAGNOSIS:-none}"
-    fi
-    # Wake main session via gateway API
-    SAFE_WAKE=$(echo "$WAKE_TEXT" | python3 -c "import sys,json; print(json.dumps(sys.stdin.read())[1:-1])" 2>/dev/null || echo "$WAKE_TEXT")
-    curl -s -X POST "http://127.0.0.1:18789/api/cron/wake" \
-      -H "Content-Type: application/json" \
-      -d "{\"text\":\"$SAFE_WAKE\",\"mode\":\"now\"}" \
-      > /dev/null 2>&1 || true
-
-    # Disk log
-    bash "$WORKSPACE/scripts/agent-logger.sh" "$TASK_ID" "report" "$HEADLINE ($DURATION)" 2>/dev/null || true
-
-    # Cleanup on success
-    if [ "$STATUS" = "done" ]; then
-      rm -f "${OPENCLAW_HOME:-$HOME/.openclaw}/tasks/timeout-warnings/${TASK_ID}.warn" 2>/dev/null || true
-    fi
-
-    echo "[report] $TASK_ID: $HEADLINE ($DURATION) → Linear=$LINEAR_STATUS + Slack"
-    ;;
 
   peek)
     TASK_ID="${1:-}"
@@ -232,12 +103,11 @@ print(f'Monthly cost: \${s.get(\"total_cost_usd\", 0)}')
 
   help|*)
     cat <<'EOF'
-reporter.sh — Unified reporting
+reporter.sh — Task monitoring + notifications
 
 Commands:
-  report <task-id> <status>    Post completion report to Linear + Slack
   peek [task-id] [follow]      Monitor tasks (overview, detail, or live)
-  notify "message"             Post to #replicants
+  notify "message"             Post to Caio's DM
   summary                      Full system summary
 EOF
     ;;

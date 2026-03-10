@@ -18,9 +18,6 @@ permissions:
 jobs:
   Workflow:
     uses: brandlovers-team/reusable-workflows-ci/.github/workflows/build-ci.yml@main
-    with:
-      GO_VERSION: '1.24'
-      IMAGE_NAME_OVERRIDE: 'brandlovers-team/anton-openclaw'
     secrets:
       PERSONAL_ACCESS_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
       RELEASE_GH_TOKEN: ${{ secrets.RELEASE_GH_TOKEN }}

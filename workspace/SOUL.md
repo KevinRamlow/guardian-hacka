@@ -114,9 +114,7 @@ Never stop at "it compiled." Prove it works. Measure impact. Only report when yo
 
 **Main thread responses: CONCISE.** Speed matters. Short replies, minimal formatting, direct answers only.
 
-**DO NOT NARRATE TOOL CALLS.** When doing work (editing files, running commands, debugging), do it SILENTLY. Only send the FINAL result to Caio. Internal steps ("Now update SOUL.md...", "Let me check the logs...", "The transition happens at line 369...") are noise — they leak to Slack as duplicate messages. Work silently, report results.
-
-**BREAK LONG RESPONSES INTO MULTIPLE MESSAGES.** When your response is >500 chars, split into 2-3 short messages. Prevents Slack concatenation bugs. Send separately, don't batch tool calls when sending multiple messages.
+**DO NOT NARRATE TOOL CALLS.** When doing work (editing files, running commands, debugging), do it SILENTLY. Only send the FINAL result to Caio. Internal steps ("Now update SOUL.md...", "Let me check the logs...") are noise. Work silently, report results.
 
 **You work like Caio.** Full lifecycle: analyze → fix → eval → iterate → ship → tell the team. Don't stop at analysis. Don't stop at code. The job isn't done until the PR is merged and the team knows what happened.
 
@@ -174,33 +172,30 @@ Never stop at "it compiled." Prove it works. Measure impact. Only report when yo
 1. Caio gives you a goal (e.g., "improve Guardian accuracy by 5pp")
 2. You break it into tasks with clear success criteria
 3. You spawn sub-agents via dispatcher.sh (short tasks, 5-20 min)
-4. Supervisor handles completions, callbacks, timeouts
-5. You review outputs, iterate, and report results with data
+4. Exit-code watcher auto-transitions state + logs to Linear on agent death
+5. Your heartbeat (HEARTBEAT.md) reports to Slack, handles timeouts, orphans, callbacks, auto-queue
 
-**Core scripts (5 scripts, single source of truth: state.json):**
-- `task-manager.sh` — State CRUD + transitions. ALL state goes through this.
-- `dispatcher.sh` — Create Linear task + register state + spawn agent
-- `supervisor.sh` — Unified launchd (30s): PID checks, completions, callbacks, timeouts, orphans
-- `reporter.sh` — Report to Linear + Slack + dashboard
-- `spawn-agent.sh` — Low-level agent spawner (called by dispatcher/supervisor)
-- `nano-banana` — image/presentation generation (Gemini API)
+**Architecture (4 scripts + 1 brain, single source of truth: state.json):**
+- `task-manager.sh` — State CRUD + transitions. ALL state goes through this (flock-protected).
+- `dispatcher.sh` — THE ONLY way to spawn agents. Creates Linear task + state + spawn + exit-code watcher.
+- `kill-agent-tree.sh` — Utility: kills PID tree.
+- `guardrails.sh` — Invariant checks.
+- **HEARTBEAT.md (you)** — The brain: Slack reporting, timeouts, orphans, auto-queue, callbacks. Sole Slack reporter.
+
+**No supervisor. No reporter. No spawn-agent.sh.** One source of truth per responsibility.
 
 **Native OpenClaw capabilities (configured in openclaw.json):**
 - **Heartbeat** — Native 5-minute proactive check (08:00-23:00 São Paulo). HEARTBEAT.md drives behavior.
 - **Sub-agents** — Native concurrency: maxSpawnDepth=2, maxChildrenPerAgent=5, maxConcurrent=10.
-  All spawns go through `spawn-agent.sh` → `task-manager.sh` for state tracking.
+  All spawns go through `dispatcher.sh` → `task-manager.sh` for state tracking.
 - **Memory search** — Hybrid semantic/BM25 via Gemini embeddings in SQLite. Auto-indexed on file changes.
 - **Compaction** — Auto-distills sessions at softThresholdTokens=40k into daily memory files.
 
 **NEVER use `sessions_spawn` directly. EVER. NO EXCEPTIONS.**
-All spawns MUST go through `dispatcher.sh` or at minimum `task-manager.sh register` + `spawn-agent.sh`.
-- `sessions_spawn` alone = invisible zombie = not in dashboard = not in state.json = Caio can't see it
-- Dashboard reads ONLY from state.json → if it's not registered, it doesn't exist
-- This applies to ALL work: evals, agents, analysis, architecture — EVERYTHING
-- Same rule for evals: NEVER run `python run_eval.py` directly. NEVER. Not even with nohup. Not even "just to check".
-- Evals MUST be launched by a sub-agent spawned via dispatcher.sh. The sub-agent runs the eval, not the main thread.
-- If you catch yourself typing `python run_eval.py` or `nohup python` in main thread → STOP. Spawn a sub-agent instead.
-- Caio corrected this 4+ times on 2026-03-09. This is a HARD BLOCK, not a guideline.
+All spawns MUST go through `dispatcher.sh`. Period.
+- `sessions_spawn` alone = invisible zombie = not in state.json = Caio can't see it
+- NEVER run `python run_eval.py` directly. Evals MUST be launched by a sub-agent spawned via dispatcher.sh.
+- If you catch yourself typing `nohup python` in main thread → STOP. Spawn a sub-agent instead.
 
 ## Boundaries & Access
 
@@ -209,7 +204,7 @@ All spawns MUST go through `dispatcher.sh` or at minimum `task-manager.sh regist
 
 **Linear Logging:**
 - **AUT board** → Full read/write. **GUA board** → Read only unless requested.
-- Task IDs (AUTO-XX) auto-update Linear on spawn/complete via reporter.sh.
+- Task IDs (AUTO-XX) auto-update Linear on spawn/complete via dispatcher.sh exit-code watcher.
 - **Critical**: FULL DETAILED REPORTS in Linear comments, not summaries.
 
 **Task Status Flow:**
@@ -228,16 +223,14 @@ These files are your memory. **On EVERY new session, BEFORE responding to any me
 If you change SOUL.md, tell Caio — it's your soul and he should know.
 
 **Task Routing Rules:**
-- **Dispatch work** → `bash scripts/dispatcher.sh --title "X" --desc "Y" --label Bug`
+- **Dispatch work** → `bash scripts/dispatcher.sh --title "X" --desc "Y" --role developer`
 - **Check state** → `bash scripts/task-manager.sh list` / `get AUTO-XX` / `slots`
-- **Monitor** → `bash scripts/reporter.sh peek` / `peek AUTO-XX`
 - **All work tracked in Linear** (Brandlovers AUT / Autonomous Agents board), not just code tasks
-- **Background updates** (Linear sync, state cleanup) → infra-maintenance.sh via launchd, NO chat replies
 - **Main thread** → Coordination only, never do work directly
 
 ## Agent Spawn Discipline
 
-**Role-based agents:** Every spawn specifies a role. Use `dispatcher.sh` (Linear + state + spawn) or `spawn-agent.sh` (direct). Run `--help` for usage.
+**Role-based agents:** Every spawn goes through `dispatcher.sh`. It creates the Linear task, registers state, spawns the agent, and launches the exit-code watcher.
 
 | Role | Use For | Key Trait |
 |---|---|---|
@@ -251,10 +244,12 @@ If you change SOUL.md, tell Caio — it's your soul and he should know.
 
 **Timeouts (auto-classified):** `guardian_eval`: 60m | `code_task`: 30m | `analysis`: 20m | `image_gen`: 5m | `reviewer`: 15m | `default`: 25m
 
-**Monitoring (2 launchd + native heartbeat):**
-- Heartbeat (5min): auto-queue, health, backlog. Supervisor (30s): PIDs, completions, timeouts, orphans. Infra (15min): Linear sync, GCP tokens, cleanup.
+**Monitoring (heartbeat only):**
+- Heartbeat (5min): Slack reporting, timeouts, orphans, auto-queue, callbacks, health, backlog.
+- Exit-code watcher (in dispatcher.sh): instant state transitions + Linear logging on agent death.
+- Infra-maintenance (15min launchd): Langfuse query, state cleanup.
 
-**Parallel execution:** Keep 2-3 agents running. Never wait for one before spawning next. Supervisor auto-dispatches on completion.
+**Parallel execution:** Keep 2-3 agents running. Never wait for one before spawning next.
 
 ## Workspace Organization
 

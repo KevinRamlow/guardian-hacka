@@ -135,7 +135,7 @@ The platform is called **CreatorAds** (repo: `brandlovers-team/creator-ads` — 
 - API Key: stored in `$OPENCLAW_HOME/.env` (GEMINI_API_KEY)
 - Tools: generate_image, edit_image, analyze_image
 
-## Task Management v3 (2026-03-09 — Unified State Machine)
+## Task Management v4 (2026-03-10 — Atomic Architecture)
 
 **Single source of truth:** `state.json` (`${OPENCLAW_HOME:-$HOME/.openclaw}/tasks/state.json`)
 
@@ -145,53 +145,40 @@ todo → agent_running → [done | failed | blocked | eval_running]
 eval_running → callback_pending → agent_running → ...
 ```
 
-### Core Scripts (5 scripts replace 50+)
-| Script | Purpose |
+### Architecture (4 scripts + 1 brain)
+| Component | Sole Responsibility |
 |---|---|
-| `task-manager.sh` | State CRUD + transitions. ALL state goes through this. |
-| `dispatcher.sh` | Create Linear task + register state + spawn agent |
-| `supervisor.sh` | Unified launchd (30s): PID checks, completions, callbacks, timeouts, orphans |
-| `reporter.sh` | Report to Linear + Slack + dashboard |
-| `spawn-agent.sh` | Low-level agent spawner (called by dispatcher/supervisor) |
+| `task-manager.sh` | State CRUD + transitions (flock-protected) |
+| `dispatcher.sh` | THE only spawn path: Linear + state + spawn + exit-code watcher |
+| `kill-agent-tree.sh` | Kill PID tree (utility) |
+| `guardrails.sh` | Invariant checks |
+| **HEARTBEAT.md** | The brain: Slack reporting, timeouts, orphans, auto-queue, callbacks |
+
+**Deprecated (2026-03-10):** supervisor.sh, spawn-agent.sh, reporter.sh, agent-report.sh, link-logs-to-linear.sh, alert-dedup.sh, agent-logger.sh
 
 ### Commands
 ```bash
-# Dispatch work
-bash scripts/dispatcher.sh --title "Fix X" --desc "Details" --label Bug --timeout 25
+# Dispatch (always creates Linear task)
+bash scripts/dispatcher.sh --title "Fix X" --desc "Details" --role developer
+
+# Spawn for existing task (callbacks, re-runs)
+bash scripts/dispatcher.sh --task AUTO-XX --role developer "prompt text"
 
 # Check state
-bash scripts/task-manager.sh list              # all tasks
-bash scripts/task-manager.sh list --status agent_running  # running only
-bash scripts/task-manager.sh get AUTO-XX       # single task detail
-bash scripts/task-manager.sh slots             # available spawn slots
-
-# Monitor
-bash scripts/reporter.sh peek                  # overview
-bash scripts/reporter.sh peek AUTO-XX          # detail
-bash scripts/reporter.sh peek AUTO-XX follow   # live tail
+bash scripts/task-manager.sh list
+bash scripts/task-manager.sh list --status agent_running
+bash scripts/task-manager.sh get AUTO-XX
+bash scripts/task-manager.sh slots
 
 # Feedback loop
 bash scripts/task-manager.sh add-history AUTO-XX '{"cycle":1,"accuracy":78.5}'
 bash scripts/task-manager.sh add-learning AUTO-XX "what worked"
 ```
 
-### Feedback Loop (first-class citizen)
-Each task carries `history[]` and `learnings[]`. When a callback agent spawns, it gets:
-1. Full history array (what was tried, accuracy per cycle, deltas)
-2. Learnings (extracted patterns from previous cycles)
-3. Original context
-
-Callback agents must update these after analyzing results.
-
-### Scheduling (2 launchd jobs)
-| Job | Interval | What |
-|---|---|---|
-| `com.anton.supervisor` | 30s | PID checks, completions, callbacks, timeouts, orphans, health |
-| `com.anton.infra` | 15min | Langfuse query, state cleanup |
-
-### Backward Compatibility
-- `spawn-agent.sh` calls `task-manager.sh register` for state tracking
-- `task-manager.sh` supports legacy API: `register`, `count`, `slots`, `has`, `json`
+### How Completions Work
+1. dispatcher.sh spawns agent + launches exit-code watcher (background process)
+2. When agent dies, watcher: checks output quality → transitions state → logs to Linear
+3. Heartbeat (5min) reads state.json → reports to Slack → handles timeouts/orphans/callbacks
 
 ## BMAD-Inspired Role Architecture (2026-03-09)
 
@@ -236,16 +223,13 @@ bash scripts/dispatcher.sh --title "Big refactor" --role developer --mode intera
 **Codemap generator**: `bash scripts/generate-codemap.sh /path/to/repo > knowledge/repo.map.md`
 Regenerate when repo changes significantly.
 
-## Agent Monitoring (2026-03-09)
+## Agent Monitoring (2026-03-10)
 
-**Supervisor runs every 30s** — handles PID checks, completions, callbacks, timeouts automatically.
+**Heartbeat (HEARTBEAT.md) is the sole monitor.** No supervisor script.
 
 ```bash
 bash scripts/task-manager.sh list              # all tasks + states
 bash scripts/task-manager.sh get AUTO-XX       # single task detail
-bash scripts/reporter.sh peek                  # overview
-bash scripts/reporter.sh peek AUTO-XX          # detail
-bash scripts/reporter.sh peek AUTO-XX follow   # live tail
 ```
 
 **When to intervene:**
@@ -307,12 +291,12 @@ If reactivated: clone repo, configure .env, chmod +x scripts, shared GCP creds.
 
 ## Guardian Eval Cycle (2026-03-09)
 
-**Cycle:** Agent changes → `eval_running` → supervisor detects completion → `callback_pending` → callback agent with history + learnings
+**Cycle:** Agent changes → `eval_running` → heartbeat detects process death → `callback_pending` → heartbeat spawns callback agent with history + learnings
 
 **Agent workflow:**
 1. Launch eval: `bash scripts/run-guardian-eval.sh --config ... --workers 10`
 2. Transition: `bash scripts/task-manager.sh transition AUTO-XX eval_running --process-pid $(cat /tmp/guardian-eval.pid) --process-type eval --context "what changed"`
-3. Exit — supervisor handles completion, spawns callback with `history[]` + `learnings[]`
+3. Exit — heartbeat detects eval completion, spawns callback via dispatcher.sh
 4. Callback agent updates both via `add-history` + `add-learning`, continues or commits
 
 

@@ -1,7 +1,7 @@
 {
   "meta": {
     "lastTouchedVersion": "2026.3.8",
-    "lastTouchedAt": "2026-03-10T13:46:16.696Z"
+    "lastTouchedAt": "2026-03-10T17:17:29.588Z"
   },
   "wizard": {
     "lastRunAt": "2026-03-09T12:45:09.433Z",
@@ -79,7 +79,7 @@
         "directPolicy": "allow",
         "to": "D0AK1B981QR",
         "ackMaxChars": 300,
-        "lightContext": false
+        "lightContext": true
       },
       "maxConcurrent": 2,
       "subagents": {
@@ -150,9 +150,6 @@
     }
   },
   "channels": {
-    "whatsapp": {
-      "enabled": false
-    },
     "slack": {
       "name": "Anton",
       "mode": "socket",
@@ -160,9 +157,9 @@
       "enabled": true,
       "userTokenReadOnly": true,
       "groupPolicy": "allowlist",
-      "blockStreaming": false,
-      "streaming": "partial",
-      "nativeStreaming": true,
+      "blockStreaming": true,
+      "streaming": "block",
+      "nativeStreaming": false,
       "dmPolicy": "allowlist",
       "allowFrom": [
         "U04PHF0L65P",
@@ -199,7 +196,13 @@
   "gateway": {
     "port": 18789,
     "mode": "local",
-    "bind": "loopback",
+    "bind": "lan",
+    "controlUi": {
+      "allowedOrigins": [
+        "http://localhost:18789",
+        "http://127.0.0.1:18789"
+      ]
+    },
     "auth": {
       "mode": "token",
       "token": "82f0b307bfb0e385fd3f7d4e84a5f605d639d7f4c80b7280"
@@ -216,9 +219,6 @@
   },
   "plugins": {
     "entries": {
-      "whatsapp": {
-        "enabled": false
-      },
       "slack": {
         "enabled": true
       },
