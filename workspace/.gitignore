@@ -1,0 +1,59 @@
+# Secrets
+.env*
+auth-profiles.json
+*.key
+*.pem
+.my.cnf
+.gcp-credentials.json
+.gcp-access-token
+.gcp-access-token.json
+.gcp-env
+.env.secrets
+
+# Runtime
+node_modules/
+__pycache__/
+*.log
+*.pyc
+/data/
+/tmp/
+.DS_Store
+
+# Runtime state (never track)
+.anton-auto-state.json
+.linear-sync-state.json
+.guardian-improvement-target
+memory/*-state.json
+memory/slack-dm-state.json
+metrics/*.json
+tasks/*.json
+config/cockpit-state.json
+config/slack-linear-threads.json
+dashboard/stats-history.json
+
+# Backup files
+*.bak
+*.bak2
+*.disabled
+
+# Large files / generated media
+*.png
+*.jpg
+*.mp4
+*.zip
+presentations/slides/
+presentations/*.png
+
+# Local task state (source of truth is ~/.openclaw/tasks/)
+tasks/
+
+# Cloned repos / external workspaces (have their own .git)
+billy-workspace/
+clawdbots/
+guardian-agents-api-real/
+son-of-anton-workspace/
+
+# OpenClaw internal
+.openclaw/
+.archive/
+**/.archive/

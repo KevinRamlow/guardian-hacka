@@ -1,59 +1,59 @@
-# Secrets
-.env*
-auth-profiles.json
+# ══════════════════════════════════════════════════════
+# Secrets — NEVER commit
+# ══════════════════════════════════════════════════════
+.env
+.env.*
+!.env.example
 *.key
 *.pem
+*.p12
 .my.cnf
 .gcp-credentials.json
-.gcp-access-token
-.gcp-access-token.json
+.gcp-access-token*
 .gcp-env
-.env.secrets
+credentials/
 
-# Runtime
-node_modules/
-__pycache__/
-*.log
-*.pyc
-/data/
-/tmp/
-.DS_Store
+# ══════════════════════════════════════════════════════
+# OpenClaw runtime state (gateway-managed, not tracked)
+# ══════════════════════════════════════════════════════
+tasks/
+agents/
+browser/
+canvas/
+completions/
+delivery-queue/
+devices/
+identity/
+logs/
+media/
+memory/
+skills/
+subagents/
+cron/
+gateway.lock
+update-check.json
 
-# Runtime state (never track)
-.anton-auto-state.json
-.linear-sync-state.json
-.guardian-improvement-target
-memory/*-state.json
-memory/slack-dm-state.json
-metrics/*.json
-tasks/*.json
-config/cockpit-state.json
-config/slack-linear-threads.json
-dashboard/stats-history.json
+# ══════════════════════════════════════════════════════
+# Sub-agent role workspaces (runtime, symlinks)
+# ══════════════════════════════════════════════════════
+workspace-*/
 
-# Backup files
+# ══════════════════════════════════════════════════════
+# Config backups
+# ══════════════════════════════════════════════════════
 *.bak
-*.bak2
+*.bak.*
+*.backup-*
 *.disabled
 
-# Large files / generated media
-*.png
-*.jpg
-*.mp4
-*.zip
-presentations/slides/
-presentations/*.png
-
-# Local task state (source of truth is ~/.openclaw/tasks/)
-tasks/
-
-# Cloned repos / external workspaces (have their own .git)
-billy-workspace/
-clawdbots/
-guardian-agents-api-real/
-son-of-anton-workspace/
-
-# OpenClaw internal
-.openclaw/
-.archive/
-**/.archive/
+# ══════════════════════════════════════════════════════
+# OS / Editor
+# ══════════════════════════════════════════════════════
+.DS_Store
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+node_modules/
+__pycache__/

@@ -1,0 +1,243 @@
+{
+  "meta": {
+    "lastTouchedVersion": "2026.3.8",
+    "lastTouchedAt": "2026-03-10T13:46:16.696Z"
+  },
+  "wizard": {
+    "lastRunAt": "2026-03-09T12:45:09.433Z",
+    "lastRunVersion": "2026.3.2",
+    "lastRunCommand": "doctor",
+    "lastRunMode": "local"
+  },
+  "auth": {
+    "profiles": {
+      "anthropic:default": {
+        "provider": "anthropic",
+        "mode": "api_key"
+      }
+    }
+  },
+  "acp": {
+    "enabled": true,
+    "defaultAgent": "claude",
+    "allowedAgents": [
+      "claude",
+      "code",
+      "codex",
+      "claude-code"
+    ],
+    "maxConcurrentSessions": 10
+  },
+  "agents": {
+    "defaults": {
+      "model": {
+        "primary": "anthropic/claude-opus-4-6",
+        "fallbacks": [
+          "anthropic/claude-sonnet-4-6"
+        ]
+      },
+      "models": {
+        "anthropic/claude-opus-4-6": {
+          "alias": "opus",
+          "params": {
+            "cacheRetention": "short"
+          }
+        },
+        "anthropic/claude-sonnet-4-5": {
+          "alias": "sonnet",
+          "params": {
+            "cacheRetention": "short"
+          }
+        },
+        "anthropic/claude-sonnet-4-6": {
+          "params": {
+            "cacheRetention": "short"
+          }
+        }
+      },
+      "memorySearch": {
+        "provider": "gemini",
+        "model": "gemini-embedding-001"
+      },
+      "contextPruning": {
+        "mode": "cache-ttl",
+        "ttl": "1h"
+      },
+      "compaction": {
+        "mode": "default",
+        "reserveTokensFloor": 20000
+      },
+      "elevatedDefault": "on",
+      "heartbeat": {
+        "every": "5m",
+        "activeHours": {
+          "start": "08:00",
+          "end": "23:00",
+          "timezone": "America/Sao_Paulo"
+        },
+        "target": "slack",
+        "directPolicy": "allow",
+        "to": "D0AK1B981QR",
+        "ackMaxChars": 300,
+        "lightContext": false
+      },
+      "maxConcurrent": 2,
+      "subagents": {
+        "maxConcurrent": 10,
+        "maxSpawnDepth": 2,
+        "maxChildrenPerAgent": 5
+      }
+    },
+    "list": [
+      {
+        "id": "main",
+        "heartbeat": {
+          "every": "5m",
+          "activeHours": {
+            "start": "08:00",
+            "end": "23:00",
+            "timezone": "America/Sao_Paulo"
+          },
+          "target": "slack",
+          "to": "D0AK1B981QR"
+        }
+      },
+      {
+        "id": "developer"
+      },
+      {
+        "id": "reviewer"
+      },
+      {
+        "id": "architect"
+      },
+      {
+        "id": "guardian-tuner"
+      },
+      {
+        "id": "debugger"
+      }
+    ]
+  },
+  "bindings": [],
+  "messages": {
+    "ackReaction": "eyes",
+    "ackReactionScope": "all"
+  },
+  "commands": {
+    "native": "auto",
+    "nativeSkills": "auto",
+    "restart": true,
+    "ownerDisplay": "raw"
+  },
+  "hooks": {
+    "internal": {
+      "enabled": true,
+      "entries": {
+        "boot-md": {
+          "enabled": true
+        },
+        "command-logger": {
+          "enabled": true
+        },
+        "session-memory": {
+          "enabled": true
+        },
+        "slack-thread-router": {
+          "enabled": true
+        }
+      }
+    }
+  },
+  "channels": {
+    "whatsapp": {
+      "enabled": true,
+      "dmPolicy": "allowlist",
+      "selfChatMode": true,
+      "allowFrom": [
+        "+5531983904021"
+      ],
+      "groupPolicy": "allowlist",
+      "ackReaction": {
+        "emoji": "eyes",
+        "direct": true,
+        "group": "always"
+      },
+      "debounceMs": 0,
+      "mediaMaxMb": 50
+    },
+    "slack": {
+      "name": "Anton",
+      "mode": "socket",
+      "webhookPath": "/slack/events",
+      "enabled": true,
+      "userTokenReadOnly": true,
+      "groupPolicy": "allowlist",
+      "blockStreaming": false,
+      "streaming": "partial",
+      "nativeStreaming": true,
+      "dmPolicy": "allowlist",
+      "allowFrom": [
+        "U04PHF0L65P",
+        "U0388ARSD9N",
+        "U05M0ADSLKT",
+        "U03Q5D4P4BV",
+        "U01HZTCCYHX",
+        "U0AJU1XN3AT"
+      ],
+      "dm": {
+        "enabled": true
+      },
+      "channels": {
+        "D0AK1B981QR": {
+          "allow": true
+        },
+        "C0AJQ99GW6P": {
+          "allow": true
+        },
+        "C0AJTTFLN4X": {
+          "allow": true,
+          "requireMention": false,
+          "allowBots": true
+        }
+      },
+      "heartbeat": {
+        "showOk": false,
+        "showAlerts": true,
+        "useIndicator": false
+      },
+      "ackReaction": "eyes"
+    }
+  },
+  "gateway": {
+    "port": 18789,
+    "mode": "local",
+    "bind": "loopback",
+    "auth": {
+      "mode": "token",
+      "token": "82f0b307bfb0e385fd3f7d4e84a5f605d639d7f4c80b7280"
+    },
+    "tailscale": {
+      "mode": "off",
+      "resetOnExit": false
+    }
+  },
+  "skills": {
+    "install": {
+      "nodeManager": "npm"
+    }
+  },
+  "plugins": {
+    "entries": {
+      "whatsapp": {
+        "enabled": true
+      },
+      "slack": {
+        "enabled": true
+      },
+      "acpx": {
+        "enabled": true
+      }
+    }
+  }
+}
