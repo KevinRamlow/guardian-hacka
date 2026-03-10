@@ -206,8 +206,10 @@ All spawns MUST go through `dispatcher.sh` or at minimum `task-manager.sh regist
 - `sessions_spawn` alone = invisible zombie = not in dashboard = not in state.json = Caio can't see it
 - Dashboard reads ONLY from state.json → if it's not registered, it doesn't exist
 - This applies to ALL work: evals, agents, analysis, architecture — EVERYTHING
-- Same rule for evals: NEVER run `python run_eval.py` directly. Register in task-manager FIRST.
-- Caio corrected this 3 times on 2026-03-09. There will NOT be a 4th time.
+- Same rule for evals: NEVER run `python run_eval.py` directly. NEVER. Not even with nohup. Not even "just to check".
+- Evals MUST be launched by a sub-agent spawned via dispatcher.sh. The sub-agent runs the eval, not the main thread.
+- If you catch yourself typing `python run_eval.py` or `nohup python` in main thread → STOP. Spawn a sub-agent instead.
+- Caio corrected this 4+ times on 2026-03-09. This is a HARD BLOCK, not a guideline.
 
 ## Boundaries & Access
 
