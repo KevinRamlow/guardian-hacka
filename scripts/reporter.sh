@@ -123,15 +123,24 @@ except: pass
       bash "$LINEAR_SCRIPT" status "$TASK_ID" "$LINEAR_STATUS" 2>/dev/null || true
     fi
 
-    # Post to Slack
-    if [ -n "$SLACK_BOT_TOKEN" ]; then
-      SAFE_MSG=$(echo "$SLACK_MSG" | python3 -c "import sys,json; print(json.dumps(sys.stdin.read())[1:-1])" 2>/dev/null || echo "$SLACK_MSG")
-      curl -s -X POST "https://slack.com/api/chat.postMessage" \
-        -H "Authorization: Bearer $SLACK_BOT_TOKEN" \
-        -H "Content-Type: application/json" \
-        -d "{\"channel\":\"$REPLICANTS_CHANNEL\",\"text\":\"$SAFE_MSG\",\"mrkdwn\":true}" \
-        > /dev/null 2>&1 || true
+    # Wake main session with completion context (replaces direct Slack posting)
+    # Main thread will process the completion and take action
+    OUTPUT_PREVIEW=""
+    if [ -f "$LOGS_DIR/${TASK_ID}-output.log" ]; then
+      OUTPUT_PREVIEW=$(tail -20 "$LOGS_DIR/${TASK_ID}-output.log" 2>/dev/null | head -c 500)
     fi
+    WAKE_TEXT="Agent completion: ${TASK_ID} ${STATUS}. Title: ${LABEL:-unknown}. Duration: ${DURATION:-?}."
+    if [ "$STATUS" = "done" ]; then
+      WAKE_TEXT="$WAKE_TEXT Output preview: ${OUTPUT_PREVIEW:-empty}"
+    elif [ -n "$DIAGNOSIS" ]; then
+      WAKE_TEXT="$WAKE_TEXT Diagnosis: ${DIAGNOSIS:-none}"
+    fi
+    # Wake main session via gateway API
+    SAFE_WAKE=$(echo "$WAKE_TEXT" | python3 -c "import sys,json; print(json.dumps(sys.stdin.read())[1:-1])" 2>/dev/null || echo "$WAKE_TEXT")
+    curl -s -X POST "http://127.0.0.1:18789/api/cron/wake" \
+      -H "Content-Type: application/json" \
+      -d "{\"text\":\"$SAFE_WAKE\",\"mode\":\"now\"}" \
+      > /dev/null 2>&1 || true
 
     # Disk log
     bash "$WORKSPACE/scripts/agent-logger.sh" "$TASK_ID" "report" "$HEADLINE ($DURATION)" 2>/dev/null || true
