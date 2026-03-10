@@ -165,27 +165,30 @@ callback_pending → agent_running → ...
 
 **Deprecated (2026-03-10):** supervisor.sh, spawn-agent.sh, reporter.sh, agent-report.sh, link-logs-to-linear.sh, alert-dedup.sh, agent-logger.sh
 
-### Commands
+### Commands (Story-Based Task Management)
 ```bash
-# Dispatch agent (always creates Linear task)
-bash scripts/dispatcher.sh --title "Fix X" --desc "Details" --role developer
+# Create NEW story (creates Linear task — outcome-oriented title)
+bash scripts/dispatcher.sh --title "Improve TC accuracy from 51% to 70%" --desc "Details" --role developer
 
-# Dispatch agentless eval (no agent tokens wasted)
-bash scripts/dispatcher.sh --eval --title "Eval: post fix" --parent AUTO-XX
-bash scripts/dispatcher.sh --eval --title "Eval: custom" --eval-config path.yaml --eval-workers 10
+# Iteration on existing story (NO new Linear task — logs as comment on parent)
+bash scripts/dispatcher.sh --parent AUTO-XX --title "Fix a_partir_de" --role developer "details"
+
+# Eval as sub-task of story (NO new Linear task — logs as comment on parent)
+bash scripts/dispatcher.sh --eval --parent AUTO-XX --title "Eval post-fix"
+
+# Reopen a done story for more work (clears completedAt/reportedAt, keeps history)
+bash scripts/task-manager.sh reopen AUTO-XX
 
 # Spawn for existing task (callbacks, re-runs)
 bash scripts/dispatcher.sh --task AUTO-XX --role developer "prompt text"
 
 # Check state
 bash scripts/task-manager.sh list
-bash scripts/task-manager.sh list --status agent_running
 bash scripts/task-manager.sh get AUTO-XX
 bash scripts/task-manager.sh slots
+bash scripts/task-manager.sh next-local-id
 
-# Feedback loop
-bash scripts/task-manager.sh add-history AUTO-XX '{"cycle":1,"accuracy":78.5}'
-bash scripts/task-manager.sh add-learning AUTO-XX "what worked"
+# NEVER create Linear task for: evals, fix iterations, reviews, re-attempts
 ```
 
 ### How Completions Work
@@ -306,13 +309,13 @@ If reactivated: clone repo, configure .env, chmod +x scripts, shared GCP creds.
 
 **Two eval launch modes:**
 
-### 1. Agentless Eval (PREFERRED — saves tokens)
+### 1. Agentless Eval (PREFERRED — saves tokens, no separate Linear task)
 ```bash
-# Launch eval directly, no agent wasted on babysitting
-bash scripts/dispatcher.sh --eval --title "Eval: post GUA-1101" --parent AUTO-XX
-bash scripts/dispatcher.sh --eval --title "Eval: custom config" --eval-config path/to/eval.yaml --eval-workers 10
+# Launch eval as sub-task of story (creates LOCAL-N, logs as comment on parent)
+bash scripts/dispatcher.sh --eval --parent AUTO-XX --title "Eval: post fix"
+bash scripts/dispatcher.sh --eval --parent AUTO-XX --title "Eval: custom" --eval-config path/to/eval.yaml --eval-workers 10
 ```
-**Flow:** `dispatcher.sh --eval` → creates Linear task → launches eval process directly → `eval_running` → watcher detects death → auto-extracts accuracy → `callback_pending` → heartbeat spawns callback agent
+**Flow:** `dispatcher.sh --eval --parent` → creates LOCAL-N in state.json (no Linear task) → launches eval process → `eval_running` → watcher detects death → auto-extracts accuracy → logs to parent's Linear task as comment → `callback_pending` → heartbeat spawns callback
 
 ### 2. Agent-Launched Eval (legacy, when agent needs to make changes first)
 **Flow:** Agent changes → `eval_running` → heartbeat detects process death → `callback_pending` → heartbeat spawns callback agent

@@ -549,14 +549,7 @@ html, body {
       <div class="agents-grid" id="agentsGrid"></div>
     </div>
 
-    <div class="section" id="evalSection">
-      <div class="section-header">
-        <span class="section-title">Guardian Eval Runs</span>
-        <div class="section-line"></div>
-        <span class="section-badge" id="evalCount">0</span>
-      </div>
-      <div id="evalContent"><div class="empty-state">No eval data</div></div>
-    </div>
+
 
     <div class="section">
       <div class="section-header">
@@ -767,6 +760,25 @@ function renderActiveAgents() {
     const role = a.role||'main', src = a.source||'unknown';
     const prog = parseFloat(a.progress)||0;
     const lin = a.linear, act = a.activity;
+    const isEval = a.status === 'eval_running';
+    const ep = a.evalProgress;
+
+    // Progress row: eval shows completed/total, agent shows time
+    const progressRow = isEval && ep
+      ? `<div class="agent-progress-row">
+          <div class="progress-bar-wrap"><div class="progress-fill healthy" style="width:${ep.percent}%"></div></div>
+          <span class="agent-timing">${ep.completed}/${ep.total} cases${ep.errors ? ` (${ep.errors} err)` : ''}</span>
+        </div>`
+      : `<div class="agent-progress-row">
+          <div class="progress-bar-wrap"><div class="progress-fill ${h}" style="width:${prog}%"></div></div>
+          <span class="agent-timing">${a.runtimeMin||0}m / ${a.timeoutMin||25}m</span>
+        </div>`;
+
+    // Badge: eval shows "eval" role, agent shows actual role
+    const roleBadge = isEval
+      ? `<span class="badge badge-role" style="background:var(--accent-cyan);color:#000">eval</span>`
+      : `<span class="badge badge-role" data-role="${esc(role)}">${esc(role)}</span>`;
+
     return `
       <div class="agent-card${tid===selectedTaskId?' selected':''}" data-health="${h}" onclick="selectAgent('${esc(tid)}')">
         <div class="agent-top">
@@ -775,19 +787,18 @@ function renderActiveAgents() {
             <div class="agent-label">${esc(a.label||'--')}</div>
           </div>
           <div class="agent-badges">
-            <span class="badge badge-role" data-role="${esc(role)}">${esc(role)}</span>
+            ${roleBadge}
             <span class="badge badge-source" data-source="${esc(src)}">${esc(src)}</span>
           </div>
         </div>
-        <div class="agent-progress-row">
-          <div class="progress-bar-wrap"><div class="progress-fill ${h}" style="width:${prog}%"></div></div>
-          <span class="agent-timing">${a.runtimeMin||0}m / ${a.timeoutMin||25}m</span>
-        </div>
+        ${progressRow}
         <div class="agent-details">
           <span class="agent-detail">PID <span class="val">${a.pid||'--'}</span></span>
           <span class="agent-detail">Alive <span class="val">${a.alive?'Y':'N'}</span></span>
+          ${isEval && ep ? `<span class="agent-detail">${ep.percent}%</span>` : ''}
           ${a.retries?`<span class="agent-detail">Retries <span class="val">${a.retries}</span></span>`:''}
           ${a.extensions?`<span class="agent-detail">Ext <span class="val">${a.extensions}</span></span>`:''}
+          ${a.parentTask?`<span class="agent-detail">Parent <span class="val">${esc(a.parentTask)}</span></span>`:''}
           ${act?`<span class="agent-activity">${esc(act.lastEvent)}</span>`:''}
         </div>
         ${lin?`<div class="agent-linear">
@@ -797,7 +808,7 @@ function renderActiveAgents() {
         </div>`:''}
         <div class="agent-actions" onclick="event.stopPropagation()">
           <button class="btn-sm" onclick="selectAgent('${esc(tid)}')">Stream</button>
-          <button class="btn-sm" onclick="logNote('${esc(a.sessionKey)}')">Note</button>
+          ${!isEval?`<button class="btn-sm" onclick="logNote('${esc(a.sessionKey)}')">Note</button>`:''}
           <button class="btn-sm danger" onclick="killAgent('${esc(a.sessionKey)}','${esc(tid)}')">Kill</button>
         </div>
       </div>`;
@@ -909,7 +920,7 @@ function renderRecent() {
 let evalTimer = null;
 async function fetchEval() {
   clearTimeout(evalTimer);
-  try { const r = await fetch('/api/eval'); if (r.ok) { evalData = await r.json(); renderEval(); } } catch {}
+  // eval data now shown inline in active agents section
   evalTimer = setTimeout(fetchEval, 30000);
 }
 function renderTokens() {

@@ -4,14 +4,18 @@
 # THE ONLY WAY to spawn agents. No exceptions.
 #
 # Modes:
-#   Agent (default): dispatcher.sh --title "Fix X" --desc "Details" [--role developer]
-#   Agent existing:  dispatcher.sh --task AUTO-XX [--file prompt.md] "task text"
-#   Eval (agentless): dispatcher.sh --eval --title "Eval: post fix" [--parent AUTO-XX]
-#                     [--eval-config path] [--eval-dataset file] [--eval-workers N]
+#   New story:       dispatcher.sh --title "Improve X from A% to B%" --desc "Details" [--role developer]
+#   Iteration:       dispatcher.sh --task AUTO-XX [--file prompt.md] "new instructions"
+#   Sub-task:        dispatcher.sh --parent AUTO-XX --title "Fix Y" --role developer "details"
+#                    (no Linear task created — logs as comment on parent)
+#   Eval (agentless): dispatcher.sh --eval --parent AUTO-XX --title "Eval post-fix"
+#                    (no Linear task created — logs as comment on parent)
+#   Eval (standalone): dispatcher.sh --eval --title "Eval: baseline" [--eval-config path]
 #
 # What it does (in order):
 #   1. Validate inputs + dispatch guard (skipped for --eval)
-#   2. Create Linear task (if --title, else verify --task exists)
+#   2. Create Linear task (only for new stories without --parent)
+#      Sub-tasks (--parent set) get a LOCAL-N ID and log as comments on parent's Linear task
 #   3. Budget + dedup + capacity checks
 #   4. Register in state.json via task-manager.sh
 #   5. Build prompt file (agent mode) or prepare eval args (eval mode)
@@ -144,10 +148,31 @@ fi
 
 # ════════════════════════════════════════════════════════
 # STEP 1: CREATE LINEAR TASK (or verify existing)
+#
+# Story-based task management:
+#   - Tasks with --parent are SUB-TASKS of a story (the parent).
+#   - Sub-tasks do NOT create separate Linear issues.
+#   - Sub-tasks get a LOCAL-N ID and log to the parent's Linear task as comments.
+#   - Only root tasks (no --parent) create Linear issues (these ARE the stories).
+#   - Evals with --parent are always sub-tasks.
+#   - To iterate on a story, use: task-manager.sh reopen <STORY_ID>
+#     then: dispatcher.sh --task <STORY_ID> "new instructions"
 # ════════════════════════════════════════════════════════
 
-if [ -n "$TITLE" ]; then
-  # New task — create in Linear
+if [ -n "$PARENT_TASK" ] && [ -z "$TASK_ID" ]; then
+  # Sub-task: generate local ID, NO Linear task creation
+  TASK_ID=$(bash "$TASK_MGR" next-local-id)
+  echo "[dispatch:story] Sub-task $TASK_ID of story $PARENT_TASK (no Linear issue)"
+  [ -z "$LABEL" ] && [ -n "$TITLE" ] && LABEL="$(echo "$TITLE" | tr ' ' '-' | cut -c1-40)"
+  [ -z "$LABEL" ] && LABEL="$TASK_ID"
+
+  # Log to parent's Linear task as a comment
+  COMMENT_PREFIX="iteration"
+  $EVAL_MODE && COMMENT_PREFIX="eval"
+  bash "$LINEAR_SCRIPT" comment "$PARENT_TASK" "[$COMMENT_PREFIX] $TASK_ID: ${TITLE:-$LABEL}" 2>/dev/null || true
+
+elif [ -n "$TITLE" ]; then
+  # New story — create in Linear
   echo "[dispatch] Creating Linear task: $TITLE"
 
   # Export for Python to read from env (avoids heredoc escaping issues)
@@ -412,17 +437,32 @@ if $EVAL_MODE; then
   " &>/dev/null &
   EVAL_PID=$!
 
-  sleep 3
-  if ! kill -0 "$EVAL_PID" 2>/dev/null; then
-    echo "ERROR: Eval process died immediately (PID=$EVAL_PID)" >&2
+  # Wait for eval to start — wrapper script may exit after spawning python child
+  sleep 5
+
+  # Find the actual python eval PID from the output log or by pgrep
+  PYTHON_PID=""
+  # Method 1: parse PID from run-guardian-eval.sh output (prints "PID: XXXXX")
+  if [ -f "$LOGS_DIR/${TASK_ID}-output.log" ]; then
+    PYTHON_PID=$(grep -o 'PID: *[0-9]*' "$LOGS_DIR/${TASK_ID}-output.log" | tail -1 | grep -o '[0-9]*$')
+  fi
+  # Method 2: find python eval process by pgrep
+  if [ -z "$PYTHON_PID" ] || ! kill -0 "$PYTHON_PID" 2>/dev/null; then
+    PYTHON_PID=$(pgrep -f "run_eval.py.*content_moderation" | head -1)
+  fi
+  # Method 3: wrapper itself might still be alive
+  if [ -z "$PYTHON_PID" ] || ! kill -0 "$PYTHON_PID" 2>/dev/null; then
+    if kill -0 "$EVAL_PID" 2>/dev/null; then
+      PYTHON_PID="$EVAL_PID"
+    fi
+  fi
+
+  if [ -z "$PYTHON_PID" ] || ! kill -0 "$PYTHON_PID" 2>/dev/null; then
+    echo "ERROR: Eval process not found (wrapper PID=$EVAL_PID)" >&2
     cat "$LOGS_DIR/${TASK_ID}-stderr.log" 2>/dev/null >&2
     bash "$TASK_MGR" transition "$TASK_ID" failed --exit-code 1 2>/dev/null || true
     exit 1
   fi
-
-  # Find the actual python eval PID (child of our bash wrapper)
-  sleep 2
-  PYTHON_PID=$(pgrep -f "run_eval.py.*content_moderation" | head -1 || echo "$EVAL_PID")
 
   # Build context for callback
   EVAL_CONTEXT="Agentless eval dispatched"
@@ -487,11 +527,13 @@ print(f'{s.get(\"mean_aggregate_score\", 0) * 100:.1f}')
     [ -n "$METRICS_PATH" ] && bash "$TASK_MGR" set-field "$TASK_ID" metricsPath "$METRICS_PATH" 2>/dev/null || true
     [ -n "$RESULT_PATH" ] && bash "$TASK_MGR" set-field "$TASK_ID" resultPath "$RESULT_PATH" 2>/dev/null || true
 
-    # Linear log
+    # Linear log — log to parent (story) if this is a sub-task, else to self
+    LINEAR_LOG_ID="$TASK_ID"
+    [[ "$TASK_ID" == LOCAL-* ]] && [ -n "$PARENT_TASK" ] && LINEAR_LOG_ID="$PARENT_TASK"
     if [ -n "$ACCURACY" ] && [ "$ACCURACY" != "0" ]; then
-      bash "$LINEAR_SCRIPT" comment "$TASK_ID" "Eval completed: accuracy=${ACCURACY}% (exit=$EXIT_CODE, run=$(basename "$LATEST_RUN"))" 2>/dev/null || true
+      bash "$LINEAR_SCRIPT" comment "$LINEAR_LOG_ID" "[$TASK_ID] Eval completed: accuracy=${ACCURACY}% (exit=$EXIT_CODE, run=$(basename "$LATEST_RUN"))" 2>/dev/null || true
     else
-      bash "$LINEAR_SCRIPT" comment "$TASK_ID" "Eval completed (exit=$EXIT_CODE)" 2>/dev/null || true
+      bash "$LINEAR_SCRIPT" comment "$LINEAR_LOG_ID" "[$TASK_ID] Eval completed (exit=$EXIT_CODE)" 2>/dev/null || true
     fi
 
     TS=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
@@ -503,8 +545,11 @@ print(f'{s.get(\"mean_aggregate_score\", 0) * 100:.1f}')
   TS=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
   echo "[$TS] [eval-dispatch] $TASK_ID: PID=$EVAL_PID python=$PYTHON_PID timeout=${TIMEOUT_MIN}min parent=${PARENT_TASK:-none}" >> "$MASTER_LOG" 2>/dev/null || true
 
-  bash "$LINEAR_SCRIPT" comment "$TASK_ID" "Eval launched (agentless, timeout=${TIMEOUT_MIN}min, workers=$EVAL_WORKERS$([ -n "$PARENT_TASK" ] && echo ", parent=$PARENT_TASK"))" 2>/dev/null || true
-  bash "$LINEAR_SCRIPT" status "$TASK_ID" progress 2>/dev/null || true
+  # Linear log — log to parent (story) if this is a sub-task
+  EVAL_LINEAR_ID="$TASK_ID"
+  [[ "$TASK_ID" == LOCAL-* ]] && [ -n "$PARENT_TASK" ] && EVAL_LINEAR_ID="$PARENT_TASK"
+  bash "$LINEAR_SCRIPT" comment "$EVAL_LINEAR_ID" "[$TASK_ID] Eval launched (agentless, timeout=${TIMEOUT_MIN}min, workers=$EVAL_WORKERS)" 2>/dev/null || true
+  [[ "$TASK_ID" != LOCAL-* ]] && bash "$LINEAR_SCRIPT" status "$TASK_ID" progress 2>/dev/null || true
 
   echo "[dispatch:eval] $TASK_ID PID=$EVAL_PID python=$PYTHON_PID timeout=${TIMEOUT_MIN}min${PARENT_TASK:+ parent=$PARENT_TASK}"
   echo "$EVAL_PID"
@@ -593,15 +638,18 @@ else:
         print('success')
 " 2>/dev/null || echo "unknown")
 
-  # Transition state
+  # Transition state + Linear log (log to parent if sub-task)
+  AGENT_LINEAR_ID="$TASK_ID"
+  [[ "$TASK_ID" == LOCAL-* ]] && [ -n "$PARENT_TASK" ] && AGENT_LINEAR_ID="$PARENT_TASK"
+
   if [ "$QUALITY" = "success" ] || [ "$QUALITY" = "small" ]; then
     bash "$TASK_MGR" transition "$TASK_ID" done --exit-code "$EXIT_CODE" 2>/dev/null
-    bash "$LINEAR_SCRIPT" comment "$TASK_ID" "Agent completed (${QUALITY}, exit=$EXIT_CODE)" 2>/dev/null || true
-    bash "$LINEAR_SCRIPT" status "$TASK_ID" done 2>/dev/null || true
+    bash "$LINEAR_SCRIPT" comment "$AGENT_LINEAR_ID" "[$TASK_ID] Agent completed (${QUALITY}, exit=$EXIT_CODE)" 2>/dev/null || true
+    [[ "$TASK_ID" != LOCAL-* ]] && bash "$LINEAR_SCRIPT" status "$TASK_ID" done 2>/dev/null || true
   else
     bash "$TASK_MGR" transition "$TASK_ID" failed --exit-code 1 2>/dev/null
-    bash "$LINEAR_SCRIPT" comment "$TASK_ID" "Agent failed (${QUALITY}, exit=$EXIT_CODE)" 2>/dev/null || true
-    bash "$LINEAR_SCRIPT" status "$TASK_ID" blocked 2>/dev/null || true
+    bash "$LINEAR_SCRIPT" comment "$AGENT_LINEAR_ID" "[$TASK_ID] Agent failed (${QUALITY}, exit=$EXIT_CODE)" 2>/dev/null || true
+    [[ "$TASK_ID" != LOCAL-* ]] && bash "$LINEAR_SCRIPT" status "$TASK_ID" blocked 2>/dev/null || true
   fi
 
   # Disk log
@@ -617,8 +665,10 @@ else:
 TS=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
 echo "[$TS] [spawn] $TASK_ID: PID=$AGENT_PID timeout=${TIMEOUT_MIN}min agent=$AGENT_ID role=${ROLE:-none}" >> "$MASTER_LOG" 2>/dev/null || true
 
-bash "$LINEAR_SCRIPT" comment "$TASK_ID" "Agent spawned (timeout=${TIMEOUT_MIN}min, agent=$AGENT_ID$([ -n "$ROLE" ] && echo ", role=$ROLE"))" 2>/dev/null || true
-bash "$LINEAR_SCRIPT" status "$TASK_ID" progress 2>/dev/null || true
+SPAWN_LINEAR_ID="$TASK_ID"
+[[ "$TASK_ID" == LOCAL-* ]] && [ -n "$PARENT_TASK" ] && SPAWN_LINEAR_ID="$PARENT_TASK"
+bash "$LINEAR_SCRIPT" comment "$SPAWN_LINEAR_ID" "[$TASK_ID] Agent spawned (timeout=${TIMEOUT_MIN}min, agent=$AGENT_ID$([ -n "$ROLE" ] && echo ", role=$ROLE"))" 2>/dev/null || true
+[[ "$TASK_ID" != LOCAL-* ]] && bash "$LINEAR_SCRIPT" status "$TASK_ID" progress 2>/dev/null || true
 
 echo "[dispatch] $TASK_ID PID=$AGENT_PID timeout=${TIMEOUT_MIN}min agent=$AGENT_ID${ROLE:+ role=$ROLE}"
 echo "$AGENT_PID"

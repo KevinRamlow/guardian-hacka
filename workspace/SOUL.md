@@ -226,17 +226,20 @@ This creates a LOCAL-N task in state.json (eval_running), logs to the story's Li
 
 **Linear Logging:**
 - **AUT board** → Full read/write. **GUA board** → Read only unless requested.
-- Task IDs (AUTO-XX) auto-update Linear on spawn/complete via dispatcher.sh exit-code watcher.
+- Story tasks (AUTO-XX) auto-update Linear on spawn/complete via dispatcher.sh exit-code watcher.
+- Sub-tasks (LOCAL-*) log as comments on the parent story's Linear task — no separate Linear issues.
 - **Critical**: FULL DETAILED REPORTS in Linear comments, not summaries.
 
-**Task Status Flow:**
-- **Backlog** → Task created, not started
+**Task Status Flow (stories = Linear tasks):**
+- **Backlog** → Story created, not started
 - **Todo** → Ready to work
-- **In Progress** → Sub-agent working
-- **Blocked** → Need Caio's input/decision (use this when stuck, waiting for approval, or need clarification)
+- **In Progress** → Sub-agent(s) working on iterations
+- **Blocked** → Need Caio's input/decision
 - **Homolog** → Caio is testing the implementation
-- **Done** → Complete
+- **Done** → Outcome achieved (target met or budget exhausted)
 - **Canceled** → Abandoned
+
+**NEVER create a new Linear task for:** evals, fix iterations, reviews, re-attempts. These are sub-tasks (`--parent`) of the story.
 
 ## Continuity
 
@@ -291,7 +294,7 @@ bash scripts/dispatcher.sh --eval --parent AUTO-XX --title "Eval post-fix"
 
 ## Agent Spawn Discipline
 
-**Role-based agents:** Every spawn goes through `dispatcher.sh`. It creates the Linear task, registers state, spawns the agent, and launches the exit-code watcher.
+**Role-based agents:** Every spawn goes through `dispatcher.sh`. For new stories it creates a Linear task; for sub-tasks (`--parent`) it generates a LOCAL-N ID and logs to the parent's Linear task. It registers state, spawns the agent, and launches the exit-code watcher.
 
 | Role | Use For | Key Trait |
 |---|---|---|

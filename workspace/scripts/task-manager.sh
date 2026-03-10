@@ -43,7 +43,7 @@ unlock_state() {
 }
 
 # Valid transitions (single line for shell embedding)
-VALID_TRANSITIONS='{"todo":["agent_running","eval_running","blocked","failed"],"agent_running":["done","failed","blocked","eval_running","timeout"],"eval_running":["callback_pending","done","failed","timeout","blocked"],"callback_pending":["agent_running","blocked","failed"],"done":["todo"],"failed":["todo","agent_running"],"blocked":["todo","agent_running"],"timeout":["todo","agent_running","failed"]}'
+VALID_TRANSITIONS='{"todo":["agent_running","eval_running","blocked","failed"],"agent_running":["done","failed","blocked","eval_running","timeout"],"eval_running":["callback_pending","done","failed","timeout","blocked"],"callback_pending":["agent_running","blocked","failed"],"done":["todo","agent_running"],"failed":["todo","agent_running"],"blocked":["todo","agent_running"],"timeout":["todo","agent_running","failed"]}'
 
 CMD="${1:-help}"
 shift || true
@@ -107,6 +107,7 @@ d['tasks']['$TASK_ID'] = {
     'retries': 0,
     'extensions': 0,
     'warned80pct': False,
+    'reportedAt': None,
     'history': [],
     'learnings': []
 }
@@ -654,6 +655,57 @@ print(f'{tid}.{field} = {val}')
     unlock_state
     ;;
 
+  reopen)
+    # Reopen a done/failed task for further work (same Linear task, same story)
+    TASK_ID="${1:-}"
+    [ -z "$TASK_ID" ] && { echo "ERROR: task-id required" >&2; exit 1; }
+    init_state
+    lock_state
+    python3 -c "
+import json, sys
+f = '$STATE_FILE'
+d = json.load(open(f))
+tid = '$TASK_ID'
+if tid not in d['tasks']:
+    print(f'NOT_FOUND: {tid}', file=sys.stderr)
+    sys.exit(1)
+t = d['tasks'][tid]
+old_status = t['status']
+if old_status not in ('done', 'failed', 'timeout', 'blocked'):
+    print(f'SKIP: {tid} is {old_status}, not reopenable', file=sys.stderr)
+    sys.exit(1)
+t['status'] = 'todo'
+t['agentPid'] = None
+t['processPid'] = None
+t['startedAt'] = None
+t['startedEpoch'] = None
+t['completedAt'] = None
+t['reportedAt'] = None
+t['warned80pct'] = False
+t['exitCode'] = None
+# Keep history, learnings, storyId, label — those are the work trail
+json.dump(d, open(f, 'w'), indent=2)
+print(f'{old_status} → todo (reopened)')
+"
+    unlock_state
+    ;;
+
+  next-local-id)
+    # Generate next local task ID (for tasks that don't need a Linear issue)
+    init_state
+    python3 -c "
+import json, re
+d = json.load(open('$STATE_FILE'))
+max_n = 0
+for tid in d.get('tasks', {}):
+    m = re.match(r'AUTO-(\d+)', tid)
+    if m: max_n = max(max_n, int(m.group(1)))
+    m = re.match(r'LOCAL-(\d+)', tid)
+    if m: max_n = max(max_n, int(m.group(1)))
+print(f'LOCAL-{max_n + 1}')
+"
+    ;;
+
   json)
     init_state
     cat "$STATE_FILE"
@@ -672,6 +724,7 @@ State machine:
 Commands:
   create     --task ID [--label desc] [--callback type] [--context "..."] [--parent TASK_ID]
   transition <task-id> <new-status> [--pid N] [--process-pid N] ...
+  reopen     <task-id>              Reopen done/failed task (clears completedAt/reportedAt, keeps history)
   get        <task-id>              JSON of single task
   list       [--status X] [--json]  List all tasks
   slots                             Available spawn slots
@@ -682,6 +735,7 @@ Commands:
   cleanup    [--max-age 86400]      Remove old completed tasks
   set-field  <task-id> <field> <val> Set single field (locked)
   set-max    <n>                    Set max concurrent
+  next-local-id                     Generate next LOCAL-N ID (no Linear task)
   register   <taskId> <pid> <bridgePid> <label> <source> <timeoutMin>
   count                             Alive agent count
   json                              Raw state file

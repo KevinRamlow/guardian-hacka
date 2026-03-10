@@ -664,7 +664,7 @@ async function collectData() {
     try { linearData = await fetchLinearUpdates(limitedTaskIds); } catch (e) { console.error('Linear fetch error:', e.message); }
   }
 
-  // 3. Enrich active agents
+  // 3. Enrich active agents (+ eval progress for eval_running tasks)
   const enrichedActive = active.map(a => {
     try {
       const health = getHealthStatus(a);
@@ -673,15 +673,42 @@ async function collectData() {
       const runtimeMin = (a.runtimeMs || 0) / 60000;
       const timeoutMin = a.timeoutMin || 25;
       const etaMin = Math.max(0, timeoutMin - runtimeMin);
-      const progress = Math.min(100, (runtimeMin / timeoutMin) * 100);
+      let progress = Math.min(100, (runtimeMin / timeoutMin) * 100);
       const activity = getLastActivity(taskId);
 
+      // For eval_running tasks, read real eval progress from progress_meta.json
+      let evalProgress = null;
+      if (a.status === 'eval_running') {
+        try {
+          const EVAL_RUNS_DIR = path.join(WORKSPACE, 'guardian-agents-api-real/evals/.runs/content_moderation');
+          if (fs.existsSync(EVAL_RUNS_DIR)) {
+            const latestRunDir = fs.readdirSync(EVAL_RUNS_DIR)
+              .filter(d => d.startsWith('run_'))
+              .sort()
+              .reverse()[0];
+            if (latestRunDir) {
+              const metaPath = path.join(EVAL_RUNS_DIR, latestRunDir, 'progress_meta.json');
+              if (fs.existsSync(metaPath)) {
+                const meta = JSON.parse(fs.readFileSync(metaPath, 'utf-8'));
+                evalProgress = {
+                  completed: meta.completed || 0,
+                  total: meta.total || 0,
+                  errors: meta.errors || 0,
+                  percent: meta.total > 0 ? Math.round((meta.completed / meta.total) * 100) : 0,
+                };
+                progress = evalProgress.percent; // override progress bar with eval progress
+              }
+            }
+          }
+        } catch {}
+      }
+
       return {
-        ...a, health, taskId, linear, activity,
+        ...a, health, taskId, linear, activity, evalProgress,
         runtimeMin: runtimeMin.toFixed(1),
         timeoutMin,
         etaMin: etaMin.toFixed(1),
-        progress: progress.toFixed(0),
+        progress: typeof progress === 'number' ? progress.toFixed ? progress.toFixed(0) : String(progress) : String(progress),
       };
     } catch {
       return { ...a, health: { status: 'unknown', color: 'gray' }, runtimeMin: '0' };
