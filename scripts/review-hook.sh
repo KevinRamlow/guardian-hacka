@@ -63,8 +63,14 @@ if [ "$REQUIRE_GIT_CHANGES" = "true" ]; then
   [ -z "$GIT_CHANGES" ] && exit 0
 fi
 
-# Build review prompt
+# Check if review already exists in state.json (prevent re-spawn loop)
 REVIEW_TASK_ID="REVIEW-${TASK_ID#AUTO-}"
+if bash "$TASK_MGR" has "$REVIEW_TASK_ID" 2>/dev/null; then
+  echo "[review-hook] $REVIEW_TASK_ID already exists in state.json, skipping"
+  exit 0
+fi
+
+# Build review prompt
 REVIEW_PROMPT=$(cat <<REVIEWEOF
 # Adversarial Code Review: $TASK_ID
 
