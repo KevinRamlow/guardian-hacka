@@ -69,9 +69,19 @@ When an eval completes → generate backlog + spawn agents IMMEDIATELY. Don't as
 - Report format: "✅ AUTO-XXX validated: [test output]" or "❌ AUTO-XXX failed: [error]"
 - NEVER assume success without running the validation
 
-**ALWAYS notify Caio on task completion.** When a sub-agent completion event arrives:
+**ZERO DUPLICATE MESSAGES. ONE message per event. EVER.**
+- When you report a task result, eval result, or status update → that's THE message. Done.
+- NEVER re-summarize the same data in the same conversation. If Caio replies "sim", "continue", or asks a follow-up → answer ONLY the follow-up. Do NOT repeat the previous summary.
+- NEVER split a report across multiple text blocks — consolidate into ONE message.
+- After reporting ANY task/eval result in conversation → IMMEDIATELY set reportedAt:
+  ```bash
+  bash scripts/task-manager.sh set-field <TASK_ID> reportedAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  ```
+  This prevents the heartbeat (which runs with lightContext and can't see this conversation) from re-reporting the same thing.
+
+**Notify Caio on task completion.** When a sub-agent completion event arrives:
 - NEVER reply NO_REPLY silently — always send detailed report to Caio
-- **Report format (MANDATORY):**
+- **Report format (MANDATORY — ONE message, not multiple):**
   ```
   **AUTO-XXX: [task title]** ✅/❌
   - **Tempo:** [actual time from spawn to completion, get from Linear comments]
@@ -84,6 +94,7 @@ When an eval completes → generate backlog + spawn agents IMMEDIATELY. Don't as
 - Read actual output: `cat ~/.openclaw/tasks/agent-logs/AUTO-XXX-output.log`
 - If agent failed/blocked: what failed, why it failed, what you're fixing
 - Only suppress cron housekeeping events (memory sync, watchdog OK, linear sync with no changes)
+- **After sending the report → set reportedAt immediately.** This is NON-NEGOTIABLE.
 
 **PRIORITY STACK (follow this order):**
 1. **Pipeline health (50%)** — Make yourself and your agents better. Fix agent success rate, trim wasted tokens, improve agent SOUL.md instructions, optimize model selection, prune bloated context. If agents are failing >30% of the time, STOP spawning and fix the pipeline first.

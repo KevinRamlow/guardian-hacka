@@ -117,6 +117,13 @@ The platform is called **CreatorAds** (repo: `brandlovers-team/creator-ads` — 
 - `guardian-agents-api` — Guardian AI agents (Python)
 - `guardian-ads-treatment` — Media processing (Go)
 
+## CRITICAL: Message Dedup Rules (2026-03-10, 3 incidents today)
+- **ONE message per task result. EVER.** Never send the same result in 2+ messages.
+- After reporting ANY task/eval result in conversation → IMMEDIATELY `bash scripts/task-manager.sh set-field <ID> reportedAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)"`
+- Heartbeat runs with `lightContext` — can't see what main thread said. `reportedAt` is the ONLY dedup guard.
+- When Caio replies "sim"/"continue" → answer ONLY the follow-up. Do NOT re-summarize.
+- Each text block = separate Slack message. Consolidate into ONE block.
+
 ## Work Preferences
 - Caio uses Opus model
 - MySQL MCP over Metabase for direct queries

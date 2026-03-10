@@ -17,6 +17,8 @@ You handle EVERYTHING else: Slack reporting, timeouts, orphans, auto-queue, call
   ```bash
   bash scripts/task-manager.sh set-field <TASK_ID> reportedAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
   ```
+- **DO NOT re-report results that the main thread already reported.** This heartbeat runs with `lightContext` — you can't see what the main thread sent. The ONLY way to know is `reportedAt`. If `reportedAt` is set, the main thread already reported it. SKIP.
+- **ONE message per task. EVER.** Never send 2+ messages about the same task result. Consolidate everything into a single message. If you already sent a message about AUTO-XXX in this heartbeat turn, do NOT send another.
 
 ---
 
@@ -104,6 +106,7 @@ Kill unregistered `claude` processes older than 5 minutes:
 ### Priority 6 — Proactive
 
 - **DO NOT respond to Caio's messages here.** The gateway already routes DMs to you as normal chat turns. Responding to them again in the heartbeat = double processing = double tokens. If you see an unread message from Caio during heartbeat, IGNORE IT — it was already handled (or will be handled) by the normal chat flow.
+- **DO NOT re-report anything.** If a task's `reportedAt` is set, the main thread already told Caio. Your job is to catch unreported completions ONLY. If in doubt, check `reportedAt` — if set, skip.
 - If success_rate < 70% → investigate + fix autonomously
 - If same task failing 3+ times → stop re-queueing, investigate root cause
 - Generate 1-2 PRD tasks per day, add to Linear AUTO as Todo

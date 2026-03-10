@@ -79,7 +79,7 @@
         "directPolicy": "allow",
         "to": "D0AK1B981QR",
         "ackMaxChars": 300,
-        "lightContext": true
+        "lightContext": false
       },
       "maxConcurrent": 2,
       "subagents": {
@@ -90,17 +90,7 @@
     },
     "list": [
       {
-        "id": "main",
-        "heartbeat": {
-          "every": "5m",
-          "activeHours": {
-            "start": "08:00",
-            "end": "23:00",
-            "timezone": "America/Sao_Paulo"
-          },
-          "target": "slack",
-          "to": "D0AK1B981QR"
-        }
+        "id": "main"
       },
       {
         "id": "developer"
