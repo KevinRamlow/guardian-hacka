@@ -207,7 +207,7 @@ bash scripts/dispatcher.sh --title "Big refactor" --role developer --mode intera
 ```
 
 ### Review Hook
-- `review-hook.sh` auto-fires after every task completion via supervisor.sh
+- `review-hook.sh` auto-fires after every task completion via dispatcher.sh exit-code watcher
 - Config: `config/review-config.json` (enabled, min_output_bytes, require_git_changes)
 - Loop prevention: skips REVIEW-* IDs, review sources, review labels
 

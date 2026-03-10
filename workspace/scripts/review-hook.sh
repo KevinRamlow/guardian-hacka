@@ -1,6 +1,6 @@
 #!/bin/bash
 # review-hook.sh — Spawn an adversarial reviewer after agent completion
-# Called by supervisor.sh when an agent transitions to done
+# Called by dispatcher.sh exit-code watcher or heartbeat when an agent transitions to done
 #
 # Usage: review-hook.sh <task-id>
 #
@@ -10,7 +10,7 @@ set -euo pipefail
 
 TASK_ID="${1:?Task ID required}"
 TASK_MGR="${OPENCLAW_HOME:-$HOME/.openclaw}/workspace/scripts/task-manager.sh"
-SPAWNER="${OPENCLAW_HOME:-$HOME/.openclaw}/workspace/scripts/spawn-agent.sh"
+DISPATCHER="${OPENCLAW_HOME:-$HOME/.openclaw}/workspace/scripts/dispatcher.sh"
 LINEAR_LOG="${OPENCLAW_HOME:-$HOME/.openclaw}/workspace/skills/task-manager/scripts/linear-log.sh"
 LOGS_DIR="${OPENCLAW_HOME:-$HOME/.openclaw}/tasks/agent-logs"
 REVIEW_CONFIG="${OPENCLAW_HOME:-$HOME/.openclaw}/workspace/config/review-config.json"
@@ -115,13 +115,11 @@ SLOTS=$(bash "$TASK_MGR" slots 2>/dev/null || echo "0")
   exit 0
 }
 
-# Spawn reviewer agent
-bash "$SPAWNER" \
+# Spawn reviewer agent via dispatcher (THE only spawn path)
+bash "$DISPATCHER" \
   --task "$REVIEW_TASK_ID" \
-  --label "review-${TASK_ID}" \
   --role reviewer \
   --timeout "$REVIEWER_TIMEOUT" \
-  --source auto-review \
   --force \
   "$REVIEW_PROMPT" 2>/dev/null
 

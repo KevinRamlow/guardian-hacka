@@ -3,15 +3,16 @@
 ## Workspace Root
 `~/.openclaw/workspace/`
 
-## Core Scripts (5)
+## Core Scripts (4 + 1 brain)
 `~/.openclaw/workspace/scripts/`
-- `task-manager.sh` — State CRUD + transitions (single source of truth)
-- `dispatcher.sh` — Create Linear task + register state + spawn agent
-- `supervisor.sh` — Unified launchd (30s): PID checks, completions, callbacks, timeouts
-- `reporter.sh` — Report to Linear + Slack + dashboard
-- `spawn-agent.sh` — Low-level agent spawner
+- `task-manager.sh` — State CRUD + transitions (flock-protected, single source of truth)
+- `dispatcher.sh` — THE only spawn path: Linear + state + spawn + exit-code watcher
+- `kill-agent-tree.sh` — Kill PID tree (utility)
+- `guardrails.sh` — Invariant checks
+- **HEARTBEAT.md** — The brain: Slack reporting, timeouts, orphans, auto-queue, callbacks
 
 ## Supporting Scripts
+- `review-hook.sh` — Auto-fires adversarial reviewer after agent completion
 - `infra-maintenance.sh` — consolidated infra tasks (15min launchd)
 - `langfuse-query.sh` — Langfuse trace queries
 

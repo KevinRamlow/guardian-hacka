@@ -270,28 +270,21 @@ OPENCLAW_HOME="${OPENCLAW_HOME:-/home/node/.openclaw}"
 ```
 
 Scripts to update:
-- `agent-checkpoint.sh`
-- `agent-logger.sh`
-- `agent-peek.sh`
-- `agent-report.sh`
-- `backlog-generator.sh`
-- `dedup-check.sh`
-- `detect-agent-idle.sh`
-- `diagnose-failure.sh`
 - `dispatcher.sh`
-- `spawn-agent.sh`
 - `task-manager.sh`
-- `supervisor.sh`
+- `kill-agent-tree.sh`
+- `guardrails.sh`
+- `review-hook.sh`
 - (all scripts now use `${OPENCLAW_HOME}` — migration complete)
 
 ### 4.3 Launchd → In-Container Cron
 
-Local Anton uses `launchd` for supervisor (30s) and infra (15min). In GKE, these need to run as:
+Local Anton uses `launchd` for infra-maintenance (15min). In GKE, this needs to run as:
 - **Option A:** OpenClaw native heartbeat (already configured, runs inside gateway)
 - **Option B:** Sidecar container running cron
 - **Option C:** CronJob K8s resources calling the pod via `kubectl exec`
 
-**Recommendation:** Rely on OpenClaw native heartbeat for supervisor tasks. The heartbeat already runs every 5min and can drive auto-queue, health checks, etc. Migrate critical launchd logic into HEARTBEAT.md instructions.
+**Recommendation:** Rely on OpenClaw native heartbeat. The heartbeat already runs every 5min and drives auto-queue, health checks, Slack reporting, timeouts, orphans, and callbacks. No supervisor script needed — HEARTBEAT.md is the brain.
 
 ---
 

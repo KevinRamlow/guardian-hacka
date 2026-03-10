@@ -32,6 +32,9 @@ fi
 echo "✅ Logged to Linear $TASK_ID" >&2
 
 # Persistent disk log (ALWAYS — survives API failures)
-"$OC_HOME/workspace/scripts/agent-logger.sh" "$TASK_ID" "${STATUS:-log}" "$MESSAGE" "linear+slack" 2>/dev/null || true
+MASTER_LOG="$OC_HOME/tasks/agent-logs/master.log"
+mkdir -p "$(dirname "$MASTER_LOG")"
+TS=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
+echo "[$TS] [linear-log] $TASK_ID: ${STATUS:-log} — $MESSAGE" >> "$MASTER_LOG" 2>/dev/null || true
 
-# Slack notification handled by reporter.sh — slack-linear-post.sh is archived
+# Slack reporting handled by HEARTBEAT.md (sole Slack reporter)

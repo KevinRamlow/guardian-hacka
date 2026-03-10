@@ -90,8 +90,8 @@ bash scripts/test-apostrophe-handling.sh
 bash scripts/test-related-functionality.sh
 
 # For spawn system changes, test spawn still works
-bash scripts/spawn-agent.sh --task CAI-TEST --label "validation-test" --timeout 5 "echo hello"
-# Expected: Agent spawns successfully, no syntax errors
+bash scripts/dispatcher.sh --task CAI-TEST --timeout 5 "echo hello"
+# Expected: Agent spawns successfully, no errors
 ```
 
 ## 5. Document Validation Results
@@ -165,8 +165,8 @@ Need from you: [specific approval/access needed]
 **For spawn system fixes:**
 ```bash
 # Test with problematic characters
-bash scripts/spawn-agent.sh --task CAI-TEST --label "test-with-apostrophe's" --timeout 5 "echo test"
-# Expected: No Python syntax errors, agent spawns
+bash scripts/dispatcher.sh --task CAI-TEST --timeout 5 "echo test"
+# Expected: No errors, agent spawns
 ```
 
 **For Guardian analysis:**

@@ -1,7 +1,7 @@
 #!/bin/bash
 # guardrails.sh — Runtime invariant checker for Anton's script ecosystem
 #
-# Called by supervisor.sh and dispatcher.sh before critical operations.
+# Called by dispatcher.sh and heartbeat before critical operations.
 # Returns exit 0 if all invariants hold, exit 1 with violations printed to stderr.
 #
 # Usage: bash scripts/guardrails.sh [--check all|state|spawn|orphans]
@@ -128,9 +128,8 @@ check_orphans() {
   # Active files referencing sessions_spawn (forbidden except in SOUL.md warnings and dispatch-guard)
   for f in $(grep -rl "sessions_spawn" "$WORKSPACE/scripts/" "$WORKSPACE/skills/" 2>/dev/null | grep -v '.archive/' || true); do
     [[ "$f" == *SOUL.md ]] && continue
-    [[ "$f" == *dispatch-guard.sh ]] && continue
     [[ "$f" == *guardrails.sh ]] && continue
-    [[ "$f" == *spawn-agent.sh ]] && continue  # has it in dispatch-guard call context
+    [[ "$f" == *dispatcher.sh ]] && continue  # has it in dispatch-guard section
     [[ "$f" == *memory/* ]] && continue
     [[ "$f" == *behavioral-anti-patterns* ]] && continue
     fail "$(basename "$f") references sessions_spawn (forbidden)"

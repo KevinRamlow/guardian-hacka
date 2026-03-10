@@ -18,8 +18,25 @@ Anton is an autonomous AI agent that coordinates sub-agents to execute tasks, se
                     ┌────────────▼─────────────────────┐
                     │      OpenClaw Sub-Agents            │
                     │  (5-60 min tasks, auto-tracked)    │
+                    └──────────┬───────────────────────┘
+                               │ on death
+                    ┌──────────▼───────────────────────┐
+                    │     Exit-Code Watcher (bg proc)    │
+                    │  Auto-transitions state + Linear   │
                     └──────────────────────────────────┘
 ```
+
+### 4 Scripts + 1 Brain
+
+| Component | Sole Responsibility |
+|-----------|---------------------|
+| `task-manager.sh` | State CRUD + transitions (flock-protected). ALL state goes through this. |
+| `dispatcher.sh` | THE only spawn path: Linear task + state + spawn + exit-code watcher. |
+| `kill-agent-tree.sh` | Kill PID tree (utility). |
+| `guardrails.sh` | Invariant checks. |
+| **HEARTBEAT.md** | The brain: Slack reporting, timeouts, orphans, auto-queue, callbacks. |
+
+No supervisor. No reporter. No spawn-agent.sh. One owner per responsibility.
 
 ### State Machine
 
@@ -28,18 +45,36 @@ Single source of truth: `~/.openclaw/tasks/state.json`
 ```
 todo → agent_running → done
                      → failed
+                     → blocked
                      → eval_running → callback_pending → agent_running → ...
 ```
 
 Each task carries `history[]` and `learnings[]` — callback agents get full context from previous cycles.
 
+### How Completions Work
+
+1. `dispatcher.sh` spawns agent + launches exit-code watcher (background process)
+2. When agent dies, watcher: checks output quality → transitions state → logs to Linear
+3. Heartbeat (5min) reads state.json → reports to Slack → handles timeouts/orphans/callbacks
+
 ### Scheduling
 
-| Job | Script | Interval | Purpose |
+| Job | Driver | Interval | Purpose |
 |-----|--------|----------|---------|
-| `com.anton.supervisor` | supervisor.sh | 30s | PID checks, completions, callbacks, timeouts, orphans |
+| Native heartbeat | HEARTBEAT.md | 5min | Slack reporting, timeouts, orphans, auto-queue, callbacks |
 | `com.anton.infra` | infra-maintenance.sh | 15min | Langfuse query, state cleanup |
-| Native heartbeat | HEARTBEAT.md | 5min | Auto-queue, health monitoring, backlog generation |
+
+## Sub-Agent Roles
+
+| Role | Use For |
+|------|---------|
+| `developer` | Code implementation, bug fixes, feature work |
+| `reviewer` | Post-completion adversarial code review |
+| `architect` | System design, ADRs |
+| `guardian-tuner` | Guardian accuracy optimization, eval loops |
+| `debugger` | Root cause analysis, incident investigation |
+
+Spawn: `bash scripts/dispatcher.sh --title "Fix X" --desc "Details" --role developer`
 
 ## Directory Structure
 
@@ -52,98 +87,34 @@ Each task carries `history[]` and `learnings[]` — callback agents get full con
 ├── USER.md                 # About the user (Caio)
 ├── IDENTITY.md             # OpenClaw identity template
 │
-├── scripts/                # All operational scripts (see below)
+├── scripts/                # Operational scripts
+│   ├── task-manager.sh     # State CRUD (flock-protected)
+│   ├── dispatcher.sh       # THE only spawn path
+│   ├── kill-agent-tree.sh  # Kill PID tree
+│   └── guardrails.sh       # Invariant checks
 ├── skills/                 # OpenClaw skills
 ├── knowledge/              # Agent knowledge base (codemaps, patterns, errors)
-├── templates/              # Task + validation templates
 ├── config/                 # Auto-queue, timeout rules, review config
 ├── memory/                 # Daily memory files (YYYY-MM-DD.md)
 ├── docs/                   # Architecture docs
 ├── dashboard/              # Web dashboard (localhost:8765)
-├── clawdbots/              # ClawdBots platform (Billy, Neuron agents)
-├── agents/                 # Sub-agent role templates (developer, reviewer, etc.)
 └── agents/                 # Sub-agent role templates (developer, reviewer, etc.)
 ```
-
-## Scripts
-
-### Core (5) — The Architecture
-
-| Script | Purpose |
-|--------|---------|
-| `task-manager.sh` | State CRUD + transitions. ALL state reads/writes go through this. |
-| `dispatcher.sh` | Create Linear task + register in state.json + spawn agent. |
-| `supervisor.sh` | Unified 30s launchd: PID checks, completions, callbacks, timeouts, orphans. |
-| `reporter.sh` | Report to Linear + Slack + dashboard. Peek at task status. |
-| `spawn-agent.sh` | Low-level agent spawner. Called by dispatcher + supervisor. |
-
-### Infrastructure
-
-| Script | Purpose |
-|--------|---------|
-| `infra-maintenance.sh` | Consolidated 15min job: Langfuse query + state cleanup. |
-| `langfuse-query.sh` | Query Langfuse traces (called by infra-maintenance). |
-
-### Agent Lifecycle
-
-| Script | Purpose |
-|--------|---------|
-| `agent-checkpoint.sh` | Save progress checkpoints (survives agent timeout). |
-| `agent-logger.sh` | Log agent output to Linear. |
-| `agent-stream-monitor.py` | Parse agent activity stream in real-time. |
-| `agent-report.sh` | Generate completion reports for agents. |
-| `agent-peek.sh` | Peek at agent activity (overview / detail / follow). |
-| `kill-agent-tree.sh` | Kill agent + all child processes. |
-| `diagnose-failure.sh` | Diagnose why an agent failed. |
-| `validate-agent.sh` | Validate agent session state. |
-| `interactive-checkpoint.sh` | Interactive mode checkpoint handling. |
-
-### Queue & Dispatch
-
-| Script | Purpose |
-|--------|---------|
-| `queue-control.sh` | Pause/resume auto-queue. |
-| `classify-task.sh` | Auto-classify task type for timeout/role rules. |
-| `dedup-check.sh` | Prevent duplicate agent spawns. |
-| `dispatch-guard.sh` | Pre-dispatch validation guards. |
-| `backlog-generator.sh` | Generate new tasks from analysis. |
-
-> **Note:** Auto-queue logic is handled by the native heartbeat (HEARTBEAT.md), not a standalone script.
-
-### Guardian Eval
-
-| Script | Purpose |
-|--------|---------|
-| `run-guardian-eval.sh` | Wrapper for running Guardian evals (sources .env, activates venv). |
-| `guardian-eval-status.sh` | Report eval progress/status. |
-| `eval-analyze-breakdown.py` | Analyze eval results breakdown by category. |
-| `preflight-check.sh` | Validate auth + config before eval run. |
-
-### Setup & Utilities
-
-| Script | Purpose |
-|--------|---------|
-| `setup-workspaces.sh` | Generate role workspaces from agent templates. |
-| `review-hook.sh` | Auto-spawn adversarial reviews post-completion. |
-| `alert-dedup.sh` | Prevent duplicate Slack alerts. |
-| `link-logs-to-linear.sh` | Attach agent logs to Linear tasks. |
-| `guardrails.sh` | Validate architecture invariants. |
-| `slack_upload_image.py` | Upload images to Slack. |
 
 ## Quick Commands
 
 ```bash
-# Dispatch work
-bash scripts/dispatcher.sh --title "Fix X" --desc "Details" --label Bug
+# Dispatch work (Linear task created automatically)
+bash scripts/dispatcher.sh --title "Fix X" --desc "Details" --role developer
+
+# Dispatch for existing Linear task
+bash scripts/dispatcher.sh --task AUTO-XX --role developer "prompt text"
 
 # Check state
 bash scripts/task-manager.sh list
+bash scripts/task-manager.sh list --status agent_running
 bash scripts/task-manager.sh get AUTO-XX
 bash scripts/task-manager.sh slots
-
-# Monitor
-bash scripts/reporter.sh peek
-bash scripts/reporter.sh peek AUTO-XX follow
 
 # Feedback loop
 bash scripts/task-manager.sh add-history AUTO-XX '{"cycle":1,"accuracy":78.5}'
@@ -158,4 +129,11 @@ bash scripts/task-manager.sh add-learning AUTO-XX "what worked"
 | `~/.openclaw/tasks/agent-logs/` | Per-agent output, stderr, activity logs |
 | `~/.openclaw/.env` | All credentials (never committed) |
 | `~/.openclaw/workspace/.env.guardian-eval` | Guardian eval env vars |
-| `~/Library/LaunchAgents/com.anton.*.plist` | Launchd job definitions (2 active) |
+
+## Deployment
+
+Runs on GKE via Docker. See `docs/gke-deploy-architecture.md` for details.
+
+- `Dockerfile` — Multi-stage build, non-root user
+- `docker-entrypoint.sh` — Validates env vars, sets up git, spawns workspaces, starts gateway
+- `.github/workflows/deploy.yml` — CI/CD pipeline

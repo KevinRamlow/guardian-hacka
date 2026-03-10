@@ -152,7 +152,7 @@ This keeps Anton's meta-work separate from Brandlovers product tasks (GUA worksp
 ## Auto-Tracking
 
 Anton automatically creates tasks when:
-- Spawning sub-agents (via `dispatcher.sh` → `spawn-agent.sh`)
+- Spawning sub-agents (via `dispatcher.sh`)
 - Starting workflows (via workflow engine)
 - Caio explicitly asks for something
 
@@ -176,31 +176,12 @@ Task state is stored in:
 - Task time tracking (how long each sub-agent runs)
 - Budget alerts (task approaching time/cost limits)
 
-## Agent Monitoring Tools (Phase 2 Infrastructure)
+## Agent Monitoring
 
-### Agent Dashboard
-Quick status view of all running agents:
+Monitoring is handled by HEARTBEAT.md (the brain). No separate dashboard or watchdog scripts needed.
 
-```bash
-{baseDir}/scripts/agent-dashboard.sh
-```
-
-Shows:
-- Linear task ID
-- Agent label
-- Runtime
-- Last Linear log time
-- Status indicator (🟢 normal, 🟡 >15min, 🔴 >25min)
-
-### Agent Watchdog
-Automated stuck agent detection (runs every 10 min via cron):
-
-```bash
-{baseDir}/scripts/agent-watchdog.sh
-```
-
-Writes alerts to: `${OPENCLAW_HOME:-$HOME/.openclaw}/workspace/tasks/agent-alerts.json`
-
-Anton picks up alerts during heartbeat sweeps.
+- **Heartbeat (5min):** Reads state.json, reports to Slack, handles timeouts, orphans, auto-queue, callbacks
+- **Exit-code watcher (in dispatcher.sh):** Instant state transitions + Linear logging on agent death
+- **Check state:** `bash scripts/task-manager.sh list` / `get AUTO-XX` / `slots`
 
 

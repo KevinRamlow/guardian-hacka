@@ -109,10 +109,13 @@ Kill unregistered `claude` processes older than 5 minutes:
 - **Afternoon (17:00 UTC):** Linear GUA status changes, PR reviews pending
 - **Evening (21:00 UTC):** Brief day summary if notable events
 
-## Self-review (every 3 days, evening heartbeat)
-1. Read last 1d Slack DM for Caio corrections
-2. Check memory files for stale data
-3. Apply fixes immediately, tell Caio what you improved
+## Daily Infer (once per day, evening heartbeat ~21:00 UTC)
+Run the `infer` skill: analyze Slack DMs, agent logs, memory files, and skills.
+Apply improvements immediately. This replaces the old 3-day self-review cycle.
+1. Invoke `skills/infer/SKILL.md` workflow
+2. Apply all findings autonomously
+3. Log changes in `memory/YYYY-MM-DD.md` under "## Self-Improvement"
+4. Send Caio a brief summary of what you improved
 
 ## If nothing to do
 Reply `HEARTBEAT_OK` — nothing else.
