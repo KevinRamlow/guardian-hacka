@@ -108,11 +108,34 @@ def mark_reported(task_id):
         with open(STATE_FILE) as f:
             state = json.load(f)
         if task_id in state.get("tasks", {}):
-            state["tasks"][task_id]["reportedAt"] = _dt.datetime.utcnow().isoformat() + "Z"
+            state["tasks"][task_id]["reportedAt"] = _dt.datetime.now(_dt.timezone.utc).isoformat()
             with open(STATE_FILE, "w") as f:
                 json.dump(state, f, indent=2)
     except Exception as e:
         print(f"WARN: could not mark {task_id} as reported: {e}")
+
+
+def transition_and_mark(task_id, new_status, exit_code):
+    """Atomic: transition status + set reportedAt + exitCode in single write."""
+    import datetime as _dt
+    try:
+        with open(STATE_FILE) as f:
+            state = json.load(f)
+        if task_id in state.get("tasks", {}):
+            t = state["tasks"][task_id]
+            t["status"] = new_status
+            t["exitCode"] = exit_code
+            t["reportedAt"] = _dt.datetime.now(_dt.timezone.utc).isoformat()
+            t["completedAt"] = _dt.datetime.now(_dt.timezone.utc).isoformat()
+            with open(STATE_FILE, "w") as f:
+                json.dump(state, f, indent=2)
+            print(f"  → {task_id} transitioned to {new_status} + marked reported")
+            # Also call task-manager for Linear sync (best effort)
+            run_cmd(["bash", TASK_MGR, "transition", task_id, new_status, "--exit-code", str(exit_code)])
+        else:
+            print(f"WARN: {task_id} not in state.json")
+    except Exception as e:
+        print(f"ERROR: transition_and_mark {task_id}: {e}")
 
 
 def check_output_quality(task_id):
@@ -384,10 +407,9 @@ for task_id, task in list(tasks.items()):
                     print(f"SKIP {task_id}: already reported at {task['reportedAt']}")
                     continue
                 print(f"DONE {task_id}: {age_min}min, {output_size}B")
-                run_cmd(["bash", TASK_MGR, "transition", task_id, "done", "--exit-code", "0"])
+                # Atomic: transition + mark reported in single state.json write
+                transition_and_mark(task_id, "done", 0)
                 run_cmd(["bash", REPORT, task_id, "done"])
-                # Mark as reported to prevent duplicate alerts
-                mark_reported(task_id)
                 # Link logs to Linear for debugging
                 run_cmd(["bash", "/Users/fonsecabc/.openclaw/workspace/scripts/link-logs-to-linear.sh", task_id])
                 trigger_review_hook(task_id)
@@ -399,10 +421,9 @@ for task_id, task in list(tasks.items()):
                     print(f"SKIP {task_id}: already reported at {task['reportedAt']}")
                     continue
                 print(f"FAIL {task_id}: {age_min}min, {quality} ({detail[:100]})")
-                run_cmd(["bash", TASK_MGR, "transition", task_id, "failed", "--exit-code", "1"])
+                # Atomic: transition + mark reported in single state.json write
+                transition_and_mark(task_id, "failed", 1)
                 run_cmd(["bash", REPORT, task_id, "failed"])
-                # Mark as reported
-                mark_reported(task_id)
                 # Link logs to Linear for debugging
                 run_cmd(["bash", "/Users/fonsecabc/.openclaw/workspace/scripts/link-logs-to-linear.sh", task_id])
                 failures += 1
