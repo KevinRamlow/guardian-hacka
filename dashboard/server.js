@@ -379,6 +379,7 @@ async function fetchGithubCommits() {
   const repos = [
     { owner: 'fonsecabc', repo: 'replicants-anton', agent: 'Anton' },
     { owner: 'fonsecabc', repo: 'replicants-billy', agent: 'Billy' },
+    { owner: 'brandlovers-team', repo: 'guardian-agents-api', agent: 'Guardian' },
   ];
 
   const allCommits = [];
