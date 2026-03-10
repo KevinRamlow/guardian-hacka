@@ -29,8 +29,13 @@ You handle EVERYTHING else: Slack reporting, timeouts, orphans, auto-queue, call
 **COMPLETED TASKS:** `bash scripts/task-manager.sh list --status done`
 - Skip tasks where `reportedAt` is set
 - For each NEW completion (no `reportedAt`):
-  - Read output: `cat ~/.openclaw/tasks/agent-logs/AUTO-XXX-output.log`
-  - Send Caio detailed report:
+  - Read output: `cat ~/.openclaw/tasks/agent-logs/{TASK_ID}-output.log`
+  - **Story sub-tasks (LOCAL-* with parentTask):** Report as part of the parent story:
+    ```
+    **[PARENT_ID] iteration done:** [1-line summary] ✅
+    - [what changed, eval result if applicable]
+    ```
+  - **Stories (AUTO-* with no parentTask):** Full detailed report:
     ```
     **AUTO-XXX: [task title]** ✅
     - **Tempo:** [time from startedEpoch to completedAt]
@@ -42,9 +47,10 @@ You handle EVERYTHING else: Slack reporting, timeouts, orphans, auto-queue, call
 
 **FAILED TASKS:** `bash scripts/task-manager.sh list --status failed`
 - Skip tasks where `reportedAt` is set
-- Read stderr: `cat ~/.openclaw/tasks/agent-logs/AUTO-XXX-stderr.log`
+- Read stderr: `cat ~/.openclaw/tasks/agent-logs/{TASK_ID}-stderr.log`
 - Diagnose root cause, try to fix autonomously
-- Report to Caio: what failed, why, what you fixed
+- **Story sub-tasks:** Report briefly as part of the parent story context
+- **Stories:** Full failure report to Caio
 - Set reportedAt after reporting
 
 ### Priority 2 — Timeout Detection + Kill
@@ -71,13 +77,15 @@ except: alive = False
 ```
 - If process dead → check for metrics file → transition to `callback_pending`
 - Agentless evals (dispatched via `--eval`) have their own watcher that auto-transitions + logs metrics to history
-- **CALLBACK_PENDING tasks:** Spawn callback agent with full context:
+- **CALLBACK_PENDING tasks:** Spawn callback agent as sub-task of the story:
   ```bash
-  # Check if task has parentTask (agentless eval linked to improvement)
+  # Get parent (story) from the eval task
   PARENT=$(bash scripts/task-manager.sh get <TASK_ID> | python3 -c "import json,sys; print(json.load(sys.stdin).get('parentTask',''))")
-  CONTEXT="Process completed. Review results at metricsPath."
-  [ -n "$PARENT" ] && CONTEXT="Eval for $PARENT completed. Compare results with parent task. Review metrics and decide next action."
-  bash scripts/dispatcher.sh --task <TASK_ID> --role guardian-tuner --timeout 30 "$CONTEXT"
+  CONTEXT="Eval completed. Review results at metricsPath. Decide: iterate or mark story done."
+  # Spawn callback as sub-task of the story (no new Linear task)
+  bash scripts/dispatcher.sh --parent "$PARENT" --title "Callback: review eval results" --role guardian-tuner --timeout 30 "$CONTEXT"
+  # Transition the eval task to done
+  bash scripts/task-manager.sh transition <TASK_ID> done
   ```
 
 ### Priority 4 — Auto-Queue

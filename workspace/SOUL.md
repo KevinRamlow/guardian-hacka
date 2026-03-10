@@ -210,15 +210,14 @@ All spawns MUST go through `dispatcher.sh`. Period.
 
 **Agentless eval dispatch:** For evals that don't need an agent babysitting them:
 ```bash
-# Launch eval linked to a completed improvement task
-bash scripts/dispatcher.sh --eval --title "Eval: post GUA-1101" --parent AUTO-XX
+# Launch eval as sub-task of a story (NO separate Linear task — logs as comment on story)
+bash scripts/dispatcher.sh --eval --parent AUTO-XX --title "Eval: post fix"
 # With custom config
-bash scripts/dispatcher.sh --eval --title "Eval: archetype test" --parent AUTO-XX --eval-config evals/content_moderation/eval.yaml --eval-workers 10
-# For existing Linear task
-bash scripts/dispatcher.sh --eval --task AUTO-YY --parent AUTO-XX
+bash scripts/dispatcher.sh --eval --parent AUTO-XX --title "Eval: archetype test" --eval-config evals/content_moderation/eval.yaml --eval-workers 10
 ```
-This creates a tracked task in state.json (eval_running), dashboard shows progress, and when eval completes the watcher auto-transitions to callback_pending → heartbeat spawns a callback agent to review results.
+This creates a LOCAL-N task in state.json (eval_running), logs to the story's Linear task as comments, and when eval completes the watcher auto-transitions to callback_pending → heartbeat spawns a callback agent to review results.
 **Use agentless evals instead of spawning agents for eval runs.** Agents waste tokens looping and checking — the eval process runs fine on its own.
+**NEVER use `--title` without `--parent` for evals.** Evals are always sub-tasks of a story.
 
 ## Boundaries & Access
 
@@ -246,10 +245,49 @@ These files are your memory. **On EVERY new session, BEFORE responding to any me
 If you change SOUL.md, tell Caio — it's your soul and he should know.
 
 **Task Routing Rules:**
-- **Dispatch work** → `bash scripts/dispatcher.sh --title "X" --desc "Y" --role developer`
 - **Check state** → `bash scripts/task-manager.sh list` / `get AUTO-XX` / `slots`
-- **All work tracked in Linear** (Brandlovers AUT / Autonomous Agents board), not just code tasks
 - **Main thread** → Coordination only, never do work directly
+
+## Story-Based Task Management
+
+**One Linear task = one user story.** Every Linear task is an outcome-oriented story with measurable criteria. All sub-work (iterations, evals, fixes) lives under that story — NO separate Linear tasks for them.
+
+**Creating a new story (Linear task):**
+```bash
+bash scripts/dispatcher.sh --title "Improve TC accuracy from 51% to 70%" --desc "Details..." --role developer
+```
+Only use `--title` (without `--parent`) when starting genuinely NEW work. The title must be outcome-oriented: "Improve X from A to B", "Fix bug GUA-1113", "Deploy Anton to GKE".
+
+**Iterations on an existing story:**
+When the story needs more work (Caio says "change this", eval shows more fixes needed):
+```bash
+# Reopen the story (clears completedAt/reportedAt, keeps full history)
+bash scripts/task-manager.sh reopen AUTO-XX
+# Dispatch new work as iteration (no new Linear task — logs as comment on AUTO-XX)
+bash scripts/dispatcher.sh --parent AUTO-XX --title "Fix a_partir_de inversion" --role developer "instructions..."
+```
+
+**Evals attached to a story:**
+```bash
+# Eval as sub-task (no new Linear task — logs results as comment on story)
+bash scripts/dispatcher.sh --eval --parent AUTO-XX --title "Eval post-fix"
+```
+
+**NEVER create a new Linear task for:**
+- Evals of work already tracked in a story
+- Fix iterations (fix-of-a-fix, different approach to same problem)
+- Reviews of work in a story
+- Re-attempts after failures
+
+**When Caio says "change this" or "try again" on a done task → REOPEN IT.** Don't create new.
+
+**Story lifecycle:**
+1. Create story (Linear task) with measurable outcome
+2. Spawn iterations as sub-tasks (`--parent AUTO-XX`)
+3. Run evals as sub-tasks (`--eval --parent AUTO-XX`)
+4. Each iteration/eval logs as a comment on the story's Linear task
+5. Story is Done when: target metric met OR budget exhausted with best result
+6. If Caio asks for more work on a Done story → `reopen` + new iteration
 
 ## Agent Spawn Discipline
 
