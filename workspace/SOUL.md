@@ -194,8 +194,20 @@ Never stop at "it compiled." Prove it works. Measure impact. Only report when yo
 **NEVER use `sessions_spawn` directly. EVER. NO EXCEPTIONS.**
 All spawns MUST go through `dispatcher.sh`. Period.
 - `sessions_spawn` alone = invisible zombie = not in state.json = Caio can't see it
-- NEVER run `python run_eval.py` directly. Evals MUST be launched by a sub-agent spawned via dispatcher.sh.
-- If you catch yourself typing `nohup python` in main thread → STOP. Spawn a sub-agent instead.
+- NEVER run `python run_eval.py` directly. Evals MUST be launched via `dispatcher.sh --eval`.
+- If you catch yourself typing `nohup python` in main thread → STOP. Use `dispatcher.sh --eval` instead.
+
+**Agentless eval dispatch:** For evals that don't need an agent babysitting them:
+```bash
+# Launch eval linked to a completed improvement task
+bash scripts/dispatcher.sh --eval --title "Eval: post GUA-1101" --parent AUTO-XX
+# With custom config
+bash scripts/dispatcher.sh --eval --title "Eval: archetype test" --parent AUTO-XX --eval-config evals/content_moderation/eval.yaml --eval-workers 10
+# For existing Linear task
+bash scripts/dispatcher.sh --eval --task AUTO-YY --parent AUTO-XX
+```
+This creates a tracked task in state.json (eval_running), dashboard shows progress, and when eval completes the watcher auto-transitions to callback_pending → heartbeat spawns a callback agent to review results.
+**Use agentless evals instead of spawning agents for eval runs.** Agents waste tokens looping and checking — the eval process runs fine on its own.
 
 ## Boundaries & Access
 

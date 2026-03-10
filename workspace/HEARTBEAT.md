@@ -60,16 +60,22 @@ For each running agent:
 
 ### Priority 3 — Eval Monitoring + Callbacks
 
-**EVAL_RUNNING tasks:** Check if `processPid` is still alive:
+**EVAL_RUNNING tasks** (both agent-launched and agentless):
+Check if `processPid` is still alive:
 ```python
 import os
 try: os.kill(pid, 0); alive = True
 except: alive = False
 ```
 - If process dead → check for metrics file → transition to `callback_pending`
-- **CALLBACK_PENDING tasks:** Spawn callback agent:
+- Agentless evals (dispatched via `--eval`) have their own watcher that auto-transitions + logs metrics to history
+- **CALLBACK_PENDING tasks:** Spawn callback agent with full context:
   ```bash
-  bash scripts/dispatcher.sh --task <TASK_ID> --role <role> --timeout 30 "Process completed. Review results and take next action."
+  # Check if task has parentTask (agentless eval linked to improvement)
+  PARENT=$(bash scripts/task-manager.sh get <TASK_ID> | python3 -c "import json,sys; print(json.load(sys.stdin).get('parentTask',''))")
+  CONTEXT="Process completed. Review results at metricsPath."
+  [ -n "$PARENT" ] && CONTEXT="Eval for $PARENT completed. Compare results with parent task. Review metrics and decide next action."
+  bash scripts/dispatcher.sh --task <TASK_ID> --role guardian-tuner --timeout 30 "$CONTEXT"
   ```
 
 ### Priority 4 — Auto-Queue

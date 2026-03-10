@@ -43,7 +43,7 @@ unlock_state() {
 }
 
 # Valid transitions (single line for shell embedding)
-VALID_TRANSITIONS='{"todo":["agent_running","blocked","failed"],"agent_running":["done","failed","blocked","eval_running","timeout"],"eval_running":["callback_pending","failed","timeout","blocked"],"callback_pending":["agent_running","blocked","failed"],"done":["todo"],"failed":["todo","agent_running"],"blocked":["todo","agent_running"],"timeout":["todo","agent_running","failed"]}'
+VALID_TRANSITIONS='{"todo":["agent_running","eval_running","blocked","failed"],"agent_running":["done","failed","blocked","eval_running","timeout"],"eval_running":["callback_pending","done","failed","timeout","blocked"],"callback_pending":["agent_running","blocked","failed"],"done":["todo"],"failed":["todo","agent_running"],"blocked":["todo","agent_running"],"timeout":["todo","agent_running","failed"]}'
 
 CMD="${1:-help}"
 shift || true
@@ -51,7 +51,7 @@ shift || true
 case "$CMD" in
 
   create)
-    TASK_ID="" LABEL="" CALLBACK="dispatch" CONTEXT="" TIMEOUT_MIN=25
+    TASK_ID="" LABEL="" CALLBACK="dispatch" CONTEXT="" TIMEOUT_MIN=25 PARENT_TASK=""
     while [[ $# -gt 0 ]]; do
       case "$1" in
         --task)     TASK_ID="$2"; shift 2 ;;
@@ -59,6 +59,7 @@ case "$CMD" in
         --callback) CALLBACK="$2"; shift 2 ;;
         --context)  CONTEXT="$2"; shift 2 ;;
         --timeout)  TIMEOUT_MIN="$2"; shift 2 ;;
+        --parent)   PARENT_TASK="$2"; shift 2 ;;
         *)          echo "ERROR: Unknown option: $1" >&2; exit 1 ;;
       esac
     done
@@ -91,6 +92,7 @@ d['tasks']['$TASK_ID'] = {
     'source': 'manual',
     'role': None,
     'model': None,
+    'parentTask': '$PARENT_TASK' if '$PARENT_TASK' else None,
     'timeoutMin': $TIMEOUT_MIN,
     'createdAt': '$NOW',
     'createdEpoch': $NOW_EPOCH,
@@ -356,7 +358,10 @@ for tid, t in sorted(tasks.items(), key=sort_key):
     print(f'{icon} {tid}: {status} | {label}')
     print(f'   {age_min}min/{timeout}min{pid_str}{hist_str}')
     if t.get('processType'):
-        print(f'   process_type={t[\"processType\"]} callback={t.get(\"callbackType\",\"none\")}')
+        parent = f' parent={t[\"parentTask\"]}' if t.get('parentTask') else ''
+        print(f'   process_type={t[\"processType\"]} callback={t.get(\"callbackType\",\"none\")}{parent}')
+    elif t.get('parentTask'):
+        print(f'   parent={t[\"parentTask\"]}')
     if t.get('history'):
         last = t['history'][-1]
         print(f'   last_result: {json.dumps(last)[:120]}')
@@ -660,10 +665,12 @@ task-manager.sh — Unified task state management
 
 State machine:
   todo → agent_running → [done | failed | blocked | eval_running]
-  eval_running → callback_pending → agent_running → ...
+  todo → eval_running (agentless eval dispatch)
+  eval_running → [callback_pending | done | failed | timeout | blocked]
+  callback_pending → agent_running → ...
 
 Commands:
-  create     --task ID [--label desc] [--callback type] [--context "..."]
+  create     --task ID [--label desc] [--callback type] [--context "..."] [--parent TASK_ID]
   transition <task-id> <new-status> [--pid N] [--process-pid N] ...
   get        <task-id>              JSON of single task
   list       [--status X] [--json]  List all tasks

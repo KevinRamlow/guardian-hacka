@@ -1,88 +1,251 @@
 {
   "date": "2026-03-10",
-  "completedToday": 12,
-  "failedToday": 5,
+  "completedToday": 32,
+  "failedToday": 26,
   "recentAgents": [
     {
-      "sessionKey": "completed:AUTO-322",
-      "label": "Fix-GUA-1113-video-duration-tolerance",
-      "runtimeMs": 198000,
-      "status": "done",
-      "taskId": "AUTO-322",
+      "sessionKey": "completed:AUTO-333",
+      "label": "eval:Eval TC post-AUTO-332 (code fixes)",
+      "runtimeMs": 444000,
+      "status": "error",
+      "taskId": "AUTO-333",
       "source": "manual",
       "role": null,
-      "completedAt": "2026-03-10T14:21:02Z",
+      "completedAt": "2026-03-10T20:29:43Z",
       "linear": {
-        "title": "Fix GUA-1113 video duration tolerance",
-        "state": "Todo",
-        "stateColor": "#e2e2e2",
-        "commentCount": 0,
-        "updatedAt": "2026-03-10T14:16:47.466Z"
+        "title": "Eval TC post-AUTO-332 (code fixes)",
+        "state": "In Progress",
+        "stateColor": "#f2c94c",
+        "lastCommentAt": "2026-03-10T20:22:29.088Z",
+        "lastCommentPreview": "Eval launched (agentless, timeout=60min, workers=5, parent=AUTO-332)",
+        "commentCount": 1,
+        "updatedAt": "2026-03-10T20:22:29.958Z"
       },
-      "runtimeMin": "3.3",
+      "runtimeMin": "7.4",
+      "success": false
+    },
+    {
+      "sessionKey": "completed:AUTO-332",
+      "label": "Code-fix:-TC-time-tool-inversion-+-subje",
+      "runtimeMs": 282000,
+      "status": "done",
+      "taskId": "AUTO-332",
+      "source": "dispatch",
+      "role": "developer",
+      "completedAt": "2026-03-10T20:22:20Z",
+      "linear": {
+        "title": "Code fix: TC time tool inversion + subjective post-processing",
+        "state": "In Progress",
+        "stateColor": "#f2c94c",
+        "lastCommentAt": "2026-03-10T20:17:45.657Z",
+        "lastCommentPreview": "Agent spawned (timeout=25min, agent=developer, role=developer)",
+        "commentCount": 1,
+        "updatedAt": "2026-03-10T20:17:46.654Z"
+      },
+      "runtimeMin": "4.7",
       "success": true
     },
     {
-      "sessionKey": "completed:REVIEW-317",
-      "label": "review-AUTO-317",
-      "runtimeMs": 282000,
+      "sessionKey": "completed:AUTO-331",
+      "label": "eval:Eval CAPTIONS post-AUTO-330 (112 cases)",
+      "runtimeMs": 6000,
+      "status": "error",
+      "taskId": "AUTO-331",
+      "source": "manual",
+      "role": null,
+      "completedAt": "2026-03-10T20:15:10Z",
+      "linear": {
+        "title": "Eval CAPTIONS post-AUTO-330 (112 cases)",
+        "state": "Todo",
+        "stateColor": "#e2e2e2",
+        "commentCount": 0,
+        "updatedAt": "2026-03-10T20:15:07.103Z"
+      },
+      "runtimeMin": "0.1",
+      "success": false
+    },
+    {
+      "sessionKey": "completed:AUTO-330",
+      "label": "Fix-CAPTIONS-Bet-MGM-legal-disclaimer-de",
+      "runtimeMs": 300000,
+      "status": "error",
+      "taskId": "AUTO-330",
+      "source": "dispatch",
+      "role": "developer",
+      "completedAt": "2026-03-10T20:14:22Z",
+      "linear": {
+        "title": "Fix CAPTIONS Bet MGM legal disclaimer detection (16 errors)",
+        "state": "In Progress",
+        "stateColor": "#f2c94c",
+        "lastCommentAt": "2026-03-10T20:09:26.224Z",
+        "lastCommentPreview": "Agent spawned (timeout=20min, agent=developer, role=developer)",
+        "commentCount": 1,
+        "updatedAt": "2026-03-10T20:09:27.380Z"
+      },
+      "runtimeMin": "5.0",
+      "success": false
+    },
+    {
+      "sessionKey": "completed:AUTO-329",
+      "label": "Deep-analysis:-TC-FN-root-cause-from-eva",
+      "runtimeMs": 306000,
+      "status": "error",
+      "taskId": "AUTO-329",
+      "source": "dispatch",
+      "role": "debugger",
+      "completedAt": "2026-03-10T20:08:41Z",
+      "linear": {
+        "title": "Deep analysis: TC FN root cause from eval traces",
+        "state": "In Progress",
+        "stateColor": "#f2c94c",
+        "lastCommentAt": "2026-03-10T20:03:39.024Z",
+        "lastCommentPreview": "Agent spawned (timeout=20min, agent=debugger, role=debugger)",
+        "commentCount": 1,
+        "updatedAt": "2026-03-10T20:03:39.922Z"
+      },
+      "runtimeMin": "5.1",
+      "success": false
+    },
+    {
+      "sessionKey": "completed:AUTO-328",
+      "label": "eval:Eval TC post-AUTO-327 (a_partir_de fix)",
+      "runtimeMs": 6000,
+      "status": "error",
+      "taskId": "AUTO-328",
+      "source": "manual",
+      "role": null,
+      "completedAt": "2026-03-10T19:47:42Z",
+      "linear": {
+        "title": "Eval TC post-AUTO-327 (a_partir_de fix)",
+        "state": "Todo",
+        "stateColor": "#e2e2e2",
+        "commentCount": 0,
+        "updatedAt": "2026-03-10T19:47:39.003Z"
+      },
+      "runtimeMin": "0.1",
+      "success": false
+    },
+    {
+      "sessionKey": "completed:AUTO-327",
+      "label": "Fix-TC-a_partir_de-inversion-(19-Dr-Wolf",
+      "runtimeMs": 612000,
       "status": "done",
-      "taskId": "REVIEW-317",
-      "source": "auto-review",
-      "role": "reviewer",
-      "completedAt": "2026-03-10T12:44:27.839150+00:00",
-      "runtimeMin": "4.7",
+      "taskId": "AUTO-327",
+      "source": "dispatch",
+      "role": "developer",
+      "completedAt": "2026-03-10T19:47:30Z",
+      "linear": {
+        "title": "Fix TC a_partir_de inversion (19 Dr Wolff errors)",
+        "state": "In Progress",
+        "stateColor": "#f2c94c",
+        "lastCommentAt": "2026-03-10T19:37:22.284Z",
+        "lastCommentPreview": "Agent spawned (timeout=15min, agent=developer, role=developer)",
+        "commentCount": 1,
+        "updatedAt": "2026-03-10T19:37:23.200Z"
+      },
+      "runtimeMin": "10.2",
       "success": true
     },
     {
       "sessionKey": "completed:REVIEW-316",
       "label": "review-AUTO-316",
-      "runtimeMs": 52872000,
+      "runtimeMs": 77790000,
       "status": "error",
       "taskId": "REVIEW-316",
       "source": "auto-review",
       "role": "reviewer",
-      "completedAt": "2026-03-10T12:43:18.514Z",
-      "runtimeMin": "881.2",
+      "completedAt": "2026-03-10T19:38:34.792Z",
+      "runtimeMin": "1296.5",
       "success": false
     },
     {
       "sessionKey": "completed:AUTO-LOOP-2-prompt-refinement",
       "label": "anton-auto:prompt-refinement",
-      "runtimeMs": 53034000,
+      "runtimeMs": 77946000,
       "status": "done",
       "taskId": "AUTO-LOOP-2-prompt-refinement",
       "source": "manual",
       "role": null,
-      "completedAt": "2026-03-10T12:43:18.513Z",
-      "runtimeMin": "883.9",
+      "completedAt": "2026-03-10T19:38:34.791Z",
+      "runtimeMin": "1299.1",
+      "success": true
+    },
+    {
+      "sessionKey": "completed:AUTO-326",
+      "label": "eval:Eval TC post-fixes (100 cases)",
+      "runtimeMs": 2724000,
+      "status": "done",
+      "taskId": "AUTO-326",
+      "source": "manual",
+      "role": null,
+      "completedAt": "2026-03-10T19:08:33Z",
+      "runtimeMin": "45.4",
+      "success": true
+    },
+    {
+      "sessionKey": "completed:AUTO-325",
+      "label": "Eval-TIME_CONSTRAINTS-post-fixes-(100-ca",
+      "runtimeMs": 2850000,
+      "status": "error",
+      "taskId": "AUTO-325",
+      "source": "dispatch",
+      "role": "developer",
+      "completedAt": "2026-03-10T19:05:21Z",
+      "runtimeMin": "47.5",
+      "success": false
+    },
+    {
+      "sessionKey": "completed:AUTO-324",
+      "label": "Eval-TC-on-feat/anton-improvements-(100-",
+      "runtimeMs": 4698000,
+      "status": "error",
+      "taskId": "AUTO-324",
+      "source": "dispatch",
+      "role": "developer",
+      "completedAt": "2026-03-10T18:27:20Z",
+      "runtimeMin": "78.3",
+      "success": false
+    },
+    {
+      "sessionKey": "completed:AUTO-322",
+      "label": "Fix-GUA-1113-video-duration-tolerance",
+      "runtimeMs": 19242000,
+      "status": "done",
+      "taskId": "AUTO-322",
+      "source": "manual",
+      "role": null,
+      "completedAt": "2026-03-10T14:21:02Z",
+      "runtimeMin": "320.7",
+      "success": true
+    },
+    {
+      "sessionKey": "completed:REVIEW-317",
+      "label": "review-AUTO-317",
+      "runtimeMs": 25122000,
+      "status": "done",
+      "taskId": "REVIEW-317",
+      "source": "auto-review",
+      "role": "reviewer",
+      "completedAt": "2026-03-10T12:54:56Z",
+      "runtimeMin": "418.7",
       "success": true
     },
     {
       "sessionKey": "completed:AUTO-321",
       "label": "AUTO-321",
-      "runtimeMs": 41010000,
+      "runtimeMs": 65922000,
       "status": "error",
       "taskId": "AUTO-321",
       "source": "manual",
       "role": "guardian-tuner",
       "completedAt": "2026-03-10T01:21:29.001589+00:00",
-      "linear": {
-        "title": "Improve TIME_CONSTRAINTS accuracy (59% → 70%+)",
-        "state": "Todo",
-        "stateColor": "#e2e2e2",
-        "lastCommentAt": "2026-03-10T01:19:52.270Z",
-        "lastCommentPreview": "Agent spawned: AUTO-321 (timeout=30min, agent=guardian-tuner, role=guardian-tuner)",
-        "commentCount": 1,
-        "updatedAt": "2026-03-10T11:54:11.945Z"
-      },
-      "runtimeMin": "683.5",
+      "runtimeMin": "1098.7",
       "success": false
     },
     {
       "sessionKey": "completed:AUTO-317",
       "label": "Fix-TIME_CONSTRAINTS-over-reje",
-      "runtimeMs": 42336000,
+      "runtimeMs": 67248000,
       "status": "done",
       "taskId": "AUTO-317",
       "source": "dispatch",
@@ -97,13 +260,13 @@
         "commentCount": 1,
         "updatedAt": "2026-03-10T12:41:15.310Z"
       },
-      "runtimeMin": "705.6",
+      "runtimeMin": "1120.8",
       "success": true
     },
     {
       "sessionKey": "completed:AUTO-318",
       "label": "Fix-AUTO-313-analysis:-old-mod",
-      "runtimeMs": 42324000,
+      "runtimeMs": 67236000,
       "status": "done",
       "taskId": "AUTO-318",
       "source": "dispatch",
@@ -118,13 +281,13 @@
         "commentCount": 1,
         "updatedAt": "2026-03-10T01:00:43.396Z"
       },
-      "runtimeMin": "705.4",
+      "runtimeMin": "1120.6",
       "success": true
     },
     {
       "sessionKey": "completed:AUTO-319",
       "label": "Write-GKE-deploy-architecture-",
-      "runtimeMs": 42306000,
+      "runtimeMs": 67224000,
       "status": "done",
       "taskId": "AUTO-319",
       "source": "dispatch",
@@ -139,34 +302,25 @@
         "commentCount": 1,
         "updatedAt": "2026-03-10T01:01:18.535Z"
       },
-      "runtimeMin": "705.1",
+      "runtimeMin": "1120.4",
       "success": true
     },
     {
       "sessionKey": "completed:AUTO-320",
       "label": "Generate-Guardian-system-conte",
-      "runtimeMs": 42078000,
+      "runtimeMs": 66990000,
       "status": "done",
       "taskId": "AUTO-320",
       "source": "dispatch",
       "role": "developer",
       "completedAt": "2026-03-10T01:07:15.756107+00:00",
-      "linear": {
-        "title": "Generate Guardian system context doc for sub-agents",
-        "state": "Todo",
-        "stateColor": "#e2e2e2",
-        "lastCommentAt": "2026-03-10T01:02:02.304Z",
-        "lastCommentPreview": "Agent spawned: Generate-Guardian-system-conte (timeout=25min, agent=developer, role=developer)",
-        "commentCount": 1,
-        "updatedAt": "2026-03-10T01:17:14.193Z"
-      },
-      "runtimeMin": "701.3",
+      "runtimeMin": "1116.5",
       "success": true
     },
     {
       "sessionKey": "completed:AUTO-316",
       "label": "AUTO-316",
-      "runtimeMs": 53376000,
+      "runtimeMs": 78294000,
       "status": "done",
       "taskId": "AUTO-316",
       "source": "manual",
@@ -181,31 +335,31 @@
         "commentCount": 1,
         "updatedAt": "2026-03-09T22:02:01.447Z"
       },
-      "runtimeMin": "889.6",
+      "runtimeMin": "1304.9",
       "success": true
     },
     {
       "sessionKey": "completed:AUTO-311",
       "label": "🛡️-Severity-3-hard-gates",
-      "runtimeMs": 62748000,
+      "runtimeMs": 87666000,
       "status": "error",
       "taskId": "AUTO-311",
       "source": "dispatch",
       "role": "guardian-tuner",
       "completedAt": "2026-03-09T19:17:27Z",
-      "runtimeMin": "1045.8",
+      "runtimeMin": "1461.1",
       "success": false
     },
     {
       "sessionKey": "completed:AUTO-312",
       "label": "🔍-Compound-requirements-det",
-      "runtimeMs": 64368000,
+      "runtimeMs": 89286000,
       "status": "error",
       "taskId": "AUTO-312",
       "source": "dispatch",
       "role": "guardian-tuner",
       "completedAt": "2026-03-09T18:50:28Z",
-      "runtimeMin": "1072.8",
+      "runtimeMin": "1488.1",
       "success": false
     },
     {
@@ -372,16 +526,7 @@
       "source": "auto-queue",
       "completedAt": "2026-03-08T17:16:50.406Z",
       "runtimeMin": "7.3",
-      "success": false,
-      "linear": {
-        "title": "Add archetype detection validation dataset with edge case coverage",
-        "state": "Canceled",
-        "stateColor": "#95a2b3",
-        "lastCommentAt": "2026-03-08T17:09:34.593Z",
-        "lastCommentPreview": "Agent spawned: AUTO-297-add-archetype-detection-valida (timeout=25min, model=claude-sonnet-4-6, budget=$2.00)",
-        "commentCount": 1,
-        "updatedAt": "2026-03-08T23:47:02.888Z"
-      }
+      "success": false
     },
     {
       "sessionKey": "completed:AUTO-294",
@@ -403,16 +548,7 @@
       "source": "auto-queue",
       "completedAt": "2026-03-08T17:14:17.786Z",
       "runtimeMin": "4.7",
-      "success": true,
-      "linear": {
-        "title": "Implement regression detection in eval pipeline for accuracy tracking",
-        "state": "Done",
-        "stateColor": "#5e6ad2",
-        "lastCommentAt": "2026-03-08T17:09:39.491Z",
-        "lastCommentPreview": "Agent spawned: AUTO-295-implement-regression-detection (timeout=25min, model=claude-sonnet-4-6, budget=$2.00)",
-        "commentCount": 1,
-        "updatedAt": "2026-03-08T17:14:02.680Z"
-      }
+      "success": true
     },
     {
       "sessionKey": "completed:AUTO-298",
@@ -423,16 +559,7 @@
       "source": "auto-queue",
       "completedAt": "2026-03-08T17:12:17.750Z",
       "runtimeMin": "2.8",
-      "success": true,
-      "linear": {
-        "title": "Implement agent timeout recovery and state persistence in auto-queue",
-        "state": "Done",
-        "stateColor": "#5e6ad2",
-        "lastCommentAt": "2026-03-08T17:09:29.382Z",
-        "lastCommentPreview": "Agent spawned: AUTO-298-implement-agent-timeout-recove (timeout=25min, model=claude-sonnet-4-6, budget=$2.00)",
-        "commentCount": 1,
-        "updatedAt": "2026-03-08T17:12:05.637Z"
-      }
+      "success": true
     },
     {
       "sessionKey": "completed:CAI-326",

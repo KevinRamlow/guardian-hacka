@@ -142,7 +142,9 @@ The platform is called **CreatorAds** (repo: `brandlovers-team/creator-ads` — 
 ### State Machine
 ```
 todo → agent_running → [done | failed | blocked | eval_running]
-eval_running → callback_pending → agent_running → ...
+todo → eval_running (agentless eval via --eval flag)
+eval_running → [callback_pending | done | failed | timeout | blocked]
+callback_pending → agent_running → ...
 ```
 
 ### Architecture (4 scripts + 1 brain)
@@ -158,8 +160,12 @@ eval_running → callback_pending → agent_running → ...
 
 ### Commands
 ```bash
-# Dispatch (always creates Linear task)
+# Dispatch agent (always creates Linear task)
 bash scripts/dispatcher.sh --title "Fix X" --desc "Details" --role developer
+
+# Dispatch agentless eval (no agent tokens wasted)
+bash scripts/dispatcher.sh --eval --title "Eval: post fix" --parent AUTO-XX
+bash scripts/dispatcher.sh --eval --title "Eval: custom" --eval-config path.yaml --eval-workers 10
 
 # Spawn for existing task (callbacks, re-runs)
 bash scripts/dispatcher.sh --task AUTO-XX --role developer "prompt text"
@@ -289,15 +295,33 @@ If reactivated: clone repo, configure .env, chmod +x scripts, shared GCP creds.
 - For every task: spawn parallel agents testing different hypotheses, measure, double down on winners
 - Full framework in SOUL.md under orchestration principles
 
-## Guardian Eval Cycle (2026-03-09)
+## Guardian Eval Cycle (2026-03-10 — Updated: Agentless Evals)
 
-**Cycle:** Agent changes → `eval_running` → heartbeat detects process death → `callback_pending` → heartbeat spawns callback agent with history + learnings
+**Two eval launch modes:**
 
-**Agent workflow:**
-1. Launch eval: `bash scripts/run-guardian-eval.sh --config ... --workers 10`
-2. Transition: `bash scripts/task-manager.sh transition AUTO-XX eval_running --process-pid $(cat /tmp/guardian-eval.pid) --process-type eval --context "what changed"`
-3. Exit — heartbeat detects eval completion, spawns callback via dispatcher.sh
-4. Callback agent updates both via `add-history` + `add-learning`, continues or commits
+### 1. Agentless Eval (PREFERRED — saves tokens)
+```bash
+# Launch eval directly, no agent wasted on babysitting
+bash scripts/dispatcher.sh --eval --title "Eval: post GUA-1101" --parent AUTO-XX
+bash scripts/dispatcher.sh --eval --title "Eval: custom config" --eval-config path/to/eval.yaml --eval-workers 10
+```
+**Flow:** `dispatcher.sh --eval` → creates Linear task → launches eval process directly → `eval_running` → watcher detects death → auto-extracts accuracy → `callback_pending` → heartbeat spawns callback agent
+
+### 2. Agent-Launched Eval (legacy, when agent needs to make changes first)
+**Flow:** Agent changes → `eval_running` → heartbeat detects process death → `callback_pending` → heartbeat spawns callback agent
+
+### State machine (updated)
+```
+todo → eval_running (agentless, via --eval)
+todo → agent_running → eval_running (agent-launched)
+eval_running → callback_pending → agent_running → ...
+```
+
+### Key features
+- `--parent AUTO-XX` links eval to the improvement task that triggered it
+- Eval watcher auto-extracts accuracy from metrics.json → stores in history[]
+- Dashboard shows eval_running + callback_pending tasks with parent linkage
+- Default timeout: 90min (evals take time)
 
 
 ## Guardian Eval Dashboard (2026-03-08)

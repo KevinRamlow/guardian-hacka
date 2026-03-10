@@ -206,6 +206,7 @@ function readUnifiedState() {
         agentPid: t.agentPid,
         processPid: t.processPid,
         processType: t.processType,
+        parentTask: t.parentTask || null,
         alive,
         ageMin: parseFloat(ageMin),
         timeoutMin: t.timeoutMin || 25,
@@ -568,6 +569,45 @@ async function collectData() {
         extensions: t.extensions,
         learnings: t.learnings,
       });
+    } else if (t.status === 'eval_running') {
+      const runtimeMs = t.ageMin * 60000;
+      active.push({
+        sessionKey: `state:${t.taskId}`,
+        label: t.label,
+        runtimeMs,
+        status: 'eval_running',
+        taskId: t.taskId,
+        pid: t.processPid,
+        processType: t.processType || 'eval',
+        parentTask: t.parentTask,
+        source: t.source,
+        role: null,
+        timeoutMin: t.timeoutMin,
+        alive: t.alive,
+        retries: t.retries,
+        extensions: t.extensions,
+        learnings: t.learnings,
+      });
+    } else if (t.status === 'callback_pending') {
+      const runtimeMs = t.ageMin * 60000;
+      active.push({
+        sessionKey: `state:${t.taskId}`,
+        label: t.label,
+        runtimeMs,
+        status: 'callback_pending',
+        taskId: t.taskId,
+        pid: null,
+        processType: t.processType || 'eval',
+        parentTask: t.parentTask,
+        source: t.source,
+        role: null,
+        timeoutMin: t.timeoutMin,
+        alive: false,
+        retries: t.retries,
+        extensions: t.extensions,
+        learnings: t.learnings,
+        lastHistory: t.lastHistory,
+      });
     } else if (['done', 'failed', 'timeout', 'error'].includes(t.status)) {
       // Track for today's counters
       if (!completedAgentsToday.has(t.taskId)) {
@@ -884,17 +924,40 @@ app.get('/api/eval', (req, res) => {
         let alive = false;
         try { process.kill(pid, 0); alive = true; } catch {}
         
-        // Get progress from eval log
+        // Get progress from progress_meta.json in latest run dir (most reliable)
         let progress = {};
         try {
-          const logFiles = fs.readdirSync('/tmp').filter(f => f.startsWith('guardian-eval-')).sort().reverse();
-          if (logFiles.length > 0) {
-            const logContent = fs.readFileSync(path.join('/tmp', logFiles[0]), 'utf-8');
-            const progressMatch = logContent.match(/(\d+)\/(\d+)\s/g);
-            if (progressMatch) {
-              const last = progressMatch[progressMatch.length - 1];
-              const [completed, total] = last.trim().split('/').map(Number);
-              progress = { completed, total, percent: Math.round((completed / total) * 100) };
+          const EVAL_RUNS_DIR_P = path.join(WORKSPACE, 'guardian-agents-api-real/evals/.runs/content_moderation');
+          if (fs.existsSync(EVAL_RUNS_DIR_P)) {
+            const latestRunDir = fs.readdirSync(EVAL_RUNS_DIR_P)
+              .filter(d => d.startsWith('run_'))
+              .sort()
+              .reverse()[0];
+            if (latestRunDir) {
+              const metaPath = path.join(EVAL_RUNS_DIR_P, latestRunDir, 'progress_meta.json');
+              if (fs.existsSync(metaPath)) {
+                const meta = JSON.parse(fs.readFileSync(metaPath, 'utf-8'));
+                progress = {
+                  completed: meta.completed || 0,
+                  total: meta.total || 0,
+                  errors: meta.errors || 0,
+                  percent: meta.total > 0 ? Math.round((meta.completed / meta.total) * 100) : 0,
+                  lastUpdated: meta.last_updated || null,
+                };
+              }
+            }
+          }
+          // Fallback: try /tmp log file
+          if (!progress.total) {
+            const logFiles = fs.readdirSync('/tmp').filter(f => f.startsWith('guardian-eval-')).sort().reverse();
+            if (logFiles.length > 0) {
+              const logContent = fs.readFileSync(path.join('/tmp', logFiles[0]), 'utf-8');
+              const progressMatch = logContent.match(/(\d+)\/(\d+)\s/g);
+              if (progressMatch) {
+                const last = progressMatch[progressMatch.length - 1];
+                const [completed, total] = last.trim().split('/').map(Number);
+                progress = { completed, total, percent: Math.round((completed / total) * 100) };
+              }
             }
           }
         } catch {}

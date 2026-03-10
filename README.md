@@ -43,10 +43,9 @@ No supervisor. No reporter. No spawn-agent.sh. One owner per responsibility.
 Single source of truth: `~/.openclaw/tasks/state.json`
 
 ```
-todo → agent_running → done
-                     → failed
-                     → blocked
+todo → agent_running → done | failed | blocked
                      → eval_running → callback_pending → agent_running → ...
+todo → eval_running (agentless eval via --eval flag)
 ```
 
 Each task carries `history[]` and `learnings[]` — callback agents get full context from previous cycles.
@@ -104,8 +103,11 @@ Spawn: `bash scripts/dispatcher.sh --title "Fix X" --desc "Details" --role devel
 ## Quick Commands
 
 ```bash
-# Dispatch work (Linear task created automatically)
+# Dispatch agent work (Linear task created automatically)
 bash scripts/dispatcher.sh --title "Fix X" --desc "Details" --role developer
+
+# Dispatch agentless eval (no agent tokens wasted)
+bash scripts/dispatcher.sh --eval --title "Eval: post fix" --parent AUTO-XX
 
 # Dispatch for existing Linear task
 bash scripts/dispatcher.sh --task AUTO-XX --role developer "prompt text"

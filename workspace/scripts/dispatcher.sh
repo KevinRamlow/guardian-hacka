@@ -4,17 +4,19 @@
 # THE ONLY WAY to spawn agents. No exceptions.
 #
 # Modes:
-#   New task:      dispatcher.sh --title "Fix X" --desc "Details" [--role developer]
-#   Existing task: dispatcher.sh --task AUTO-XX [--file prompt.md] "task text"
+#   Agent (default): dispatcher.sh --title "Fix X" --desc "Details" [--role developer]
+#   Agent existing:  dispatcher.sh --task AUTO-XX [--file prompt.md] "task text"
+#   Eval (agentless): dispatcher.sh --eval --title "Eval: post fix" [--parent AUTO-XX]
+#                     [--eval-config path] [--eval-dataset file] [--eval-workers N]
 #
 # What it does (in order):
-#   1. Validate inputs + dispatch guard
+#   1. Validate inputs + dispatch guard (skipped for --eval)
 #   2. Create Linear task (if --title, else verify --task exists)
 #   3. Budget + dedup + capacity checks
 #   4. Register in state.json via task-manager.sh
-#   5. Build prompt file
-#   6. Spawn openclaw agent (nohup)
-#   7. Launch exit-code watcher (auto-transitions state on agent death)
+#   5. Build prompt file (agent mode) or prepare eval args (eval mode)
+#   6. Spawn openclaw agent OR launch eval process directly
+#   7. Launch watcher (auto-transitions state on death)
 #   8. Log to Linear + disk
 #
 # Architecture:
@@ -43,6 +45,7 @@ source "$OC_HOME/.env" 2>/dev/null || true
 
 TITLE="" DESCRIPTION="" LABEL="" TASK_ID="" TASK_TEXT="" TASK_FILE=""
 TIMEOUT_MIN=25 EXPLICIT_TIMEOUT=false ROLE="" MODE="yolo" FORCE=false
+EVAL_MODE=false PARENT_TASK="" EVAL_CONFIG="" EVAL_DATASET="" EVAL_WORKERS=15
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -55,6 +58,11 @@ while [[ $# -gt 0 ]]; do
     --mode)        MODE="$2"; shift 2 ;;
     --file)        TASK_FILE="$2"; shift 2 ;;
     --force)       FORCE=true; shift ;;
+    --eval)        EVAL_MODE=true; shift ;;
+    --parent)      PARENT_TASK="$2"; shift 2 ;;
+    --eval-config) EVAL_CONFIG="$2"; shift 2 ;;
+    --eval-dataset) EVAL_DATASET="$2"; shift 2 ;;
+    --eval-workers) EVAL_WORKERS="$2"; shift 2 ;;
     -*)            echo "ERROR: Unknown option: $1" >&2; exit 1 ;;
     *)             TASK_TEXT="$1"; shift ;;
   esac
@@ -69,10 +77,20 @@ fi
 [ -n "$TASK_FILE" ] && { [ -f "$TASK_FILE" ] && TASK_TEXT=$(cat "$TASK_FILE") || { echo "ERROR: File not found: $TASK_FILE" >&2; exit 1; }; }
 [ -z "$TASK_TEXT" ] && TASK_TEXT="$DESCRIPTION"
 
+# Eval mode defaults
+if $EVAL_MODE; then
+  ! $EXPLICIT_TIMEOUT && TIMEOUT_MIN=90
+  [ -z "$LABEL" ] && [ -n "$TITLE" ] && LABEL="eval:${TITLE}"
+fi
+
 # ════════════════════════════════════════════════════════
-# DISPATCH GUARD — Block forbidden patterns
+# DISPATCH GUARD — Block forbidden patterns (skipped in --eval mode)
 # ════════════════════════════════════════════════════════
 
+if $EVAL_MODE; then
+  # Eval mode: dispatcher itself launches the eval process — skip guard
+  :
+else
 FORBIDDEN_PATTERNS=(
   "python.*run_eval"
   "python3.*run_eval"
@@ -84,10 +102,11 @@ FORBIDDEN_PATTERNS=(
 for pattern in "${FORBIDDEN_PATTERNS[@]}"; do
   if echo "$TASK_TEXT" | grep -qiE "$pattern"; then
     echo "BLOCKED: Task text contains forbidden pattern: $pattern" >&2
-    echo "  Evals must be launched via run-guardian-eval.sh inside the sub-agent." >&2
+    echo "  Evals must be launched via --eval flag or via run-guardian-eval.sh inside a sub-agent." >&2
     exit 1
   fi
 done
+fi # end dispatch guard
 
 # ════════════════════════════════════════════════════════
 # ROLE VALIDATION
@@ -131,11 +150,15 @@ if [ -n "$TITLE" ]; then
   # New task — create in Linear
   echo "[dispatch] Creating Linear task: $TITLE"
 
-  RESULT=$(python3 << PYEOF
+  # Export for Python to read from env (avoids heredoc escaping issues)
+  export _DISP_TITLE="$TITLE"
+  export _DISP_DESC="$DESCRIPTION"
+
+  RESULT=$(python3 << 'PYEOF'
 import json, sys, subprocess, os
 
-title = """$TITLE"""
-desc = """$DESCRIPTION"""
+title = os.environ.get("_DISP_TITLE", "")
+desc = os.environ.get("_DISP_DESC", "")
 api_key = os.environ.get("LINEAR_API_KEY", "")
 
 # Get team ID
@@ -158,6 +181,20 @@ r3 = subprocess.run(["curl", "-s", "-X", "POST", "https://api.linear.app/graphql
   "-H", f"Authorization: {api_key}", "-H", "Content-Type: application/json",
   "-d", json.dumps({"query": mutation})],
   capture_output=True, text=True)
+
+# Validate response before printing
+try:
+    data = json.loads(r3.stdout)
+    if "errors" in data:
+        print(json.dumps({"error": data["errors"][0].get("message", "Unknown Linear API error")}), file=sys.stderr)
+        sys.exit(1)
+    # Verify the expected path exists
+    _ = data["data"]["issueCreate"]["issue"]["identifier"]
+except (KeyError, IndexError, json.JSONDecodeError) as e:
+    print(f"Linear API response parse error: {e}", file=sys.stderr)
+    print(f"Response: {r3.stdout[:500]}", file=sys.stderr)
+    sys.exit(1)
+
 print(r3.stdout)
 PYEOF
 )
@@ -331,7 +368,9 @@ HAS=$(bash "$TASK_MGR" has "$TASK_ID")
 # ════════════════════════════════════════════════════════
 
 # Create task in state (idempotent — skips if exists)
-bash "$TASK_MGR" create --task "$TASK_ID" --label "$LABEL" --timeout "$TIMEOUT_MIN" 2>/dev/null || true
+CREATE_ARGS=(--task "$TASK_ID" --label "$LABEL" --timeout "$TIMEOUT_MIN")
+[ -n "$PARENT_TASK" ] && CREATE_ARGS+=(--parent "$PARENT_TASK")
+bash "$TASK_MGR" create "${CREATE_ARGS[@]}" 2>/dev/null || true
 
 mkdir -p "$LOGS_DIR" "$TASKS_DIR"
 PROMPT_FILE="$TASKS_DIR/${TASK_ID}-full-prompt.md"
@@ -344,8 +383,134 @@ PROMPT_FILE="$TASKS_DIR/${TASK_ID}-full-prompt.md"
 } > "$PROMPT_FILE"
 
 # ════════════════════════════════════════════════════════
-# STEP 6: SPAWN AGENT
+# STEP 6: SPAWN (Agent or Eval)
 # ════════════════════════════════════════════════════════
+
+if $EVAL_MODE; then
+  # ── EVAL MODE: Launch eval process directly, no agent ──
+  EVAL_SCRIPT="$OC_HOME/workspace/scripts/run-guardian-eval.sh"
+  if [ ! -f "$EVAL_SCRIPT" ]; then
+    echo "ERROR: Eval script not found: $EVAL_SCRIPT" >&2
+    exit 1
+  fi
+
+  # Build eval args
+  EVAL_ARGS=()
+  [ -n "$EVAL_CONFIG" ] && EVAL_ARGS+=(--config "$EVAL_CONFIG")
+  [ -n "$EVAL_DATASET" ] && EVAL_ARGS+=(--dataset "$EVAL_DATASET")
+  EVAL_ARGS+=(--workers "$EVAL_WORKERS")
+
+  echo "[dispatch:eval] Launching eval for $TASK_ID (workers=$EVAL_WORKERS)..."
+
+  # Source eval env + run
+  nohup bash -c "
+    source '${OC_HOME}/.env' 2>/dev/null || true
+    source '${OC_HOME}/workspace/.env.guardian-eval' 2>/dev/null || true
+    export OPENCLAW_SESSION_TYPE=subagent  # bypass main-thread guard
+    bash '$EVAL_SCRIPT' ${EVAL_ARGS[*]} \
+      > '$LOGS_DIR/${TASK_ID}-output.log' 2> '$LOGS_DIR/${TASK_ID}-stderr.log'
+  " &>/dev/null &
+  EVAL_PID=$!
+
+  sleep 3
+  if ! kill -0 "$EVAL_PID" 2>/dev/null; then
+    echo "ERROR: Eval process died immediately (PID=$EVAL_PID)" >&2
+    cat "$LOGS_DIR/${TASK_ID}-stderr.log" 2>/dev/null >&2
+    bash "$TASK_MGR" transition "$TASK_ID" failed --exit-code 1 2>/dev/null || true
+    exit 1
+  fi
+
+  # Find the actual python eval PID (child of our bash wrapper)
+  sleep 2
+  PYTHON_PID=$(pgrep -f "run_eval.py.*content_moderation" | head -1 || echo "$EVAL_PID")
+
+  # Build context for callback
+  EVAL_CONTEXT="Agentless eval dispatched"
+  [ -n "$PARENT_TASK" ] && EVAL_CONTEXT="Eval for $PARENT_TASK improvements"
+
+  # Transition: todo → eval_running
+  bash "$TASK_MGR" transition "$TASK_ID" eval_running \
+    --process-pid "$PYTHON_PID" \
+    --process-type eval \
+    --context "$EVAL_CONTEXT" 2>/dev/null
+  [ -n "$PARENT_TASK" ] && bash "$TASK_MGR" set-field "$TASK_ID" parentTask "$PARENT_TASK" 2>/dev/null || true
+
+  # ── EVAL WATCHER: Detect eval death → callback_pending ──
+  (
+    # Wait for eval wrapper to die
+    while kill -0 "$EVAL_PID" 2>/dev/null; do sleep 10; done
+    wait "$EVAL_PID" 2>/dev/null
+    EXIT_CODE=$?
+    echo "$EXIT_CODE" > "$LOGS_DIR/${TASK_ID}-exit-code"
+
+    # Also check if the python process is still alive (it may outlive the wrapper)
+    if [ -n "$PYTHON_PID" ] && [ "$PYTHON_PID" != "$EVAL_PID" ]; then
+      while kill -0 "$PYTHON_PID" 2>/dev/null; do sleep 10; done
+      wait "$PYTHON_PID" 2>/dev/null || true
+    fi
+
+    # Check current status
+    CURRENT_STATUS=$(python3 -c "
+import json
+try:
+    d = json.load(open('$OC_HOME/tasks/state.json'))
+    print(d['tasks'].get('$TASK_ID', {}).get('status', 'unknown'))
+except: print('unknown')
+" 2>/dev/null || echo "unknown")
+
+    if [ "$CURRENT_STATUS" != "eval_running" ]; then
+      exit 0  # Already transitioned manually
+    fi
+
+    # Find latest metrics
+    RUNS_DIR="$OC_HOME/workspace/guardian-agents-api-real/evals/.runs/content_moderation"
+    LATEST_RUN=$(ls -td "$RUNS_DIR"/run_* 2>/dev/null | head -1)
+    METRICS_PATH=""
+    RESULT_PATH=""
+    if [ -n "$LATEST_RUN" ] && [ -f "$LATEST_RUN/metrics.json" ]; then
+      METRICS_PATH="$LATEST_RUN/metrics.json"
+      RESULT_PATH="$LATEST_RUN"
+
+      # Extract accuracy and store in history
+      ACCURACY=$(python3 -c "
+import json
+m = json.load(open('$METRICS_PATH'))
+s = m.get('summary_statistics', m)
+print(f'{s.get(\"mean_aggregate_score\", 0) * 100:.1f}')
+" 2>/dev/null || echo "0")
+
+      bash "$TASK_MGR" add-history "$TASK_ID" "{\"type\":\"eval_complete\",\"accuracy\":$ACCURACY,\"run\":\"$(basename "$LATEST_RUN")\",\"exit_code\":$EXIT_CODE}" 2>/dev/null || true
+    fi
+
+    # Transition to callback_pending (heartbeat will spawn callback agent)
+    bash "$TASK_MGR" transition "$TASK_ID" callback_pending --exit-code "$EXIT_CODE" 2>/dev/null
+    [ -n "$METRICS_PATH" ] && bash "$TASK_MGR" set-field "$TASK_ID" metricsPath "$METRICS_PATH" 2>/dev/null || true
+    [ -n "$RESULT_PATH" ] && bash "$TASK_MGR" set-field "$TASK_ID" resultPath "$RESULT_PATH" 2>/dev/null || true
+
+    # Linear log
+    if [ -n "$ACCURACY" ] && [ "$ACCURACY" != "0" ]; then
+      bash "$LINEAR_SCRIPT" comment "$TASK_ID" "Eval completed: accuracy=${ACCURACY}% (exit=$EXIT_CODE, run=$(basename "$LATEST_RUN"))" 2>/dev/null || true
+    else
+      bash "$LINEAR_SCRIPT" comment "$TASK_ID" "Eval completed (exit=$EXIT_CODE)" 2>/dev/null || true
+    fi
+
+    TS=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
+    echo "[$TS] [eval-watcher] $TASK_ID: eval done (exit=$EXIT_CODE, accuracy=${ACCURACY:-?}%)" >> "$MASTER_LOG" 2>/dev/null || true
+
+  ) &>/dev/null &
+
+  # ── LOG + OUTPUT ──
+  TS=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
+  echo "[$TS] [eval-dispatch] $TASK_ID: PID=$EVAL_PID python=$PYTHON_PID timeout=${TIMEOUT_MIN}min parent=${PARENT_TASK:-none}" >> "$MASTER_LOG" 2>/dev/null || true
+
+  bash "$LINEAR_SCRIPT" comment "$TASK_ID" "Eval launched (agentless, timeout=${TIMEOUT_MIN}min, workers=$EVAL_WORKERS$([ -n "$PARENT_TASK" ] && echo ", parent=$PARENT_TASK"))" 2>/dev/null || true
+  bash "$LINEAR_SCRIPT" status "$TASK_ID" progress 2>/dev/null || true
+
+  echo "[dispatch:eval] $TASK_ID PID=$EVAL_PID python=$PYTHON_PID timeout=${TIMEOUT_MIN}min${PARENT_TASK:+ parent=$PARENT_TASK}"
+  echo "$EVAL_PID"
+
+else
+  # ── AGENT MODE: Standard agent spawn ──
 
 AGENT_ID="${ROLE:-main}"
 TIMEOUT_SEC=$((TIMEOUT_MIN * 60))
@@ -457,3 +622,5 @@ bash "$LINEAR_SCRIPT" status "$TASK_ID" progress 2>/dev/null || true
 
 echo "[dispatch] $TASK_ID PID=$AGENT_PID timeout=${TIMEOUT_MIN}min agent=$AGENT_ID${ROLE:+ role=$ROLE}"
 echo "$AGENT_PID"
+
+fi # end EVAL_MODE vs AGENT_MODE
