@@ -77,10 +77,10 @@ fi
 
 # Run eval
 echo "→ Starting eval..."
-cd /Users/fonsecabc/.openclaw/workspace/guardian-agents-api-real
+cd ${OPENCLAW_HOME:-$HOME/.openclaw}/workspace/guardian-agents-api-real
 
 export MAX_PARALLEL_AGENTS=$MAX_AGENTS
-source /Users/fonsecabc/.openclaw/workspace/.env.guardian-eval
+source ${OPENCLAW_HOME:-$HOME/.openclaw}/workspace/.env.guardian-eval
 
 RUN_ID=$(date +%Y%m%d_%H%M%S)
 LOG=/tmp/guardian-eval-${RUN_ID}.log

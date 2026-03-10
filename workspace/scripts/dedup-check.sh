@@ -10,7 +10,7 @@ set -euo pipefail
 TASK_ID="${1:?Task ID required}"
 TASK_TEXT="${2:?Task text required}"
 
-DEDUP_DIR="/Users/fonsecabc/.openclaw/tasks/dedup"
+DEDUP_DIR="${OPENCLAW_HOME:-$HOME/.openclaw}/tasks/dedup"
 HISTORY_FILE="$DEDUP_DIR/task-history.jsonl"
 EVENTS_FILE="$DEDUP_DIR/dedup-events.jsonl"
 SIMILARITY_THRESHOLD=0.55  # 55% keyword overlap = duplicate (catches paraphrased tasks)

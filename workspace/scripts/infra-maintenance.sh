@@ -4,7 +4,7 @@
 #
 set -euo pipefail
 
-WORKSPACE="/Users/fonsecabc/.openclaw/workspace"
+WORKSPACE="${OPENCLAW_HOME:-$HOME/.openclaw}/workspace"
 LOCKFILE="/tmp/infra-maintenance.lock"
 
 exec 200>"$LOCKFILE"

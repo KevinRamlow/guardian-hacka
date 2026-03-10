@@ -16,7 +16,7 @@ HOST = os.environ.get("LANGFUSE_BASE_URL", "https://us.cloud.langfuse.com")
 
 if not PK or not SK:
     # Try loading from .env.secrets
-    secrets = Path("/Users/fonsecabc/.openclaw/workspace/.env.secrets")
+    secrets = Path("" + os.environ.get("OPENCLAW_HOME", os.path.expanduser("~/.openclaw")) + "/workspace/.env.secrets")
     if secrets.exists():
         for line in secrets.read_text().splitlines():
             line = line.strip()
@@ -34,8 +34,8 @@ import urllib.request
 import base64
 
 AUTH = base64.b64encode(f"{PK}:{SK}".encode()).decode()
-STATE_FILE = Path("/Users/fonsecabc/.openclaw/tasks/langfuse-state.json")
-SESSIONS_DIR = Path("/Users/fonsecabc/.openclaw/agents/main/sessions")
+STATE_FILE = Path("" + os.environ.get("OPENCLAW_HOME", os.path.expanduser("~/.openclaw")) + "/tasks/langfuse-state.json")
+SESSIONS_DIR = Path("" + os.environ.get("OPENCLAW_HOME", os.path.expanduser("~/.openclaw")) + "/agents/main/sessions")
 
 
 def post_langfuse(batch):

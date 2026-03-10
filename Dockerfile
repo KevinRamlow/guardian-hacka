@@ -27,6 +27,10 @@ COPY --chown=node:node hooks/ /home/node/.openclaw/hooks/
 COPY --chown=node:node docker-entrypoint.sh /home/node/docker-entrypoint.sh
 RUN chmod +x /home/node/docker-entrypoint.sh
 
+# Copy workspace (scripts, config, templates, identity files)
+# PVC mount at /home/node/.openclaw overwrites these at runtime
+COPY --chown=node:node workspace/ /home/node/.openclaw/workspace/
+
 USER node
 WORKDIR /home/node
 

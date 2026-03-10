@@ -4,8 +4,8 @@
 #        agent-peek.sh CAI-XX follow  — tail -f the activity stream
 #        agent-peek.sh                — show all running agents with last event
 
-LOGS_DIR="/Users/fonsecabc/.openclaw/tasks/agent-logs"
-STATE_FILE="/Users/fonsecabc/.openclaw/tasks/state.json"
+LOGS_DIR="${OPENCLAW_HOME:-$HOME/.openclaw}/tasks/agent-logs"
+STATE_FILE="${OPENCLAW_HOME:-$HOME/.openclaw}/tasks/state.json"
 
 if [ -z "$1" ]; then
   # Show all running agents with their last activity

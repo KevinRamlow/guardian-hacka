@@ -5,7 +5,7 @@
 #   agent-checkpoint.sh <task_id> <step_name> <summary_text>
 #
 # What it does:
-#   - Saves a JSON checkpoint to /Users/fonsecabc/.openclaw/tasks/checkpoints/<task_id>/
+#   - Saves a JSON checkpoint to ${OPENCLAW_HOME:-$HOME/.openclaw}/tasks/checkpoints/<task_id>/
 #   - Each call overwrites the "latest" checkpoint (one active checkpoint per task)
 #   - Checkpoint is read by auto-queue when re-spawning a timed-out agent
 #
@@ -22,7 +22,7 @@ if [ -z "$TASK_ID" ] || [ -z "$STEP_NAME" ] || [ -z "$SUMMARY" ]; then
   exit 1
 fi
 
-CHECKPOINT_DIR="/Users/fonsecabc/.openclaw/tasks/checkpoints/${TASK_ID}"
+CHECKPOINT_DIR="${OPENCLAW_HOME:-$HOME/.openclaw}/tasks/checkpoints/${TASK_ID}"
 mkdir -p "$CHECKPOINT_DIR"
 
 CHECKPOINT_FILE="${CHECKPOINT_DIR}/checkpoint.json"

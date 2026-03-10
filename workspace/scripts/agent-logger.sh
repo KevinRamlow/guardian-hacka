@@ -9,7 +9,7 @@ EVENT="${2:-log}"
 MESSAGE="${3:-}"
 EXTRA="${4:-}"
 
-LOGS_DIR="/Users/fonsecabc/.openclaw/tasks/agent-logs"
+LOGS_DIR="${OPENCLAW_HOME:-$HOME/.openclaw}/tasks/agent-logs"
 MASTER_LOG="$LOGS_DIR/master.log"
 TASK_LOG="$LOGS_DIR/${TASK_ID}.log"
 

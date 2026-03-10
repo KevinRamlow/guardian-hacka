@@ -17,42 +17,44 @@
 #
 set -euo pipefail
 
-TASK_MGR="/Users/fonsecabc/.openclaw/workspace/scripts/task-manager.sh"
-SPAWNER="/Users/fonsecabc/.openclaw/workspace/scripts/spawn-agent.sh"
-LINEAR_LOG="/Users/fonsecabc/.openclaw/workspace/skills/task-manager/scripts/linear-log.sh"
-KILL_TREE="/Users/fonsecabc/.openclaw/workspace/scripts/kill-agent-tree.sh"
+OC_HOME="${OPENCLAW_HOME:-$HOME/.openclaw}"
+TASK_MGR="$OC_HOME/workspace/scripts/task-manager.sh"
+SPAWNER="$OC_HOME/workspace/scripts/spawn-agent.sh"
+LINEAR_LOG="$OC_HOME/workspace/skills/task-manager/scripts/linear-log.sh"
+KILL_TREE="$OC_HOME/workspace/scripts/kill-agent-tree.sh"
 LOCKFILE="/tmp/supervisor.lock"
 
 # Single instance guard
 exec 200>"$LOCKFILE"
 flock -n 200 || { exit 0; }
 
-mkdir -p /Users/fonsecabc/.openclaw/tasks/agent-logs
+mkdir -p "$OC_HOME/tasks/agent-logs"
 
 # Run guardrails check (non-blocking — log violations but continue)
-GUARDRAILS="/Users/fonsecabc/.openclaw/workspace/scripts/guardrails.sh"
+GUARDRAILS="$OC_HOME/workspace/scripts/guardrails.sh"
 if [ -f "$GUARDRAILS" ]; then
   bash "$GUARDRAILS" --check state 2>&1 | grep -v "^GUARDRAILS: OK" || true
 fi
 
-source /Users/fonsecabc/.openclaw/workspace/.env.linear 2>/dev/null || true
-source /Users/fonsecabc/.openclaw/workspace/.env.secrets 2>/dev/null || true
+source ${OPENCLAW_HOME:-$HOME/.openclaw}/workspace/.env.linear 2>/dev/null || true
+source ${OPENCLAW_HOME:-$HOME/.openclaw}/workspace/.env.secrets 2>/dev/null || true
 
 python3 << 'PYEOF'
 import json, os, sys, time, subprocess, re, glob
 from datetime import datetime, timezone
 
-STATE_FILE = "/Users/fonsecabc/.openclaw/tasks/state.json"
-TASK_MGR = "/Users/fonsecabc/.openclaw/workspace/scripts/task-manager.sh"
-SPAWNER = "/Users/fonsecabc/.openclaw/workspace/scripts/spawn-agent.sh"
-LINEAR_LOG = "/Users/fonsecabc/.openclaw/workspace/skills/task-manager/scripts/linear-log.sh"
-KILL_TREE = "/Users/fonsecabc/.openclaw/workspace/scripts/kill-agent-tree.sh"
-LOGS_DIR = "/Users/fonsecabc/.openclaw/tasks/agent-logs"
-SPAWN_TASKS_DIR = "/Users/fonsecabc/.openclaw/tasks/spawn-tasks"
-METRICS_FILE = "/Users/fonsecabc/.openclaw/workspace/metrics/agent-health.json"
-CONSEC_FILE = "/Users/fonsecabc/.openclaw/tasks/consecutive-failures.json"
-ALERT_COOLDOWN_FILE = "/Users/fonsecabc/.openclaw/workspace/metrics/alert-cooldown.json"
-REVIEW_HOOK = "/Users/fonsecabc/.openclaw/workspace/scripts/review-hook.sh"
+OC = os.environ.get("OPENCLAW_HOME", os.path.expanduser("~/.openclaw"))
+STATE_FILE = f"{OC}/tasks/state.json"
+TASK_MGR = f"{OC}/workspace/scripts/task-manager.sh"
+SPAWNER = f"{OC}/workspace/scripts/spawn-agent.sh"
+LINEAR_LOG = f"{OC}/workspace/skills/task-manager/scripts/linear-log.sh"
+KILL_TREE = f"{OC}/workspace/scripts/kill-agent-tree.sh"
+LOGS_DIR = f"{OC}/tasks/agent-logs"
+SPAWN_TASKS_DIR = f"{OC}/tasks/spawn-tasks"
+METRICS_FILE = f"{OC}/workspace/metrics/agent-health.json"
+CONSEC_FILE = f"{OC}/tasks/consecutive-failures.json"
+ALERT_COOLDOWN_FILE = f"{OC}/workspace/metrics/alert-cooldown.json"
+REVIEW_HOOK = f"{OC}/workspace/scripts/review-hook.sh"
 
 SLACK_BOT_TOKEN = os.environ.get("SLACK_BOT_TOKEN", "")
 LINEAR_API_KEY = os.environ.get("LINEAR_API_KEY", "")
@@ -214,7 +216,7 @@ def send_alert(message, event_key=None, cooldown_sec=300):
     if not SLACK_BOT_TOKEN:
         return
     if event_key:
-        dedup_script = "/Users/fonsecabc/.openclaw/workspace/scripts/alert-dedup.sh"
+        dedup_script = f"{OC}/workspace/scripts/alert-dedup.sh"
         if os.path.exists(dedup_script):
             r = run_cmd(["bash", dedup_script, event_key, str(cooldown_sec), ""])
             if r and r.returncode != 0:
@@ -411,7 +413,7 @@ for task_id, task in list(tasks.items()):
                     # Log to Linear (best effort, no state mutation)
                     run_cmd(["bash", LINEAR_LOG, task_id,
                              f"Agent completed ({age_min}min, {output_size}B)", "done"])
-                    run_cmd(["bash", "/Users/fonsecabc/.openclaw/workspace/scripts/link-logs-to-linear.sh", task_id])
+                    run_cmd(["bash", f"{OC}/workspace/scripts/link-logs-to-linear.sh", task_id])
                     trigger_review_hook(task_id)
                     completions += 1
                     consec = {"count": 0, "task_ids": []}
@@ -421,7 +423,7 @@ for task_id, task in list(tasks.items()):
                     mark_reported(task_id)
                     run_cmd(["bash", LINEAR_LOG, task_id,
                              f"Agent failed ({age_min}min, {quality}: {detail[:200]})", "blocked"])
-                    run_cmd(["bash", "/Users/fonsecabc/.openclaw/workspace/scripts/link-logs-to-linear.sh", task_id])
+                    run_cmd(["bash", f"{OC}/workspace/scripts/link-logs-to-linear.sh", task_id])
                     failures += 1
                     consec["count"] += 1
                     consec["task_ids"].append(task_id)
@@ -499,7 +501,7 @@ for task_id, task in list(tasks.items()):
         has_result = result_path and os.path.exists(result_path)
 
         if task.get("processType") == "eval" and not has_metrics:
-            eval_runs = glob.glob("/Users/fonsecabc/.openclaw/workspace/guardian-agents-api-real/evals/.runs/content_moderation/run_*/metrics.json")
+            eval_runs = glob.glob(f"{OC}/workspace/guardian-agents-api-real/evals/.runs/content_moderation/run_*/metrics.json")
             if eval_runs:
                 latest = max(eval_runs, key=os.path.getmtime)
                 if os.path.getmtime(latest) > started_epoch:
@@ -583,7 +585,7 @@ except Exception:
 # HEALTH METRICS (local file, not state.json)
 # ============================================================================
 
-os.makedirs("/Users/fonsecabc/.openclaw/workspace/metrics", exist_ok=True)
+os.makedirs(f"{OC}/workspace/metrics", exist_ok=True)
 
 running = sum(1 for t in tasks.values() if t.get("status") == "agent_running")
 eval_running = sum(1 for t in tasks.values() if t.get("status") == "eval_running")

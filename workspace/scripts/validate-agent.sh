@@ -8,7 +8,7 @@ TASK_FILE=""
 
 # If CAI-XXX, find task file
 if [[ "$TASK_INPUT" =~ ^CAI-[0-9]+$ ]]; then
-  TASK_FILE="/Users/fonsecabc/.openclaw/tasks/agent-logs/${TASK_INPUT}-task.md"
+  TASK_FILE="${OPENCLAW_HOME:-$HOME/.openclaw}/tasks/agent-logs/${TASK_INPUT}-task.md"
   if [ ! -f "$TASK_FILE" ]; then
     echo "❌ Task file not found: $TASK_FILE"
     exit 1

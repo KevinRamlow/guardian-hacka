@@ -9,11 +9,11 @@
 set -euo pipefail
 
 TASK_ID="${1:?Task ID required}"
-TASK_MGR="/Users/fonsecabc/.openclaw/workspace/scripts/task-manager.sh"
-SPAWNER="/Users/fonsecabc/.openclaw/workspace/scripts/spawn-agent.sh"
-LINEAR_LOG="/Users/fonsecabc/.openclaw/workspace/skills/task-manager/scripts/linear-log.sh"
-LOGS_DIR="/Users/fonsecabc/.openclaw/tasks/agent-logs"
-REVIEW_CONFIG="/Users/fonsecabc/.openclaw/workspace/config/review-config.json"
+TASK_MGR="${OPENCLAW_HOME:-$HOME/.openclaw}/workspace/scripts/task-manager.sh"
+SPAWNER="${OPENCLAW_HOME:-$HOME/.openclaw}/workspace/scripts/spawn-agent.sh"
+LINEAR_LOG="${OPENCLAW_HOME:-$HOME/.openclaw}/workspace/skills/task-manager/scripts/linear-log.sh"
+LOGS_DIR="${OPENCLAW_HOME:-$HOME/.openclaw}/tasks/agent-logs"
+REVIEW_CONFIG="${OPENCLAW_HOME:-$HOME/.openclaw}/workspace/config/review-config.json"
 
 # Load config (with defaults)
 ENABLED=true
@@ -58,7 +58,7 @@ OUTPUT_SIZE=$(stat -f%z "$OUTPUT_LOG" 2>/dev/null || stat -c%s "$OUTPUT_LOG" 2>/
 # Check for git changes in the workspace (if required)
 GIT_CHANGES=""
 if [ "$REQUIRE_GIT_CHANGES" = "true" ]; then
-  cd /Users/fonsecabc/.openclaw/workspace
+  cd ${OPENCLAW_HOME:-$HOME/.openclaw}/workspace
   GIT_CHANGES=$(git diff --name-only HEAD~1 2>/dev/null | head -20)
   [ -z "$GIT_CHANGES" ] && exit 0
 fi
@@ -101,7 +101,7 @@ Perform a thorough adversarial code review following the 5-step process:
 ## Output
 Log your review to Linear:
 \`\`\`bash
-bash /Users/fonsecabc/.openclaw/workspace/skills/task-manager/scripts/linear-log.sh $TASK_ID "REVIEW: [verdict]. [N] findings: [summary]" done
+bash ${OPENCLAW_HOME:-$HOME/.openclaw}/workspace/skills/task-manager/scripts/linear-log.sh $TASK_ID "REVIEW: [verdict]. [N] findings: [summary]" done
 \`\`\`
 
 If REQUEST_CHANGES, also create a follow-up task description in the log.

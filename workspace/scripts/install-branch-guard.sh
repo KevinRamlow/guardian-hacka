@@ -80,7 +80,7 @@ install_hook() {
 # Default repos if none specified
 if [ $# -eq 0 ]; then
   REPOS=(
-    "/Users/fonsecabc/.openclaw/workspace/guardian-agents-api-real"
+    "${OPENCLAW_HOME:-$HOME/.openclaw}/workspace/guardian-agents-api-real"
     "/Users/fonsecabc/brandlovrs/ai/guardian/guardian-agents-api"
     "/Users/fonsecabc/brandlovrs/ai/guardian/guardian-api"
     "/Users/fonsecabc/brandlovrs/ai/guardian/guardian-ads-treatment"

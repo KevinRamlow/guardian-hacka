@@ -14,8 +14,8 @@ TASK_ID="${1:?Usage: agent-report.sh <task-id> <status>}"
 STATUS="${2:?Status required: done|failed|timeout|idle_killed}"
 TIMEOUT_MIN="${3:-}"
 
-LOGS_DIR="/Users/fonsecabc/.openclaw/tasks/agent-logs"
-WORKSPACE="/Users/fonsecabc/.openclaw/workspace"
+LOGS_DIR="${OPENCLAW_HOME:-$HOME/.openclaw}/tasks/agent-logs"
+WORKSPACE="${OPENCLAW_HOME:-$HOME/.openclaw}/workspace"
 
 source "$WORKSPACE/.env.secrets" 2>/dev/null || true
 source "$WORKSPACE/.env.linear" 2>/dev/null || true
@@ -158,8 +158,8 @@ bash "$WORKSPACE/scripts/agent-logger.sh" "$TASK_ID" "report" "$HEADLINE ($DURAT
 
 # 5. Clean up timeout warning file and checkpoint on success
 if [ "$STATUS" = "done" ]; then
-  rm -f "/Users/fonsecabc/.openclaw/tasks/timeout-warnings/${TASK_ID}.warn" 2>/dev/null || true
-  rm -rf "/Users/fonsecabc/.openclaw/tasks/checkpoints/${TASK_ID}" 2>/dev/null || true
+  rm -f "${OPENCLAW_HOME:-$HOME/.openclaw}/tasks/timeout-warnings/${TASK_ID}.warn" 2>/dev/null || true
+  rm -rf "${OPENCLAW_HOME:-$HOME/.openclaw}/tasks/checkpoints/${TASK_ID}" 2>/dev/null || true
 fi
 
 echo "[report] $TASK_ID: $HEADLINE ($DURATION) → Linear=$LINEAR_STATUS + Slack"

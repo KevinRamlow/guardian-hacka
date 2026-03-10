@@ -6,8 +6,8 @@ set -euo pipefail
 
 export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
 
-WORKSPACE="/Users/fonsecabc/.openclaw/workspace"
-AGENT_LOGS="/Users/fonsecabc/.openclaw/tasks/agent-logs"
+WORKSPACE="${OPENCLAW_HOME:-$HOME/.openclaw}/workspace"
+AGENT_LOGS="${OPENCLAW_HOME:-$HOME/.openclaw}/tasks/agent-logs"
 LOG_PREFIX="[$(date -u +%H:%M)]"
 
 source "$WORKSPACE/.env.linear" 2>/dev/null || { echo "$LOG_PREFIX ERROR: .env.linear not found"; exit 1; }

@@ -8,7 +8,7 @@ if [ -z "$PID" ] || ! ps -p $PID > /dev/null 2>&1; then
   echo "❌ No eval running (no valid PID found)"
   
   # Check if recently completed
-  LATEST_RUN=$(ls -td /Users/fonsecabc/.openclaw/workspace/guardian-agents-api-real/evals/.runs/content_moderation/run_* 2>/dev/null | head -1)
+  LATEST_RUN=$(ls -td ${OPENCLAW_HOME:-$HOME/.openclaw}/workspace/guardian-agents-api-real/evals/.runs/content_moderation/run_* 2>/dev/null | head -1)
   if [ -n "$LATEST_RUN" ] && [ -f "$LATEST_RUN/progress_meta.json" ]; then
     STATUS=$(jq -r '.status // "unknown"' "$LATEST_RUN/progress_meta.json")
     if [ "$STATUS" = "completed" ]; then
@@ -22,7 +22,7 @@ if [ -z "$PID" ] || ! ps -p $PID > /dev/null 2>&1; then
 fi
 
 # Find run dir
-RUN_DIR=$(ls -td /Users/fonsecabc/.openclaw/workspace/guardian-agents-api-real/evals/.runs/content_moderation/run_* 2>/dev/null | head -1)
+RUN_DIR=$(ls -td ${OPENCLAW_HOME:-$HOME/.openclaw}/workspace/guardian-agents-api-real/evals/.runs/content_moderation/run_* 2>/dev/null | head -1)
 
 if [ -z "$RUN_DIR" ] || [ ! -f "$RUN_DIR/progress_meta.json" ]; then
   ELAPSED=$(ps -p $PID -o etime= | xargs)

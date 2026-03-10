@@ -10,9 +10,9 @@
 #
 set -euo pipefail
 
-TASK_MGR="/Users/fonsecabc/.openclaw/workspace/scripts/task-manager.sh"
-LOGS_DIR="/Users/fonsecabc/.openclaw/tasks/agent-logs"
-WORKSPACE="/Users/fonsecabc/.openclaw/workspace"
+TASK_MGR="${OPENCLAW_HOME:-$HOME/.openclaw}/workspace/scripts/task-manager.sh"
+LOGS_DIR="${OPENCLAW_HOME:-$HOME/.openclaw}/tasks/agent-logs"
+WORKSPACE="${OPENCLAW_HOME:-$HOME/.openclaw}/workspace"
 DIAGNOSE="$WORKSPACE/scripts/diagnose-failure.sh"
 LINEAR_SCRIPT="$WORKSPACE/skills/linear/scripts/linear.sh"
 REPLICANTS_CHANNEL="D0AK1B981QR"
@@ -147,7 +147,7 @@ except: pass
 
     # Cleanup on success
     if [ "$STATUS" = "done" ]; then
-      rm -f "/Users/fonsecabc/.openclaw/tasks/timeout-warnings/${TASK_ID}.warn" 2>/dev/null || true
+      rm -f "${OPENCLAW_HOME:-$HOME/.openclaw}/tasks/timeout-warnings/${TASK_ID}.warn" 2>/dev/null || true
     fi
 
     echo "[report] $TASK_ID: $HEADLINE ($DURATION) → Linear=$LINEAR_STATUS + Slack"

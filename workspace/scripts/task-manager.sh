@@ -23,7 +23,7 @@
 #
 set -euo pipefail
 
-STATE_FILE="/Users/fonsecabc/.openclaw/tasks/state.json"
+STATE_FILE="${OPENCLAW_HOME:-$HOME/.openclaw}/tasks/state.json"
 LOCKFILE="/tmp/task-manager.lock"
 
 # Ensure state file exists

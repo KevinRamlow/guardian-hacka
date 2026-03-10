@@ -9,7 +9,7 @@ TASK_ID="${1:?Task ID required}"
 STEP_NAME="${2:?Step name required}"
 SUMMARY="${3:?Summary required}"
 
-source /Users/fonsecabc/.openclaw/workspace/.env.secrets 2>/dev/null || true
+source ${OPENCLAW_HOME:-$HOME/.openclaw}/workspace/.env.secrets 2>/dev/null || true
 SLACK_BOT_TOKEN="${SLACK_BOT_TOKEN:-}"
 CAIO_DM="D0AK1B981QR"
 
@@ -33,7 +33,7 @@ if [ -n "$MESSAGE" ]; then
 fi
 
 # Write checkpoint file for the agent to detect
-CHECKPOINT_DIR="/Users/fonsecabc/.openclaw/tasks/checkpoints"
+CHECKPOINT_DIR="${OPENCLAW_HOME:-$HOME/.openclaw}/tasks/checkpoints"
 mkdir -p "$CHECKPOINT_DIR"
 CHECKPOINT_FILE="$CHECKPOINT_DIR/${TASK_ID}.checkpoint"
 

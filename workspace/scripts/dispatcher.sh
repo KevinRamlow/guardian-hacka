@@ -8,12 +8,12 @@
 #
 set -euo pipefail
 
-source /Users/fonsecabc/.openclaw/workspace/.env.secrets 2>/dev/null || true
-source /Users/fonsecabc/.openclaw/workspace/.env.linear 2>/dev/null || true
+source ${OPENCLAW_HOME:-$HOME/.openclaw}/workspace/.env.secrets 2>/dev/null || true
+source ${OPENCLAW_HOME:-$HOME/.openclaw}/workspace/.env.linear 2>/dev/null || true
 
-TASK_MGR="/Users/fonsecabc/.openclaw/workspace/scripts/task-manager.sh"
-SPAWNER="/Users/fonsecabc/.openclaw/workspace/scripts/spawn-agent.sh"
-CLASSIFY="/Users/fonsecabc/.openclaw/workspace/scripts/classify-task.sh"
+TASK_MGR="${OPENCLAW_HOME:-$HOME/.openclaw}/workspace/scripts/task-manager.sh"
+SPAWNER="${OPENCLAW_HOME:-$HOME/.openclaw}/workspace/scripts/spawn-agent.sh"
+CLASSIFY="${OPENCLAW_HOME:-$HOME/.openclaw}/workspace/scripts/classify-task.sh"
 
 TITLE="" DESCRIPTION="" LABEL="" PROJECT="" TIMEOUT=25 ROLE="" MODE=""
 
@@ -36,7 +36,7 @@ done
 [ -z "$DESCRIPTION" ] && DESCRIPTION="$TITLE"
 
 # --- Pre-flight: guardrails check ---
-GUARDRAILS="/Users/fonsecabc/.openclaw/workspace/scripts/guardrails.sh"
+GUARDRAILS="${OPENCLAW_HOME:-$HOME/.openclaw}/workspace/scripts/guardrails.sh"
 if [ -f "$GUARDRAILS" ]; then
   if ! bash "$GUARDRAILS" --check state 2>/dev/null; then
     echo "ERROR: Guardrails check failed — state.json may be corrupt. Fix before dispatching." >&2
@@ -142,7 +142,7 @@ if [ $SPAWN_EXIT -ne 0 ]; then
   echo "ERROR: Spawn failed for $TASK_ID" >&2
   echo "$SPAWN_OUTPUT" >&2
   bash "$TASK_MGR" transition "$TASK_ID" blocked 2>/dev/null || true
-  bash /Users/fonsecabc/.openclaw/workspace/skills/task-manager/scripts/linear-log.sh "$TASK_ID" "Spawn failed: $SPAWN_OUTPUT" blocked 2>/dev/null || true
+  bash ${OPENCLAW_HOME:-$HOME/.openclaw}/workspace/skills/task-manager/scripts/linear-log.sh "$TASK_ID" "Spawn failed: $SPAWN_OUTPUT" blocked 2>/dev/null || true
   exit 1
 fi
 

@@ -59,7 +59,7 @@ else
 
     # Alert via linear-log.sh if repeated failures (posts to both Linear and Slack)
     if [ "$FAIL_COUNT" -ge 3 ]; then
-        LINEAR_LOG="/Users/fonsecabc/.openclaw/workspace/skills/task-manager/scripts/linear-log.sh"
+        LINEAR_LOG="${OPENCLAW_HOME:-$HOME/.openclaw}/workspace/skills/task-manager/scripts/linear-log.sh"
         if [ -f "$LINEAR_LOG" ]; then
             bash "$LINEAR_LOG" "CAI-INFRA" "CRITICAL: Gateway failed to restart after $FAIL_COUNT consecutive attempts. Manual intervention may be required." blocked 2>/dev/null || true
         fi

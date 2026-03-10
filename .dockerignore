@@ -1,0 +1,56 @@
+# Runtime state — comes from PVC, not baked in image
+tasks/
+agents/
+browser/
+canvas/
+completions/
+delivery-queue/
+devices/
+identity/
+logs/
+media/
+memory/
+skills/
+subagents/
+cron/
+workspace-*/
+
+# Secrets
+.env
+.env.*
+!.env.example
+credentials/
+
+# Git
+.git/
+.gitignore
+
+# Docs / CI (not needed in container)
+.github/
+infra/
+
+# Heavy workspace subdirs (cloned repos, not needed in image)
+workspace/billy-workspace/
+workspace/clawdbots/
+workspace/guardian-agents-api-real/
+workspace/son-of-anton-workspace/
+workspace/.archive/
+workspace/**/.archive/
+workspace/node_modules/
+workspace/**/__pycache__/
+workspace/presentations/
+workspace/dashboard/node_modules/
+workspace/.git/
+
+# Workspace runtime state
+workspace/.env*
+workspace/metrics/
+workspace/tasks/
+
+# Large/generated files
+*.bak*
+*.png
+*.jpg
+*.mp4
+*.zip
+.DS_Store

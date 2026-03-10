@@ -15,15 +15,15 @@
 # The gateway manages lifecycle. Context comes from the agent's workspace SOUL.md.
 set -euo pipefail
 
-REGISTRY="/Users/fonsecabc/.openclaw/workspace/scripts/task-manager.sh"
-LOGGER="/Users/fonsecabc/.openclaw/workspace/scripts/agent-logger.sh"
-LINEAR_LOG="/Users/fonsecabc/.openclaw/workspace/skills/task-manager/scripts/linear-log.sh"
-LOGS_DIR="/Users/fonsecabc/.openclaw/tasks/agent-logs"
-TASKS_DIR="/Users/fonsecabc/.openclaw/tasks/spawn-tasks"
-DEDUP_CHECK="/Users/fonsecabc/.openclaw/workspace/scripts/dedup-check.sh"
+REGISTRY="${OPENCLAW_HOME:-$HOME/.openclaw}/workspace/scripts/task-manager.sh"
+LOGGER="${OPENCLAW_HOME:-$HOME/.openclaw}/workspace/scripts/agent-logger.sh"
+LINEAR_LOG="${OPENCLAW_HOME:-$HOME/.openclaw}/workspace/skills/task-manager/scripts/linear-log.sh"
+LOGS_DIR="${OPENCLAW_HOME:-$HOME/.openclaw}/tasks/agent-logs"
+TASKS_DIR="${OPENCLAW_HOME:-$HOME/.openclaw}/tasks/spawn-tasks"
+DEDUP_CHECK="${OPENCLAW_HOME:-$HOME/.openclaw}/workspace/scripts/dedup-check.sh"
 
-TIMEOUT_RULES="/Users/fonsecabc/.openclaw/workspace/config/timeout-rules.json"
-INTERACTIVE_TEMPLATE="/Users/fonsecabc/.openclaw/workspace/templates/claude-md/interactive-mode.md"
+TIMEOUT_RULES="${OPENCLAW_HOME:-$HOME/.openclaw}/workspace/config/timeout-rules.json"
+INTERACTIVE_TEMPLATE="${OPENCLAW_HOME:-$HOME/.openclaw}/workspace/templates/claude-md/interactive-mode.md"
 
 TASK_ID="" LABEL="" TIMEOUT_MIN=25 EXPLICIT_TIMEOUT=false SOURCE="manual" TASK_TEXT="" TASK_FILE="" FORCE_SPAWN=false
 ROLE="" AGENT_MODE="yolo"
@@ -53,7 +53,7 @@ done
 [ -z "$LABEL" ] && LABEL="$TASK_ID"
 
 # --- Dispatch guard: BLOCK if task text contains forbidden patterns ---
-DISPATCH_GUARD="/Users/fonsecabc/.openclaw/workspace/scripts/dispatch-guard.sh"
+DISPATCH_GUARD="${OPENCLAW_HOME:-$HOME/.openclaw}/workspace/scripts/dispatch-guard.sh"
 if [ -f "$DISPATCH_GUARD" ] && [ -n "$TASK_TEXT" ]; then
   if ! bash "$DISPATCH_GUARD" "$TASK_TEXT" 2>/dev/null; then
     echo "ERROR: Task text contains forbidden direct-launch patterns (sessions_spawn, nohup python, etc)." >&2
@@ -64,10 +64,10 @@ fi
 
 # --- Validate --role if specified ---
 if [ -n "$ROLE" ]; then
-  WORKSPACE="/Users/fonsecabc/.openclaw/workspace/workspace-${ROLE}"
+  WORKSPACE="${OPENCLAW_HOME:-$HOME/.openclaw}/workspace/workspace-${ROLE}"
   if [ ! -d "$WORKSPACE" ] || [ ! -f "$WORKSPACE/SOUL.md" ]; then
     echo "ERROR: Agent workspace not found: $WORKSPACE" >&2
-    echo "  Available roles: $(ls -d /Users/fonsecabc/.openclaw/workspace/workspace-*/ 2>/dev/null | xargs -I{} basename {} | sed 's/workspace-//' | tr '\n' ' ' || echo 'none')" >&2
+    echo "  Available roles: $(ls -d ${OPENCLAW_HOME:-$HOME/.openclaw}/workspace/workspace-*/ 2>/dev/null | xargs -I{} basename {} | sed 's/workspace-//' | tr '\n' ' ' || echo 'none')" >&2
     exit 1
   fi
 fi
@@ -115,14 +115,15 @@ fi
 # --- Budget Check ---
 if ! $FORCE_SPAWN; then
   BUDGET_CHECK=$(python3 - "$TIMEOUT_MIN" << 'PYEOF'
-import json, sys
+import json, sys, os
 from pathlib import Path
 
 timeout_min = float(sys.argv[1])
 COST_PER_MIN = 0.08  # sonnet rate (all native agents use sonnet)
+OC = os.environ.get("OPENCLAW_HOME", os.path.expanduser("~/.openclaw"))
 
-STATE_FILE = Path("/Users/fonsecabc/.openclaw/tasks/api-usage-state.json")
-BUDGET_FILE = Path("/Users/fonsecabc/.openclaw/workspace/self-improvement/loop/budget-status.json")
+STATE_FILE = Path(f"{OC}/tasks/api-usage-state.json")
+BUDGET_FILE = Path(f"{OC}/workspace/self-improvement/loop/budget-status.json")
 
 try:
     state = json.loads(STATE_FILE.read_text())

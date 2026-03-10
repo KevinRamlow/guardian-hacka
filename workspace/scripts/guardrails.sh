@@ -14,8 +14,8 @@
 
 set -uo pipefail
 
-STATE_FILE="/Users/fonsecabc/.openclaw/tasks/state.json"
-WORKSPACE="/Users/fonsecabc/.openclaw/workspace"
+STATE_FILE="${OPENCLAW_HOME:-$HOME/.openclaw}/tasks/state.json"
+WORKSPACE="${OPENCLAW_HOME:-$HOME/.openclaw}/workspace"
 CHECK="${1:-all}"
 [ "$CHECK" = "--check" ] && CHECK="${2:-all}"
 
@@ -106,8 +106,8 @@ print(s)
   done
 
   # Deprecated agent-registry.json should not be recently written
-  if [ -f "/Users/fonsecabc/.openclaw/tasks/agent-registry.json" ]; then
-    MOD_AGE=$(( $(date +%s) - $(stat -f%m "/Users/fonsecabc/.openclaw/tasks/agent-registry.json" 2>/dev/null || echo 0) ))
+  if [ -f "${OPENCLAW_HOME:-$HOME/.openclaw}/tasks/agent-registry.json" ]; then
+    MOD_AGE=$(( $(date +%s) - $(stat -f%m "${OPENCLAW_HOME:-$HOME/.openclaw}/tasks/agent-registry.json" 2>/dev/null || echo 0) ))
     if [ "$MOD_AGE" -lt 300 ]; then
       fail "agent-registry.json modified ${MOD_AGE}s ago — something still writes to it"
     fi

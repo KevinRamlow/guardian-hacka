@@ -12,7 +12,7 @@
 #
 set -euo pipefail
 
-COOLDOWN_FILE="/Users/fonsecabc/.openclaw/workspace/metrics/alert-cooldown.json"
+COOLDOWN_FILE="${OPENCLAW_HOME:-$HOME/.openclaw}/workspace/metrics/alert-cooldown.json"
 EVENT_KEY="${1:?Event key required (e.g., done:AUTO-123)}"
 COOLDOWN_SEC="${2:-300}"  # default 5 min cooldown
 MESSAGE="${3:-}"

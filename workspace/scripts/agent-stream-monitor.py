@@ -21,8 +21,8 @@ if len(sys.argv) < 2:
     sys.exit(1)
 
 TASK_ID = sys.argv[1]
-LOGS_DIR = os.environ.get("LOGS_DIR", "/Users/fonsecabc/.openclaw/tasks/agent-logs")
-WORKSPACE = "/Users/fonsecabc/.openclaw/workspace"
+LOGS_DIR = os.environ.get("LOGS_DIR", "" + os.environ.get("OPENCLAW_HOME", os.path.expanduser("~/.openclaw")) + "/tasks/agent-logs")
+WORKSPACE = "" + os.environ.get("OPENCLAW_HOME", os.path.expanduser("~/.openclaw")) + "/workspace"
 
 # Report interval: post progress every N seconds or N tool calls (whichever comes first)
 REPORT_INTERVAL_SEC = 120   # every 2 minutes

@@ -4,10 +4,10 @@
 set -euo pipefail
 
 TASK_ID="$1"
-LOGS_DIR="/Users/fonsecabc/.openclaw/tasks/agent-logs"
-STATE_FILE="/Users/fonsecabc/.openclaw/tasks/state.json"
+LOGS_DIR="${OPENCLAW_HOME:-$HOME/.openclaw}/tasks/agent-logs"
+STATE_FILE="${OPENCLAW_HOME:-$HOME/.openclaw}/tasks/state.json"
 
-source /Users/fonsecabc/.openclaw/workspace/.env.secrets 2>/dev/null || true
+source ${OPENCLAW_HOME:-$HOME/.openclaw}/workspace/.env.secrets 2>/dev/null || true
 
 # Get Linear ID from state
 LINEAR_ID=$(python3 -c "
