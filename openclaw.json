@@ -151,20 +151,7 @@
   },
   "channels": {
     "whatsapp": {
-      "enabled": true,
-      "dmPolicy": "allowlist",
-      "selfChatMode": true,
-      "allowFrom": [
-        "+5531983904021"
-      ],
-      "groupPolicy": "allowlist",
-      "ackReaction": {
-        "emoji": "eyes",
-        "direct": true,
-        "group": "always"
-      },
-      "debounceMs": 0,
-      "mediaMaxMb": 50
+      "enabled": false
     },
     "slack": {
       "name": "Anton",
@@ -230,7 +217,7 @@
   "plugins": {
     "entries": {
       "whatsapp": {
-        "enabled": true
+        "enabled": false
       },
       "slack": {
         "enabled": true
