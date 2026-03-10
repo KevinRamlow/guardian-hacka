@@ -52,6 +52,15 @@ done
 [ -n "$TASK_FILE" ] && { [ -f "$TASK_FILE" ] && TASK_TEXT=$(cat "$TASK_FILE") || { echo "ERROR: File not found: $TASK_FILE" >&2; exit 1; }; }
 [ -z "$LABEL" ] && LABEL="$TASK_ID"
 
+# --- Dispatch guard: warn if task text contains forbidden patterns ---
+DISPATCH_GUARD="/Users/fonsecabc/.openclaw/workspace/scripts/dispatch-guard.sh"
+if [ -f "$DISPATCH_GUARD" ] && [ -n "$TASK_TEXT" ]; then
+  if ! bash "$DISPATCH_GUARD" "$TASK_TEXT" 2>/dev/null; then
+    echo "WARN: Task text contains direct-launch patterns. Ensure eval is launched via run-guardian-eval.sh" >&2
+    # Warning only — don't block spawns, just log
+  fi
+fi
+
 # --- Validate --role if specified ---
 if [ -n "$ROLE" ]; then
   WORKSPACE="/Users/fonsecabc/.openclaw/workspace/workspace-${ROLE}"

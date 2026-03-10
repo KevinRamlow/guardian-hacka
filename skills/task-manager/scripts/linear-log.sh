@@ -35,5 +35,4 @@ echo "✅ Logged to Linear $TASK_ID" >&2
 # Persistent disk log (ALWAYS — survives API failures)
 /Users/fonsecabc/.openclaw/workspace/scripts/agent-logger.sh "$TASK_ID" "${STATUS:-log}" "$MESSAGE" "linear+slack" 2>/dev/null || true
 
-# Dual-post to Slack
-/Users/fonsecabc/.openclaw/workspace/scripts/slack-linear-post.sh "$TASK_ID" "$MESSAGE" "$STATUS" 2>&1 || echo "⚠️  Slack post failed (non-fatal)" >&2
+# Slack notification handled by reporter.sh — slack-linear-post.sh is archived

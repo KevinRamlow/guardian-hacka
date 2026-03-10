@@ -65,8 +65,9 @@ fi
 
 # Check if review already exists in state.json (prevent re-spawn loop)
 REVIEW_TASK_ID="REVIEW-${TASK_ID#AUTO-}"
-if bash "$TASK_MGR" has "$REVIEW_TASK_ID" 2>/dev/null; then
-  echo "[review-hook] $REVIEW_TASK_ID already exists in state.json, skipping"
+HAS_RESULT=$(bash "$TASK_MGR" has "$REVIEW_TASK_ID" 2>/dev/null || echo "no")
+if [ "$HAS_RESULT" != "no" ]; then
+  echo "[review-hook] $REVIEW_TASK_ID already exists in state.json ($HAS_RESULT), skipping"
   exit 0
 fi
 

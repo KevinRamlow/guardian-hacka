@@ -1,0 +1,87 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: billy-openclaw
+  labels:
+    app: billy-openclaw
+spec:
+  replicas: 1
+  revisionHistoryLimit: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: billy-openclaw
+  template:
+    metadata:
+      labels:
+        app: billy-openclaw
+        tags.datadoghq.com/env: "prod"
+        tags.datadoghq.com/service: "billy-openclaw"
+        tags.datadoghq.com/version: "latest"
+    spec:
+      serviceAccountName: billy-openclaw
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        fsGroup: 1000
+      containers:
+        - name: billy-openclaw
+          image: ghcr.io/openclaw/openclaw:2026.3.8
+          args:
+            - "gateway"
+            - "--port"
+            - "18789"
+            - "--bind"
+            - "lan"
+          ports:
+            - name: gateway
+              containerPort: 18789
+              protocol: TCP
+          env:
+            - name: NODE_ENV
+              value: "production"
+            - name: DD_ENV
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.labels['tags.datadoghq.com/env']
+            - name: DD_SERVICE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.labels['tags.datadoghq.com/service']
+            - name: DD_VERSION
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.labels['tags.datadoghq.com/version']
+          envFrom:
+            - secretRef:
+                name: billy-openclaw
+          volumeMounts:
+            - name: openclaw-state
+              mountPath: /home/node/.openclaw
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 18789
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 18789
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 2Gi
+      volumes:
+        - name: openclaw-state
+          persistentVolumeClaim:
+            claimName: billy-openclaw-state

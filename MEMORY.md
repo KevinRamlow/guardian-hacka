@@ -337,5 +337,7 @@ If reactivated: clone repo, configure .env, chmod +x scripts, shared GCP creds.
 **Status:** `bash .shortcuts/auto-loop-status`
 **Self-monitored** via BMAD role architecture (supervisor.sh handles completions/health)
 
-## SSH & Sync (2026-03-08)
-- **VMs:** Billy (`root@89.167.64.183`) — passwordless SSH (currently STOPPED)
+## SSH & Sync (2026-03-09)
+- **VMs:** Billy (`root@89.167.64.183`) — passwordless SSH, RUNNING (port 18790, gateway PID active)
+- Billy gateway token: in `.env.secrets`
+- Billy allowlist: Caio, Luca, Victoria, Matheus, Victor Braga, João Souza (U06KB22AGDU)

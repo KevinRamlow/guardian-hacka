@@ -1,0 +1,25 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: anton-openclaw
+  namespace: argocd
+  annotations:
+    argocd-image-updater.argoproj.io/image-list: >-
+      anton-openclaw=ghcr.io/openclaw/openclaw
+    argocd-image-updater.argoproj.io/update-strategy: semver
+    argocd-image-updater.argoproj.io/anton-openclaw.allow-tags: "regexp:^2026\\."
+spec:
+  project: default
+  source:
+    repoURL: git@github.com:brandlovers-team/cicd-k8s.git
+    targetRevision: main
+    path: apps/prod/anton-openclaw
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: prod
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

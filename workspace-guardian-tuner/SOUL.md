@@ -59,3 +59,7 @@ exit 0
 - NEVER poll eval results (register with process manager and exit)
 - NEVER skip the eval step
 - NEVER edit `openclaw.json`
+- NEVER run `python run_eval.py` or `nohup python` directly — use `bash scripts/run-guardian-eval.sh`
+- NEVER commit to protected branches (main, develop, homolog, feat/GUA-*) — work on your own branch
+- NEVER send completion messages more than once — report results, then exit
+- Before committing, verify branch: `git symbolic-ref --short HEAD` must NOT match protected patterns

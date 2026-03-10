@@ -225,9 +225,18 @@ def trigger_review_hook(task_id):
             print(f"  REVIEW hook error: {e}")
 
 
-def send_alert(message):
+def send_alert(message, event_key=None, cooldown_sec=300):
+    """Send Slack alert with dedup. If event_key provided, suppress duplicates within cooldown."""
     if not SLACK_BOT_TOKEN:
         return
+    # Dedup check via alert-dedup.sh
+    if event_key:
+        dedup_script = "/Users/fonsecabc/.openclaw/workspace/scripts/alert-dedup.sh"
+        if os.path.exists(dedup_script):
+            r = run_cmd(["bash", dedup_script, event_key, str(cooldown_sec), ""])
+            if r and r.returncode != 0:
+                print(f"  ALERT SUPPRESSED: {event_key}")
+                return
     try:
         run_cmd(["curl", "-s", "-X", "POST", "https://slack.com/api/chat.postMessage",
                   "-H", f"Authorization: Bearer {SLACK_BOT_TOKEN}",
@@ -432,7 +441,8 @@ for task_id, task in list(tasks.items()):
 
                 if consec["count"] > CONSECUTIVE_FAILURE_THRESHOLD:
                     task_list = ", ".join(consec["task_ids"][-5:])
-                    send_alert(f":rotating_light: *{consec['count']} consecutive failures*\n{task_list}")
+                    send_alert(f":rotating_light: *{consec['count']} consecutive failures*\n{task_list}",
+                               event_key=f"consec_fail:{consec['count']}", cooldown_sec=600)
 
                 # Requeue if < 2 retries
                 if task.get("retries", 0) < 2:
