@@ -101,6 +101,20 @@ def run_cmd(cmd, timeout=15):
         return None
 
 
+def mark_reported(task_id):
+    """Mark a task as reported to prevent duplicate alerts."""
+    import datetime as _dt
+    try:
+        with open(STATE_FILE) as f:
+            state = json.load(f)
+        if task_id in state.get("tasks", {}):
+            state["tasks"][task_id]["reportedAt"] = _dt.datetime.utcnow().isoformat() + "Z"
+            with open(STATE_FILE, "w") as f:
+                json.dump(state, f, indent=2)
+    except Exception as e:
+        print(f"WARN: could not mark {task_id} as reported: {e}")
+
+
 def check_output_quality(task_id):
     output_log = f"{LOGS_DIR}/{task_id}-output.log"
     stderr_log = f"{LOGS_DIR}/{task_id}-stderr.log"
@@ -365,18 +379,32 @@ for task_id, task in list(tasks.items()):
             quality, output_size, detail = check_output_quality(task_id)
 
             if quality in ("success", "small"):
+                # Guard: skip if already reported (prevents duplicate alerts)
+                if task.get("reportedAt"):
+                    print(f"SKIP {task_id}: already reported at {task['reportedAt']}")
+                    continue
                 print(f"DONE {task_id}: {age_min}min, {output_size}B")
                 run_cmd(["bash", TASK_MGR, "transition", task_id, "done", "--exit-code", "0"])
                 run_cmd(["bash", REPORT, task_id, "done"])
+                # Mark as reported to prevent duplicate alerts
+                run_cmd(["bash", TASK_MGR, "set-field", task_id, "reportedAt", 
+                         __import__('datetime').datetime.utcnow().isoformat() + "Z"])
                 # Link logs to Linear for debugging
                 run_cmd(["bash", "/Users/fonsecabc/.openclaw/workspace/scripts/link-logs-to-linear.sh", task_id])
                 trigger_review_hook(task_id)
                 completions += 1
                 consec = {"count": 0, "task_ids": []}
             else:
+                # Guard: skip if already reported
+                if task.get("reportedAt"):
+                    print(f"SKIP {task_id}: already reported at {task['reportedAt']}")
+                    continue
                 print(f"FAIL {task_id}: {age_min}min, {quality} ({detail[:100]})")
                 run_cmd(["bash", TASK_MGR, "transition", task_id, "failed", "--exit-code", "1"])
                 run_cmd(["bash", REPORT, task_id, "failed"])
+                # Mark as reported
+                run_cmd(["bash", TASK_MGR, "set-field", task_id, "reportedAt",
+                         __import__('datetime').datetime.utcnow().isoformat() + "Z"])
                 # Link logs to Linear for debugging
                 run_cmd(["bash", "/Users/fonsecabc/.openclaw/workspace/scripts/link-logs-to-linear.sh", task_id])
                 failures += 1

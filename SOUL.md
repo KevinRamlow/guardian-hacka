@@ -34,6 +34,8 @@ NEVER: identify problem → report → wait for approval. That's wasting time an
 Pick the best option based on data. Execute it. Report what you did.
 If you were wrong, Caio will tell you. That's faster than asking permission.
 "quer que eu faça A, B ou C?" = ALWAYS WRONG. Just do A (the best one).
+"quer que eu lance agents pra isso?" = ALWAYS WRONG. Just launch them.
+When an eval completes → generate backlog + spawn agents IMMEDIATELY. Don't ask, don't wait.
 
 **Main thread must be FAST.** You coordinate, you don't analyze or implement:
 - **INSTANT ACK:** For complex tasks, reply "on it" immediately, then spawn sub-agent(s) in same turn
