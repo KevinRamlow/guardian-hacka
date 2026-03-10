@@ -20,7 +20,7 @@ The Observation Engine is the foundation of Anton's self-improvement system. It 
 ```
 ┌─────────────────────────────────────────────┐
 │         Daily Memory Files                  │
-│   /root/.openclaw/workspace/memory/         │
+│   /Users/fonsecabc/.openclaw/workspace/memory/         │
 │         YYYY-MM-DD.md                        │
 └──────────────┬──────────────────────────────┘
                │
@@ -114,7 +114,7 @@ The Observation Engine is the foundation of Anton's self-improvement system. It 
 ## File Structure
 
 ```
-/root/.openclaw/workspace/self-improvement/
+/Users/fonsecabc/.openclaw/workspace/self-improvement/
 ├── README.md                      # This file
 ├── run-observers.sh              # Master runner
 ├── config/
@@ -137,17 +137,17 @@ The Observation Engine is the foundation of Anton's self-improvement system. It 
 ### Manual Execution
 Run all observers manually:
 ```bash
-bash /root/.openclaw/workspace/self-improvement/run-observers.sh
+bash /Users/fonsecabc/.openclaw/workspace/self-improvement/run-observers.sh
 ```
 
 View today's scorecard:
 ```bash
-cat /root/.openclaw/workspace/self-improvement/metrics/daily-scorecard.json | jq .
+cat /Users/fonsecabc/.openclaw/workspace/self-improvement/metrics/daily-scorecard.json | jq .
 ```
 
 View trends:
 ```bash
-cat /root/.openclaw/workspace/self-improvement/metrics/trends.json | jq .
+cat /Users/fonsecabc/.openclaw/workspace/self-improvement/metrics/trends.json | jq .
 ```
 
 ### Automated Execution (Cron)
@@ -268,7 +268,7 @@ The Analysis Engine transforms raw observations from Phase 1 into actionable imp
 ```
 ┌──────────────────────────────────────────┐
 │      Memory Files (Last 7 Days)          │
-│  /root/.openclaw/workspace/memory/       │
+│  /Users/fonsecabc/.openclaw/workspace/memory/       │
 │         YYYY-MM-DD.md                     │
 └───────────────┬──────────────────────────┘
                 │
@@ -465,7 +465,7 @@ Example hypothesis:
 ## File Structure
 
 ```
-/root/.openclaw/workspace/self-improvement/
+/Users/fonsecabc/.openclaw/workspace/self-improvement/
 ├── run-analysis.sh              # Master runner for Phase 2
 ├── analyzers/
 │   ├── failure-analyzer.sh      # Extract failures from memory
@@ -489,31 +489,31 @@ Example hypothesis:
 ### Manual Execution
 Run all analyzers:
 ```bash
-bash /root/.openclaw/workspace/self-improvement/run-analysis.sh
+bash /Users/fonsecabc/.openclaw/workspace/self-improvement/run-analysis.sh
 ```
 
 Run individual analyzers:
 ```bash
-bash /root/.openclaw/workspace/self-improvement/analyzers/failure-analyzer.sh
-bash /root/.openclaw/workspace/self-improvement/analyzers/pattern-clusterer.sh
-bash /root/.openclaw/workspace/self-improvement/analyzers/hypothesis-generator.sh
-bash /root/.openclaw/workspace/self-improvement/analyzers/root-cause-mapper.sh
-bash /root/.openclaw/workspace/self-improvement/analyzers/weekly-report.sh
+bash /Users/fonsecabc/.openclaw/workspace/self-improvement/analyzers/failure-analyzer.sh
+bash /Users/fonsecabc/.openclaw/workspace/self-improvement/analyzers/pattern-clusterer.sh
+bash /Users/fonsecabc/.openclaw/workspace/self-improvement/analyzers/hypothesis-generator.sh
+bash /Users/fonsecabc/.openclaw/workspace/self-improvement/analyzers/root-cause-mapper.sh
+bash /Users/fonsecabc/.openclaw/workspace/self-improvement/analyzers/weekly-report.sh
 ```
 
 ### View Results
 ```bash
 # Latest patterns
-cat /root/.openclaw/workspace/self-improvement/analysis/patterns.json | jq .
+cat /Users/fonsecabc/.openclaw/workspace/self-improvement/analysis/patterns.json | jq .
 
 # Component heatmap
-cat /root/.openclaw/workspace/self-improvement/analysis/component-heatmap.json | jq .
+cat /Users/fonsecabc/.openclaw/workspace/self-improvement/analysis/component-heatmap.json | jq .
 
 # Human-readable proposals
-cat /root/.openclaw/workspace/self-improvement/analysis/improvement-proposals.md
+cat /Users/fonsecabc/.openclaw/workspace/self-improvement/analysis/improvement-proposals.md
 
 # Weekly report
-cat /root/.openclaw/workspace/self-improvement/analysis/reports/weekly-$(date +%Y-%m-%d).md
+cat /Users/fonsecabc/.openclaw/workspace/self-improvement/analysis/reports/weekly-$(date +%Y-%m-%d).md
 ```
 
 ### Automated Execution (Cron)
@@ -546,15 +546,15 @@ Phase 2 can run with or without Phase 1 data:
 ## Troubleshooting
 
 **No scores generated:**
-- Check if memory files exist: `ls /root/.openclaw/workspace/memory/`
-- Check observer logs: `tail /root/.openclaw/workspace/self-improvement/metrics/observer-runs.log`
+- Check if memory files exist: `ls /Users/fonsecabc/.openclaw/workspace/memory/`
+- Check observer logs: `tail /Users/fonsecabc/.openclaw/workspace/self-improvement/metrics/observer-runs.log`
 
 **Claude API errors:**
 - Verify API key is valid
 - Check rate limits (Haiku is very generous)
 
 **Linear API errors:**
-- Source env: `source /root/.openclaw/workspace/.env.linear`
+- Source env: `source /Users/fonsecabc/.openclaw/workspace/.env.linear`
 - Test query: `echo $LINEAR_API_KEY`
 
 **Cost estimates seem off:**
@@ -750,7 +750,7 @@ Beautiful CLI dashboard with full visibility.
 ## File Structure
 
 ```
-/root/.openclaw/workspace/self-improvement/
+/Users/fonsecabc/.openclaw/workspace/self-improvement/
 └── experiments/
     ├── experiment-manager.sh      # Create/list experiments
     ├── variant-generator.sh       # Generate modified files
@@ -779,7 +779,7 @@ Beautiful CLI dashboard with full visibility.
 ### Full Experiment Workflow
 ```bash
 # 1. Create experiment from hypothesis
-cd /root/.openclaw/workspace/self-improvement/experiments
+cd /Users/fonsecabc/.openclaw/workspace/self-improvement/experiments
 bash experiment-manager.sh create hyp-001
 
 # 2. Generate variant
@@ -845,7 +845,7 @@ bash experiments/rollback.sh rollback exp-001 "Not working as expected"
 
 ```bash
 # Daily 23:58 UTC - Check probation experiments
-58 23 * * * cd /root/.openclaw/workspace/self-improvement && bash experiments/rollback.sh check
+58 23 * * * cd /Users/fonsecabc/.openclaw/workspace/self-improvement && bash experiments/rollback.sh check
 ```
 
 ---
@@ -1032,7 +1032,7 @@ Persistent state in `loop/state.json`:
 ## File Structure
 
 ```
-/root/.openclaw/workspace/self-improvement/
+/Users/fonsecabc/.openclaw/workspace/self-improvement/
 ├── loop/
 │   ├── improvement-loop.sh        # Main orchestrator
 │   ├── budget-controller.sh       # Cost tracking
@@ -1055,21 +1055,21 @@ Persistent state in `loop/state.json`:
 ### Autonomous Operation (Cron)
 ```bash
 # Daily 23:50 UTC - Observe
-50 23 * * * cd /root/.openclaw/workspace/self-improvement && bash loop/improvement-loop.sh observe
+50 23 * * * cd /Users/fonsecabc/.openclaw/workspace/self-improvement && bash loop/improvement-loop.sh observe
 
 # Weekly Sunday 23:55 UTC - Analyze
-55 23 * * 0 cd /root/.openclaw/workspace/self-improvement && bash loop/improvement-loop.sh analyze
+55 23 * * 0 cd /Users/fonsecabc/.openclaw/workspace/self-improvement && bash loop/improvement-loop.sh analyze
 
 # Daily 23:58 UTC - Evaluate experiments
-58 23 * * * cd /root/.openclaw/workspace/self-improvement && bash loop/improvement-loop.sh experiment
+58 23 * * * cd /Users/fonsecabc/.openclaw/workspace/self-improvement && bash loop/improvement-loop.sh experiment
 
 # First Monday of month 00:00 UTC - Meta-learning
-0 0 1-7 * 1 cd /root/.openclaw/workspace/self-improvement && bash loop/improvement-loop.sh meta
+0 0 1-7 * 1 cd /Users/fonsecabc/.openclaw/workspace/self-improvement && bash loop/improvement-loop.sh meta
 ```
 
 ### Manual Full Cycle
 ```bash
-cd /root/.openclaw/workspace/self-improvement
+cd /Users/fonsecabc/.openclaw/workspace/self-improvement
 bash loop/improvement-loop.sh full
 ```
 

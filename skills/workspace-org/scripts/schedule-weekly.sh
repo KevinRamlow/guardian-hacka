@@ -5,7 +5,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CLEANUP_SCRIPT="$SCRIPT_DIR/cleanup.sh"
-LOG_FILE="/root/.openclaw/workspace/logs/workspace-cleanup.log"
+LOG_FILE="/Users/fonsecabc/.openclaw/workspace/logs/workspace-cleanup.log"
 
 # Color output
 GREEN='\033[0;32m'

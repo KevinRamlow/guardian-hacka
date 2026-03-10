@@ -68,7 +68,7 @@ Available models (in order of speed/cost):
 
 **Transcribe from OpenClaw media inbound:**
 ```bash
-./skills/audio-transcription/transcribe.sh /root/.openclaw/media/inbound/[file-id].m4a
+./skills/audio-transcription/transcribe.sh /Users/fonsecabc/.openclaw/media/inbound/[file-id].m4a
 ```
 
 **Batch transcription:**

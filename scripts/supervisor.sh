@@ -1,6 +1,6 @@
 #!/bin/bash
-# supervisor.sh — Unified process supervisor (replaces agent-watchdog-v2.sh + process-completion-checker.sh)
-# Runs every 30s via launchd. Single source: state.json
+# supervisor.sh — Unified process supervisor
+# Runs every 30s via launchd. READS state.json, WRITES only through task-manager.sh.
 #
 # Responsibilities:
 #   1. Check agent PIDs — detect completions, failures, idle
@@ -10,46 +10,53 @@
 #   5. Orphan cleanup — kill unregistered claude processes
 #   6. Health metrics — track success rates, alert on issues
 #
+# ARCHITECTURAL INVARIANT:
+#   supervisor NEVER writes state.json directly.
+#   All state mutations go through task-manager.sh (which holds flock).
+#   supervisor only READS state.json for decisions.
+#
 set -euo pipefail
 
 TASK_MGR="/Users/fonsecabc/.openclaw/workspace/scripts/task-manager.sh"
 SPAWNER="/Users/fonsecabc/.openclaw/workspace/scripts/spawn-agent.sh"
 LINEAR_LOG="/Users/fonsecabc/.openclaw/workspace/skills/task-manager/scripts/linear-log.sh"
-REPORT="/Users/fonsecabc/.openclaw/workspace/scripts/agent-report.sh"
 KILL_TREE="/Users/fonsecabc/.openclaw/workspace/scripts/kill-agent-tree.sh"
-DETECT_IDLE="/Users/fonsecabc/.openclaw/workspace/scripts/detect-agent-idle.sh"
 LOCKFILE="/tmp/supervisor.lock"
 
-# Single instance
+# Single instance guard
 exec 200>"$LOCKFILE"
 flock -n 200 || { exit 0; }
 
 mkdir -p /Users/fonsecabc/.openclaw/tasks/agent-logs
+
+# Run guardrails check (non-blocking — log violations but continue)
+GUARDRAILS="/Users/fonsecabc/.openclaw/workspace/scripts/guardrails.sh"
+if [ -f "$GUARDRAILS" ]; then
+  bash "$GUARDRAILS" --check state 2>&1 | grep -v "^GUARDRAILS: OK" || true
+fi
 
 source /Users/fonsecabc/.openclaw/workspace/.env.linear 2>/dev/null || true
 source /Users/fonsecabc/.openclaw/workspace/.env.secrets 2>/dev/null || true
 
 python3 << 'PYEOF'
 import json, os, sys, time, subprocess, re, glob
-from collections import Counter, defaultdict
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 
 STATE_FILE = "/Users/fonsecabc/.openclaw/tasks/state.json"
 TASK_MGR = "/Users/fonsecabc/.openclaw/workspace/scripts/task-manager.sh"
 SPAWNER = "/Users/fonsecabc/.openclaw/workspace/scripts/spawn-agent.sh"
 LINEAR_LOG = "/Users/fonsecabc/.openclaw/workspace/skills/task-manager/scripts/linear-log.sh"
-REPORT = "/Users/fonsecabc/.openclaw/workspace/scripts/agent-report.sh"
 KILL_TREE = "/Users/fonsecabc/.openclaw/workspace/scripts/kill-agent-tree.sh"
-DETECT_IDLE = "/Users/fonsecabc/.openclaw/workspace/scripts/detect-agent-idle.sh"
 LOGS_DIR = "/Users/fonsecabc/.openclaw/tasks/agent-logs"
 SPAWN_TASKS_DIR = "/Users/fonsecabc/.openclaw/tasks/spawn-tasks"
 METRICS_FILE = "/Users/fonsecabc/.openclaw/workspace/metrics/agent-health.json"
 CONSEC_FILE = "/Users/fonsecabc/.openclaw/tasks/consecutive-failures.json"
 ALERT_COOLDOWN_FILE = "/Users/fonsecabc/.openclaw/workspace/metrics/alert-cooldown.json"
+REVIEW_HOOK = "/Users/fonsecabc/.openclaw/workspace/scripts/review-hook.sh"
 
 SLACK_BOT_TOKEN = os.environ.get("SLACK_BOT_TOKEN", "")
 LINEAR_API_KEY = os.environ.get("LINEAR_API_KEY", "")
-REPLICANTS_CHANNEL = "D0AK1B981QR"
+CAIO_DM = "D0AK1B981QR"
 
 MIN_OUTPUT_BYTES = 100
 CONSECUTIVE_FAILURE_THRESHOLD = 3
@@ -61,28 +68,13 @@ FAILURE_PATTERNS = [
     r"invalid_request_error",
 ]
 
-REVIEW_HOOK = "/Users/fonsecabc/.openclaw/workspace/scripts/review-hook.sh"
-
 now = int(time.time())
 ts = time.strftime("%H:%M", time.gmtime())
 
-# Load state
-try:
-    with open(STATE_FILE) as f:
-        state = json.load(f)
-except Exception:
-    state = {"tasks": {}, "maxConcurrent": 3}
 
-tasks = state.get("tasks", {})
-changes = False
-completions = timeouts = failures = callbacks_dispatched = 0
-
-# Load consecutive failure tracking
-try:
-    consec = json.load(open(CONSEC_FILE))
-except Exception:
-    consec = {"count": 0, "task_ids": []}
-
+# ============================================================================
+# HELPERS — All state mutations go through task-manager.sh
+# ============================================================================
 
 def is_alive(pid):
     if not pid:
@@ -101,41 +93,33 @@ def run_cmd(cmd, timeout=15):
         return None
 
 
+def tm_transition(task_id, new_status, **kwargs):
+    """Single gateway to task-manager.sh transition. Returns True on success."""
+    cmd = ["bash", TASK_MGR, "transition", task_id, new_status]
+    for k, v in kwargs.items():
+        cmd.extend([f"--{k.replace('_', '-')}", str(v)])
+    r = run_cmd(cmd, timeout=10)
+    if r and r.returncode == 0:
+        return True
+    err = r.stderr.strip() if r else "timeout"
+    print(f"  TRANSITION FAILED {task_id} → {new_status}: {err}")
+    return False
+
+
+def tm_set_field(task_id, field, value):
+    """Set a single field on a task via task-manager.sh set-field (locked)."""
+    cmd = ["bash", TASK_MGR, "set-field", task_id, field, str(value)]
+    r = run_cmd(cmd, timeout=10)
+    if not r or r.returncode == 0:
+        return True
+    print(f"  WARN: set-field failed {task_id}.{field}: {r.stderr.strip() if r else 'timeout'}")
+    return False
+
+
 def mark_reported(task_id):
-    """Mark a task as reported to prevent duplicate alerts."""
-    import datetime as _dt
-    try:
-        with open(STATE_FILE) as f:
-            state = json.load(f)
-        if task_id in state.get("tasks", {}):
-            state["tasks"][task_id]["reportedAt"] = _dt.datetime.now(_dt.timezone.utc).isoformat()
-            with open(STATE_FILE, "w") as f:
-                json.dump(state, f, indent=2)
-    except Exception as e:
-        print(f"WARN: could not mark {task_id} as reported: {e}")
-
-
-def transition_and_mark(task_id, new_status, exit_code):
-    """Atomic: transition status + set reportedAt + exitCode in single write."""
-    import datetime as _dt
-    try:
-        with open(STATE_FILE) as f:
-            state = json.load(f)
-        if task_id in state.get("tasks", {}):
-            t = state["tasks"][task_id]
-            t["status"] = new_status
-            t["exitCode"] = exit_code
-            t["reportedAt"] = _dt.datetime.now(_dt.timezone.utc).isoformat()
-            t["completedAt"] = _dt.datetime.now(_dt.timezone.utc).isoformat()
-            with open(STATE_FILE, "w") as f:
-                json.dump(state, f, indent=2)
-            print(f"  → {task_id} transitioned to {new_status} + marked reported")
-            # Also call task-manager for Linear sync (best effort)
-            run_cmd(["bash", TASK_MGR, "transition", task_id, new_status, "--exit-code", str(exit_code)])
-        else:
-            print(f"WARN: {task_id} not in state.json")
-    except Exception as e:
-        print(f"ERROR: transition_and_mark {task_id}: {e}")
+    """Mark task as reported to prevent duplicate alerts."""
+    now_iso = datetime.now(timezone.utc).isoformat()
+    tm_set_field(task_id, "reportedAt", now_iso)
 
 
 def check_output_quality(task_id):
@@ -208,7 +192,7 @@ def requeue_task(task_id):
         run_cmd(["curl", "-s", "-X", "POST", "https://api.linear.app/graphql",
                   "-H", f"Authorization: {LINEAR_API_KEY}",
                   "-H", "Content-Type: application/json", "-d", mutation])
-        print(f"  REQUEUED {task_id} → Todo")
+        print(f"  REQUEUED {task_id} → Todo (Linear)")
     except Exception as e:
         print(f"  REQUEUE FAILED {task_id}: {e}")
 
@@ -226,10 +210,9 @@ def trigger_review_hook(task_id):
 
 
 def send_alert(message, event_key=None, cooldown_sec=300):
-    """Send Slack alert with dedup. If event_key provided, suppress duplicates within cooldown."""
+    """Send Slack alert with dedup. supervisor ONLY sends failure/health alerts, not done notifications."""
     if not SLACK_BOT_TOKEN:
         return
-    # Dedup check via alert-dedup.sh
     if event_key:
         dedup_script = "/Users/fonsecabc/.openclaw/workspace/scripts/alert-dedup.sh"
         if os.path.exists(dedup_script):
@@ -241,7 +224,7 @@ def send_alert(message, event_key=None, cooldown_sec=300):
         run_cmd(["curl", "-s", "-X", "POST", "https://slack.com/api/chat.postMessage",
                   "-H", f"Authorization: Bearer {SLACK_BOT_TOKEN}",
                   "-H", "Content-Type: application/json",
-                  "-d", json.dumps({"channel": REPLICANTS_CHANNEL, "text": message, "mrkdwn": True})])
+                  "-d", json.dumps({"channel": CAIO_DM, "text": message, "mrkdwn": True})])
     except Exception:
         pass
 
@@ -249,12 +232,10 @@ def send_alert(message, event_key=None, cooldown_sec=300):
 def build_callback_prompt(task_id, task):
     """Build the prompt for a callback agent, including history and learnings."""
     proc_type = task.get("processType", "process")
-    status = task.get("status", "callback_pending")
     results_summary = ""
     metrics_path = task.get("metricsPath", "")
     result_path = task.get("resultPath", "")
 
-    # Read metrics
     if metrics_path and os.path.exists(metrics_path):
         try:
             with open(metrics_path) as f:
@@ -294,7 +275,6 @@ def build_callback_prompt(task_id, task):
         except Exception:
             pass
 
-    # Build history context
     history = task.get("history", [])
     history_section = ""
     if history:
@@ -303,7 +283,6 @@ def build_callback_prompt(task_id, task):
             history_section += f"- Cycle {i}: {json.dumps(h)[:200]}\n"
         history_section += "\n"
 
-    # Build learnings context
     learnings = task.get("learnings", [])
     learnings_section = ""
     if learnings:
@@ -313,7 +292,6 @@ def build_callback_prompt(task_id, task):
         learnings_section += "\n"
 
     context = task.get("callbackContext", "")
-
     prompt = (
         f"# Process Completion — Resume Task {task_id}\n\n"
         f"A {proc_type} process has completed.\n\n"
@@ -323,7 +301,6 @@ def build_callback_prompt(task_id, task):
     )
     if context:
         prompt += f"## Original Context\n{context}\n\n"
-
     prompt += (
         f"## Your Mission\n"
         f"Review the results. Take the next action:\n"
@@ -343,9 +320,7 @@ def build_callback_prompt(task_id, task):
 
 def dispatch_callback(task_id, task):
     """Spawn a callback agent for a completed process."""
-    global callbacks_dispatched, changes
-
-    # Check slots
+    global callbacks_dispatched
     try:
         r = run_cmd(["bash", TASK_MGR, "slots"])
         slots = int(r.stdout.strip()) if r and r.returncode == 0 else 0
@@ -356,41 +331,54 @@ def dispatch_callback(task_id, task):
         print(f"  → No agent slots for callback, deferred")
         return False
 
-    # Build callback prompt
     prompt = build_callback_prompt(task_id, task)
-
     os.makedirs(SPAWN_TASKS_DIR, exist_ok=True)
     callback_file = f"{SPAWN_TASKS_DIR}/{task_id}-callback.md"
     with open(callback_file, "w") as f:
         f.write(prompt)
 
-    # Transition to agent_running first
-    run_cmd(["bash", TASK_MGR, "transition", task_id, "agent_running",
-             "--source", "process-callback", "--timeout", "30"])
+    # Transition to agent_running first (via task-manager — locked)
+    if not tm_transition(task_id, "agent_running", source="process-callback", timeout="30"):
+        return False
 
-    # Spawn via spawn-agent.sh
     r = run_cmd(["bash", SPAWNER, "--task", task_id, "--label", f"{task_id}-callback",
                   "--source", "process-callback", "--timeout", "30",
-                  "--force",  # bypass dedup for callbacks
-                  "--file", callback_file], timeout=30)
+                  "--force", "--file", callback_file], timeout=30)
 
     if r and r.returncode == 0:
         agent_pid = r.stdout.strip().split("\n")[-1]
         print(f"  → Callback agent spawned: PID={agent_pid}")
         callbacks_dispatched += 1
         run_cmd(["bash", LINEAR_LOG, task_id,
-                 f"Process completed. Callback agent spawned to process results.", "progress"])
+                 f"Process completed. Callback agent spawned.", "progress"])
         return True
     else:
         err = r.stderr[:200] if r else "unknown"
         print(f"  → Callback spawn failed: {err}")
-        # Transition back to callback_pending
-        # (can't directly — need to go through valid transitions)
         return False
 
 
 # ============================================================================
-# MAIN LOOP — Iterate over all tasks in state
+# LOAD STATE (read-only snapshot for decisions)
+# ============================================================================
+
+try:
+    with open(STATE_FILE) as f:
+        state = json.load(f)
+except Exception:
+    state = {"tasks": {}, "maxConcurrent": 3}
+
+tasks = state.get("tasks", {})
+completions = timeouts = failures = callbacks_dispatched = 0
+
+try:
+    consec = json.load(open(CONSEC_FILE))
+except Exception:
+    consec = {"count": 0, "task_ids": []}
+
+
+# ============================================================================
+# MAIN LOOP — Read state, make decisions, mutate ONLY through task-manager.sh
 # ============================================================================
 
 for task_id, task in list(tasks.items()):
@@ -407,109 +395,98 @@ for task_id, task in list(tasks.items()):
         exit_code_file = f"{LOGS_DIR}/{task_id}-exit-code"
 
         if os.path.exists(exit_code_file):
-            # Agent completed — exit-code file written on finish
+            # Guard: skip if already reported (prevents duplicate alerts)
+            if task.get("reportedAt"):
+                print(f"SKIP {task_id}: already reported at {task['reportedAt']}")
+                continue
+
             quality, output_size, detail = check_output_quality(task_id)
 
             if quality in ("success", "small"):
-                # Guard: skip if already reported (prevents duplicate alerts)
-                if task.get("reportedAt"):
-                    print(f"SKIP {task_id}: already reported at {task['reportedAt']}")
-                    continue
                 print(f"DONE {task_id}: {age_min}min, {output_size}B")
-                # Atomic: transition + mark reported in single state.json write
-                transition_and_mark(task_id, "done", 0)
-                run_cmd(["bash", REPORT, task_id, "done"])
-                # Link logs to Linear for debugging
-                run_cmd(["bash", "/Users/fonsecabc/.openclaw/workspace/scripts/link-logs-to-linear.sh", task_id])
-                trigger_review_hook(task_id)
-                completions += 1
-                consec = {"count": 0, "task_ids": []}
+                # Transition via task-manager (locked) — sets completedAt
+                if tm_transition(task_id, "done", exit_code="0"):
+                    # Mark reported AFTER successful transition (locked)
+                    mark_reported(task_id)
+                    # Log to Linear (best effort, no state mutation)
+                    run_cmd(["bash", LINEAR_LOG, task_id,
+                             f"Agent completed ({age_min}min, {output_size}B)", "done"])
+                    run_cmd(["bash", "/Users/fonsecabc/.openclaw/workspace/scripts/link-logs-to-linear.sh", task_id])
+                    trigger_review_hook(task_id)
+                    completions += 1
+                    consec = {"count": 0, "task_ids": []}
             else:
-                # Guard: skip if already reported
-                if task.get("reportedAt"):
-                    print(f"SKIP {task_id}: already reported at {task['reportedAt']}")
-                    continue
                 print(f"FAIL {task_id}: {age_min}min, {quality} ({detail[:100]})")
-                # Atomic: transition + mark reported in single state.json write
-                transition_and_mark(task_id, "failed", 1)
-                run_cmd(["bash", REPORT, task_id, "failed"])
-                # Link logs to Linear for debugging
-                run_cmd(["bash", "/Users/fonsecabc/.openclaw/workspace/scripts/link-logs-to-linear.sh", task_id])
-                failures += 1
-                consec["count"] += 1
-                consec["task_ids"].append(task_id)
+                if tm_transition(task_id, "failed", exit_code="1"):
+                    mark_reported(task_id)
+                    run_cmd(["bash", LINEAR_LOG, task_id,
+                             f"Agent failed ({age_min}min, {quality}: {detail[:200]})", "blocked"])
+                    run_cmd(["bash", "/Users/fonsecabc/.openclaw/workspace/scripts/link-logs-to-linear.sh", task_id])
+                    failures += 1
+                    consec["count"] += 1
+                    consec["task_ids"].append(task_id)
 
-                if consec["count"] > CONSECUTIVE_FAILURE_THRESHOLD:
-                    task_list = ", ".join(consec["task_ids"][-5:])
-                    send_alert(f":rotating_light: *{consec['count']} consecutive failures*\n{task_list}",
-                               event_key=f"consec_fail:{consec['count']}", cooldown_sec=600)
+                    if consec["count"] > CONSECUTIVE_FAILURE_THRESHOLD:
+                        task_list = ", ".join(consec["task_ids"][-5:])
+                        send_alert(f":rotating_light: *{consec['count']} consecutive failures*\n{task_list}",
+                                   event_key=f"consec_fail:{consec['count']}", cooldown_sec=600)
 
-                # Requeue if < 2 retries
-                if task.get("retries", 0) < 2:
-                    run_cmd(["bash", TASK_MGR, "transition", task_id, "todo"])
-                    requeue_task(task_id)
-
-            changes = True
+                    # Requeue if < 2 retries (transition back to todo via task-manager)
+                    retries = task.get("retries", 0)
+                    if retries < 2:
+                        tm_transition(task_id, "todo")
+                        requeue_task(task_id)
             continue
 
         # No exit-code yet — check timeout
         if age_min >= timeout_min:
+            # Auto-extend if PID still alive and < 2 extensions
+            extensions = task.get("extensions", 0)
+            if extensions < 2 and agent_pid and is_alive(agent_pid):
+                new_timeout = timeout_min + 10
+                tm_set_field(task_id, "timeoutMin", new_timeout)
+                tm_set_field(task_id, "extensions", extensions + 1)
+                print(f"EXTENDED {task_id}: {timeout_min} → {new_timeout}min")
+                continue
+
             print(f"TIMEOUT {task_id}: {age_min}min >= {timeout_min}min")
-            # Kill the agent process if PID is tracked
             if agent_pid and is_alive(agent_pid):
                 run_cmd(["bash", KILL_TREE, str(agent_pid)])
-            run_cmd(["bash", TASK_MGR, "transition", task_id, "timeout", "--exit-code", "-1"])
-            run_cmd(["bash", REPORT, task_id, "timeout"])
-            timeouts += 1
-            consec["count"] += 1
-            consec["task_ids"].append(task_id)
-            if task.get("retries", 0) < 2:
-                run_cmd(["bash", TASK_MGR, "transition", task_id, "todo"])
-                requeue_task(task_id)
-            changes = True
+            if tm_transition(task_id, "timeout", exit_code="-1"):
+                mark_reported(task_id)
+                run_cmd(["bash", LINEAR_LOG, task_id,
+                         f"Agent timed out ({age_min}min)", "blocked"])
+                timeouts += 1
+                consec["count"] += 1
+                consec["task_ids"].append(task_id)
+                if task.get("retries", 0) < 2:
+                    tm_transition(task_id, "todo")
+                    requeue_task(task_id)
             continue
 
         # 80% timeout warning
         warned = task.get("warned80pct", False)
         warning_threshold = int(timeout_min * 0.8)
         if not warned and age_min >= warning_threshold:
-            WARNING_DIR = "/Users/fonsecabc/.openclaw/tasks/timeout-warnings"
-            os.makedirs(WARNING_DIR, exist_ok=True)
             remaining = timeout_min - age_min
-            with open(f"{WARNING_DIR}/{task_id}.warn", "w") as wf:
-                json.dump({"task_id": task_id, "remaining_min": remaining}, wf)
-            task["warned80pct"] = True
-            changes = True
+            tm_set_field(task_id, "warned80pct", True)
             run_cmd(["bash", LINEAR_LOG, task_id,
                      f"[{ts}] Timeout warning: {age_min}/{timeout_min}min ({remaining}min left)", "progress"])
             print(f"WARN_80 {task_id}: {remaining}min left")
-
-        # Auto-extend timeout if agent PID is still active
-        extensions = task.get("extensions", 0)
-        if extensions < 2 and age_min >= timeout_min - 2:
-            if agent_pid and is_alive(agent_pid):
-                new_timeout = timeout_min + 10
-                task["timeoutMin"] = new_timeout
-                task["extensions"] = extensions + 1
-                changes = True
-                print(f"EXTENDED {task_id}: {timeout_min} → {new_timeout}min")
 
         print(f"OK {task_id}: PID={agent_pid} {age_min}/{timeout_min}min")
 
     # ── EVAL_RUNNING: Check process PID ─────────────────────────────────
     elif status == "eval_running":
         if process_pid and is_alive(process_pid):
-            # Still running — check timeout
             if age_min >= timeout_min:
                 print(f"PROCESS_TIMEOUT {task_id}: {age_min}min >= {timeout_min}min")
                 run_cmd(["bash", KILL_TREE, str(process_pid)])
-                run_cmd(["bash", TASK_MGR, "transition", task_id, "timeout", "--exit-code", "-1"])
+                tm_transition(task_id, "timeout", exit_code="-1")
                 run_cmd(["bash", LINEAR_LOG, task_id,
                          f"Process timed out after {age_min}min. Killed.", "blocked"])
                 timeouts += 1
-                changes = True
                 continue
-
             if age_min > 0 and age_min % 10 == 0:
                 print(f"PROCESS_OK {task_id}: PID={process_pid} {age_min}/{timeout_min}min")
             continue
@@ -521,28 +498,18 @@ for task_id, task in list(tasks.items()):
         has_metrics = metrics_path and os.path.exists(metrics_path)
         has_result = result_path and os.path.exists(result_path)
 
-        # For evals: try to find latest metrics
         if task.get("processType") == "eval" and not has_metrics:
             eval_runs = glob.glob("/Users/fonsecabc/.openclaw/workspace/guardian-agents-api-real/evals/.runs/content_moderation/run_*/metrics.json")
             if eval_runs:
                 latest = max(eval_runs, key=os.path.getmtime)
                 if os.path.getmtime(latest) > started_epoch:
-                    task["metricsPath"] = latest
+                    tm_set_field(task_id, "metricsPath", latest)
                     has_metrics = True
-                    changes = True
                     print(f"  → Found metrics: {latest}")
 
-        if has_metrics or has_result:
-            exit_code = 0
-            print(f"  → Results found: metrics={has_metrics} result={has_result}")
-        else:
-            exit_code = 1
-            print(f"  → No results found")
-
-        # Transition to callback_pending
-        run_cmd(["bash", TASK_MGR, "transition", task_id, "callback_pending",
-                 "--exit-code", str(exit_code)])
-        changes = True
+        exit_code = "0" if (has_metrics or has_result) else "1"
+        print(f"  → Results found: metrics={has_metrics} result={has_result}")
+        tm_transition(task_id, "callback_pending", exit_code=exit_code)
 
     # ── CALLBACK_PENDING: Dispatch callback agent ───────────────────────
     elif status == "callback_pending":
@@ -550,29 +517,22 @@ for task_id, task in list(tasks.items()):
         callback_type = task.get("callbackType", "dispatch")
 
         if callback_type == "dispatch":
-            if dispatch_callback(task_id, task):
-                changes = True
-            # If dispatch failed (no slots), stays in callback_pending for next run
+            dispatch_callback(task_id, task)
 
         elif callback_type == "notify":
             msg = f"Process {task.get('processType', 'unknown')} completed (exit={task.get('exitCode', '?')})"
             linear_status = "done" if task.get("exitCode", 1) == 0 else "blocked"
             run_cmd(["bash", LINEAR_LOG, task_id, msg, linear_status])
-            run_cmd(["bash", TASK_MGR, "transition", task_id,
-                     "done" if task.get("exitCode", 1) == 0 else "failed"])
-            changes = True
+            new_s = "done" if task.get("exitCode", 1) == 0 else "failed"
+            tm_transition(task_id, new_s)
 
         elif callback_type == "none":
-            run_cmd(["bash", TASK_MGR, "transition", task_id,
-                     "done" if task.get("exitCode", 1) == 0 else "failed"])
-            changes = True
-
-    # ── Skip todo, done, failed, blocked, timeout ───────────────────────
-    # (no action needed)
+            new_s = "done" if task.get("exitCode", 1) == 0 else "failed"
+            tm_transition(task_id, new_s)
 
 
 # ============================================================================
-# ORPHAN CLEANUP — Kill unregistered claude processes
+# ORPHAN CLEANUP — Kill unregistered claude processes (>5min old)
 # ============================================================================
 
 registered_pids = set()
@@ -596,7 +556,7 @@ try:
                 parent_r = subprocess.run(["ps", "-o", "comm=", "-p", str(ppid)], capture_output=True, text=True)
                 parent_comm = parent_r.stdout.strip()
                 if "openclaw" in parent_comm:
-                    continue  # Main Anton thread or native sub-agent managed by gateway
+                    continue  # Managed by gateway
                 age_r = subprocess.run(["ps", "-o", "etimes=", "-p", str(pid)], capture_output=True, text=True)
                 if int(age_r.stdout.strip()) > 300:
                     subprocess.run(["bash", KILL_TREE, str(pid)], capture_output=True, timeout=10)
@@ -609,31 +569,7 @@ except Exception:
 
 
 # ============================================================================
-# CLEANUP — Remove old completed tasks (>24h)
-# ============================================================================
-
-cleanup_cutoff = now - 86400
-for tid in list(tasks.keys()):
-    t = tasks[tid]
-    if t.get("status") in ("done", "failed", "timeout"):
-        created = t.get("createdEpoch", 0)
-        if created < cleanup_cutoff:
-            # Don't delete from state directly — use task-manager to keep it clean
-            # But DO remove from the in-memory view to avoid stale data
-            pass  # cleanup command handles this
-
-
-# ============================================================================
-# PERSIST STATE (only if changes happened in-memory that weren't via task-manager.sh)
-# ============================================================================
-
-if changes:
-    with open(STATE_FILE, "w") as f:
-        json.dump(state, f, indent=2)
-
-
-# ============================================================================
-# CONSECUTIVE FAILURE TRACKING
+# CONSECUTIVE FAILURE TRACKING (local file, not state.json)
 # ============================================================================
 
 try:
@@ -644,20 +580,14 @@ except Exception:
 
 
 # ============================================================================
-# HEALTH METRICS
+# HEALTH METRICS (local file, not state.json)
 # ============================================================================
 
 os.makedirs("/Users/fonsecabc/.openclaw/workspace/metrics", exist_ok=True)
 
-# Count current state
 running = sum(1 for t in tasks.values() if t.get("status") == "agent_running")
 eval_running = sum(1 for t in tasks.values() if t.get("status") == "eval_running")
 pending = sum(1 for t in tasks.values() if t.get("status") == "callback_pending")
-done_count = sum(1 for t in tasks.values() if t.get("status") == "done")
-failed_count = sum(1 for t in tasks.values() if t.get("status") in ("failed", "timeout"))
-
-total_tracked = len(tasks)
-active_total = running + eval_running + pending
 
 print(f"\n=== Supervisor: agents={running} evals={eval_running} pending={pending} done={completions} failed={failures} timeout={timeouts} callbacks={callbacks_dispatched} orphans={orphans} ===")
 

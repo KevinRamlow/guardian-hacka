@@ -5,7 +5,7 @@
 ### Problem 1: Stats Persistence ✅ FIXED
 **Issue:** Stats reset to 0 on gateway restart
 **Solution:** 
-- Added `stats-history.json` file at `/root/.openclaw/workspace/dashboard/stats-history.json`
+- Added `stats-history.json` file at `/Users/fonsecabc/.openclaw/workspace/dashboard/stats-history.json`
 - Stats saved on every poll cycle (8s)
 - Stats loaded on startup
 - Automatic midnight UTC reset for daily stats
@@ -44,12 +44,12 @@
 - Dashboard shows persistent history even when no active agents
 
 ### Files Modified
-- `/root/.openclaw/workspace/dashboard/server.js`
+- `/Users/fonsecabc/.openclaw/workspace/dashboard/server.js`
 
 ### Verification Commands
 ```bash
 # Check stats file exists and has data
-cat /root/.openclaw/workspace/dashboard/stats-history.json
+cat /Users/fonsecabc/.openclaw/workspace/dashboard/stats-history.json
 
 # Verify API response
 curl -s http://localhost:8765/api/state | python3 -m json.tool
@@ -58,7 +58,7 @@ curl -s http://localhost:8765/api/state | python3 -m json.tool
 curl -s http://localhost:8765/api/state | jq '.langfuse | {totalTraces, totalTokens, avgLatency}'
 
 # Test persistence: restart and verify stats maintained
-pkill -f "dashboard/server.js" && sleep 2 && cd /root/.openclaw/workspace/dashboard && node server.js &
+pkill -f "dashboard/server.js" && sleep 2 && cd /Users/fonsecabc/.openclaw/workspace/dashboard && node server.js &
 sleep 5 && curl -s http://localhost:8765/api/state | jq '.stats'
 ```
 

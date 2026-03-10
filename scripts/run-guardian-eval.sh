@@ -1,9 +1,21 @@
 #!/bin/bash
-# Direct Guardian eval runner - no agent wrapper
+# Guardian eval runner — MUST be called by a spawned sub-agent, NEVER from main thread.
 # Usage: bash scripts/run-guardian-eval.sh [--config <path>] [--dataset <path>] [--workers N]
 # Also supports legacy positional args: bash scripts/run-guardian-eval.sh [dataset] [workers] [max_parallel_agents]
+#
+# GUARDRAIL: This script launches nohup python (an eval process). It is only legitimate
+# when called INSIDE a sub-agent that was spawned via dispatcher.sh. The dispatch-guard
+# whitelists this script. If you're reading this from the main thread, DO NOT call this
+# directly — spawn a sub-agent via dispatcher.sh and let the sub-agent call this.
 
 set -e
+
+# Block direct invocation from main Anton session (ppid = openclaw gateway)
+if [ -n "$OPENCLAW_SESSION_TYPE" ] && [ "$OPENCLAW_SESSION_TYPE" = "main" ]; then
+  echo "ERROR: run-guardian-eval.sh cannot be called from main thread." >&2
+  echo "  Spawn a sub-agent via dispatcher.sh and let the sub-agent run evals." >&2
+  exit 1
+fi
 
 # Defaults
 DATASET="guidelines_combined_dataset.jsonl"

@@ -102,22 +102,22 @@ while True:
 
 ```bash
 # Start
-python /root/.openclaw/workspace/workflows/cli.py run guardian-experiment.yaml \
+python /Users/fonsecabc/.openclaw/workspace/workflows/cli.py run guardian-experiment.yaml \
   --id gua-1100 \
   --var baseline_accuracy=76.8 \
   --var target_improvement=5.0
 
 # Status
-python /root/.openclaw/workspace/workflows/cli.py status gua-1100
+python /Users/fonsecabc/.openclaw/workspace/workflows/cli.py status gua-1100
 
 # Resume
-python /root/.openclaw/workspace/workflows/cli.py resume gua-1100
+python /Users/fonsecabc/.openclaw/workspace/workflows/cli.py resume gua-1100
 
 # Cancel
-python /root/.openclaw/workspace/workflows/cli.py cancel gua-1100
+python /Users/fonsecabc/.openclaw/workspace/workflows/cli.py cancel gua-1100
 
 # List
-python /root/.openclaw/workspace/workflows/cli.py list
+python /Users/fonsecabc/.openclaw/workspace/workflows/cli.py list
 ```
 
 ## Available Templates
@@ -136,7 +136,7 @@ python /root/.openclaw/workspace/workflows/cli.py list
 4. Place in `workflows/` directory
 5. Run with `workflow run <file> --id <id> --var key=value`
 
-See `/root/.openclaw/workspace/workflows/README.md` for full documentation.
+See `/Users/fonsecabc/.openclaw/workspace/workflows/README.md` for full documentation.
 
 ## Checkpoint Kinds
 

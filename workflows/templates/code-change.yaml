@@ -57,7 +57,7 @@ checkpoints:
   - name: test
     kind: hook
     description: "Run tests"
-    hook_command: "cd /root/.openclaw/workspace/{{repo}} && {{test_command}}"
+    hook_command: "cd /Users/fonsecabc/.openclaw/workspace/{{repo}} && {{test_command}}"
     on_failure: retry
     max_retries: 2
 

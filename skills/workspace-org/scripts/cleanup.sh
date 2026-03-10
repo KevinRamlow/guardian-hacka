@@ -4,7 +4,7 @@
 
 set -euo pipefail
 
-WORKSPACE="/root/.openclaw/workspace"
+WORKSPACE="/Users/fonsecabc/.openclaw/workspace"
 DRY_RUN=false
 AUTO_YES=false
 

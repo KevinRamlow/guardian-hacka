@@ -35,6 +35,15 @@ done
 [ -z "$TITLE" ] && { echo "ERROR: --title required" >&2; exit 1; }
 [ -z "$DESCRIPTION" ] && DESCRIPTION="$TITLE"
 
+# --- Pre-flight: guardrails check ---
+GUARDRAILS="/Users/fonsecabc/.openclaw/workspace/scripts/guardrails.sh"
+if [ -f "$GUARDRAILS" ]; then
+  if ! bash "$GUARDRAILS" --check state 2>/dev/null; then
+    echo "ERROR: Guardrails check failed — state.json may be corrupt. Fix before dispatching." >&2
+    exit 1
+  fi
+fi
+
 # --- Step 1: Create Linear task ---
 echo "[dispatch] Creating Linear task: $TITLE"
 

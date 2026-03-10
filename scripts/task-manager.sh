@@ -609,6 +609,46 @@ print(count)
 "
     ;;
 
+  set-field)
+    # set-field <task-id> <field> <value>
+    # Locked single-field write. Used by supervisor for reportedAt, warned80pct, etc.
+    TASK_ID="${1:?Task ID required}"
+    FIELD="${2:?Field name required}"
+    VALUE="${3:?Value required}"
+    init_state
+    lock_state
+    python3 -c "
+import json
+f = '$STATE_FILE'
+d = json.load(open(f))
+tid = '$TASK_ID'
+if tid not in d.get('tasks', {}):
+    print(f'NOT_FOUND: {tid}')
+    exit(1)
+field = '$FIELD'
+raw = '''$VALUE'''
+# Auto-detect type
+if raw == 'True' or raw == 'true':
+    val = True
+elif raw == 'False' or raw == 'false':
+    val = False
+elif raw == 'None' or raw == 'null':
+    val = None
+else:
+    try:
+        val = int(raw)
+    except ValueError:
+        try:
+            val = float(raw)
+        except ValueError:
+            val = raw
+d['tasks'][tid][field] = val
+json.dump(d, open(f, 'w'), indent=2)
+print(f'{tid}.{field} = {val}')
+"
+    unlock_state
+    ;;
+
   json)
     init_state
     cat "$STATE_FILE"
@@ -633,6 +673,7 @@ Commands:
   add-learning <task-id> "text"     Append to learnings
   remove     <task-id>              Remove task
   cleanup    [--max-age 86400]      Remove old completed tasks
+  set-field  <task-id> <field> <val> Set single field (locked)
   set-max    <n>                    Set max concurrent
   register   <taskId> <pid> <bridgePid> <label> <source> <timeoutMin>
   count                             Alive agent count

@@ -11,6 +11,7 @@
 - **DO NOT send messages to Caio's DM unless you have something genuinely useful to say.**
 - **DO NOT send health alerts without also fixing the problem.** Investigate + fix FIRST, then report what you FIXED.
 - **DO NOT present options and ask Caio to choose.** Pick the best option, do it, report what you did.
+- **DO NOT report the same task completion or failure more than once.** Check `reportedAt` in state.json BEFORE posting. If it's set, the task was already reported — skip it. After reporting, ALWAYS set `reportedAt` via `bash scripts/task-manager.sh set-field <TASK_ID> reportedAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)"`.
 
 ## What you CAN manage autonomously
 - **Timeout extension:** If agent near timeout BUT actively working → extend timeout automatically
@@ -74,11 +75,14 @@ Recommend: [your best next step]
 **Priority 3 — Agent Health Monitoring:**
 - If Caio sent you a message → respond to it
 - **FAILED TASKS:** Check `bash scripts/task-manager.sh list --status failed`
+  - **SKIP tasks that already have `reportedAt` set** — supervisor already processed them.
   - Read stderr log, diagnose root cause, apply fix
   - Common fixes: auth refresh, config adjustment, re-queue with different model
   - Report to Caio: what failed, why, what you fixed
+  - **After reporting, mark:** `bash scripts/task-manager.sh set-field AUTO-XXX reportedAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)"`
 - **COMPLETED TASKS:** Check `bash scripts/task-manager.sh list --status done`
-  - For EACH completion, send Caio detailed report:
+  - **SKIP tasks that already have `reportedAt` set** — they've already been reported. Only report NEW completions.
+  - For each NEW completion (no `reportedAt`), send Caio detailed report:
     ```
     **AUTO-XXX: [task title]**
     - **Tempo:** [actual time from spawn to completion]
@@ -88,6 +92,8 @@ Recommend: [your best next step]
       - [commits/tests/validations]
     ```
   - Read output: `cat ~/.openclaw/tasks/agent-logs/AUTO-XXX-output.log`
+  - **After reporting, ALWAYS mark as reported:** `bash scripts/task-manager.sh set-field AUTO-XXX reportedAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)"`
+  - **NEVER report the same completion twice.** If `reportedAt` is set, move on.
   - **Guardian tasks:** agent MUST have run eval + reported accuracy delta
 - **System health (proactive):**
   - If success_rate < 70% → investigate + fix autonomously (following escalation chain)

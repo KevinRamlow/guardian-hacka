@@ -146,31 +146,15 @@ if [ -n "$LINEAR_API_KEY" ] && [ -f "$LINEAR_SCRIPT" ]; then
   bash "$LINEAR_SCRIPT" status "$TASK_ID" "$LINEAR_STATUS" 2>/dev/null || true
 fi
 
-# 2. Slack: DM to Caio
-if [ -n "$SLACK_BOT_TOKEN" ]; then
-  SAFE_MSG=$(echo "$SLACK_MSG" | python3 -c "import sys,json; print(json.dumps(sys.stdin.read())[1:-1])" 2>/dev/null || echo "$SLACK_MSG")
-  curl -s -X POST "https://slack.com/api/chat.postMessage" \
-    -H "Authorization: Bearer $SLACK_BOT_TOKEN" \
-    -H "Content-Type: application/json" \
-    -d "{\"channel\":\"$REPLICANTS_CHANNEL\",\"text\":\"$SAFE_MSG\",\"mrkdwn\":true}" \
-    > /dev/null 2>&1 || true
-fi
+# 2. Slack: REMOVED — Anton's main thread (heartbeat) is the sole Slack reporter.
+#    Supervisor detects completion → logs to Linear → Anton reads state + logs → reports to Caio.
+#    Having agent-report.sh also post to Slack caused duplicate "done" messages.
 
 # 3. Disk log
 bash "$WORKSPACE/scripts/agent-logger.sh" "$TASK_ID" "report" "$HEADLINE ($DURATION)" 2>/dev/null || true
 
-# 4. Trigger Guardian eval if task completed successfully and is guardian-related
-if [ "$STATUS" = "done" ]; then
-  # Check task label from registry
-  LABEL=$(jq -r "select(.task_id == \"$TASK_ID\") | .label // \"\"" \
-    "$WORKSPACE/metrics/agent-registry.json" 2>/dev/null || echo "")
-  
-  # Trigger eval for guardian tasks (but not for eval tasks themselves to avoid recursion)
-  if [[ "$LABEL" =~ guardian ]] && [[ ! "$LABEL" =~ guardian_eval ]]; then
-    echo "[report] Guardian task completed → triggering validation eval"
-    bash "$WORKSPACE/scripts/run-guardian-eval.sh" > /tmp/eval-trigger-$TASK_ID.log 2>&1 &
-  fi
-fi
+# 4. Guardian eval trigger REMOVED — was launching evals directly with & (invisible zombie).
+#    Guardian evals must be dispatched through dispatcher.sh by Anton's main thread.
 
 # 5. Clean up timeout warning file and checkpoint on success
 if [ "$STATUS" = "done" ]; then

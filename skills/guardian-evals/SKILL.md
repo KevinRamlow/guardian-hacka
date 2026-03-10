@@ -13,7 +13,7 @@ Guardian evals run inside `guardian-agents-api/` using the eval harness.
 ### Quick Start
 
 ```bash
-cd /root/.openclaw/workspace/guardian-agents-api
+cd /Users/fonsecabc/.openclaw/workspace/guardian-agents-api
 # Load environment
 source .env
 

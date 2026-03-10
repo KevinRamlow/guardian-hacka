@@ -10,7 +10,7 @@ When Caio says something like "run a guardian experiment to improve accuracy by 
 
 ```python
 import sys
-sys.path.insert(0, "/root/.openclaw/workspace")
+sys.path.insert(0, "/Users/fonsecabc/.openclaw/workspace")
 from workflows.engine import (
     WorkflowRunner, SpawnAgent, RequestDecision, RunHook,
     EvaluateGate, WorkflowComplete, BudgetExceeded, WorkflowError

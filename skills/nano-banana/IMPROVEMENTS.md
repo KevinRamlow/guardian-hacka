@@ -194,8 +194,8 @@ Created ready-to-use bash commands for:
 
 1. **Billy VM Sync** — rsync updated files to Billy's VM at 89.167.64.183
    ```bash
-   rsync -avz /root/.openclaw/workspace/skills/nano-banana/ \
-     root@89.167.64.183:/root/.openclaw/workspace/clawdbots/agents/billy/workspace/skills/nano-banana/
+   rsync -avz /Users/fonsecabc/.openclaw/workspace/skills/nano-banana/ \
+     root@89.167.64.183:/Users/fonsecabc/.openclaw/workspace/clawdbots/agents/billy/workspace/skills/nano-banana/
    ```
 
 2. **Add More Templates** — Based on actual usage patterns:

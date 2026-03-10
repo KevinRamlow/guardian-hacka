@@ -5,7 +5,7 @@
 #        agent-peek.sh                — show all running agents with last event
 
 LOGS_DIR="/Users/fonsecabc/.openclaw/tasks/agent-logs"
-REGISTRY="/Users/fonsecabc/.openclaw/tasks/agent-registry.json"
+STATE_FILE="/Users/fonsecabc/.openclaw/tasks/state.json"
 
 if [ -z "$1" ]; then
   # Show all running agents with their last activity
@@ -13,12 +13,16 @@ if [ -z "$1" ]; then
   python3 -c "
 import json, os, time
 try:
-    d = json.load(open('$REGISTRY'))
-except: d = {'agents': {}}
+    d = json.load(open('$STATE_FILE'))
+except: d = {'tasks': {}}
 now = int(time.time())
-for tid, a in d.get('agents', {}).items():
-    pid = a['pid']
-    age = (now - a.get('spawnedEpoch', now)) // 60
+found = False
+for tid, t in d.get('tasks', {}).items():
+    if t.get('status') not in ('agent_running', 'eval_running'):
+        continue
+    found = True
+    pid = t.get('agentPid') or t.get('processPid') or 0
+    age = (now - (t.get('startedEpoch') or t.get('createdEpoch', now))) // 60
     alive = True
     try: os.kill(pid, 0)
     except: alive = False
@@ -43,9 +47,10 @@ for tid, a in d.get('agents', {}).items():
     if os.path.exists(out_f):
         output_size = os.path.getsize(out_f)
 
-    print(f'{status} {tid} | PID={pid} | {age}min | output={output_size}B | {last_event}')
+    role = t.get('role', 'main')
+    print(f'{status} {tid} | PID={pid} | {age}min | role={role} | output={output_size}B | {last_event}')
 
-if not d.get('agents'):
+if not found:
     print('No agents running')
 " 2>/dev/null
   exit 0

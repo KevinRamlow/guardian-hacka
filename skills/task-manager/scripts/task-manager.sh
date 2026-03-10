@@ -5,8 +5,8 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SKILL_DIR="$(dirname "$SCRIPT_DIR")"
-LINEAR_SCRIPT="/root/.openclaw/workspace/skills/linear/scripts/linear.sh"
-STATE_FILE="/root/.openclaw/tasks/state.json"
+LINEAR_SCRIPT="/Users/fonsecabc/.openclaw/workspace/skills/linear/scripts/linear.sh"
+STATE_FILE="/Users/fonsecabc/.openclaw/tasks/state.json"
 
 # Ensure state directory exists
 mkdir -p "$(dirname "$STATE_FILE")"
@@ -19,10 +19,10 @@ fi
 # Helper: Call Linear CLI (Anton's workspace)
 linear() {
     # Source Anton's Linear config
-    if [ -f "/root/.openclaw/workspace/.env.linear" ]; then
-        source /root/.openclaw/workspace/.env.linear
+    if [ -f "/Users/fonsecabc/.openclaw/workspace/.env.linear" ]; then
+        source /Users/fonsecabc/.openclaw/workspace/.env.linear
     fi
-    source /root/.openclaw/workspace/.env.secrets 2>/dev/null; export LINEAR_API_KEY="${LINEAR_API_KEY}"
+    source /Users/fonsecabc/.openclaw/workspace/.env.secrets 2>/dev/null; export LINEAR_API_KEY="${LINEAR_API_KEY}"
     export LINEAR_DEFAULT_TEAM="${LINEAR_DEFAULT_TEAM:-AUT}"
     "$LINEAR_SCRIPT" "$@"
 }
@@ -56,10 +56,10 @@ cmd_status() {
     
     # Active workflows
     echo "🔄 Active Workflows:"
-    if [ -d "/root/.openclaw/workflows" ]; then
-        workflows=$(find /root/.openclaw/workflows -name "*-state.json" 2>/dev/null | wc -l)
+    if [ -d "/Users/fonsecabc/.openclaw/workflows" ]; then
+        workflows=$(find /Users/fonsecabc/.openclaw/workflows -name "*-state.json" 2>/dev/null | wc -l)
         if [ "$workflows" -gt 0 ]; then
-            for state_file in /root/.openclaw/workflows/*-state.json; do
+            for state_file in /Users/fonsecabc/.openclaw/workflows/*-state.json; do
                 status=$(jq -r '.status' "$state_file")
                 workflow_id=$(jq -r '.workflow_id' "$state_file")
                 iteration=$(jq -r '.current_iteration' "$state_file")
@@ -86,8 +86,8 @@ cmd_agents() {
 
 cmd_workflows() {
     echo "🔄 Active Workflows:"
-    if [ -d "/root/.openclaw/workflows" ]; then
-        for state_file in /root/.openclaw/workflows/*-state.json; do
+    if [ -d "/Users/fonsecabc/.openclaw/workflows" ]; then
+        for state_file in /Users/fonsecabc/.openclaw/workflows/*-state.json; do
             [ -f "$state_file" ] || continue
             workflow_id=$(jq -r '.workflow_id' "$state_file")
             status=$(jq -r '.status' "$state_file")

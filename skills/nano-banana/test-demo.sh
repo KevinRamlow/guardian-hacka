@@ -10,7 +10,7 @@ if [[ "$GEMINI_API_KEY" == "YOUR_GEMINI_API_KEY_HERE" ]] || [[ -z "$GEMINI_API_K
     echo ""
     echo "To test nano-banana:"
     echo "1. Get API key from https://aistudio.google.com/apikey"
-    echo "2. Edit /root/.openclaw/workspace/config/mcporter.json"
+    echo "2. Edit /Users/fonsecabc/.openclaw/workspace/config/mcporter.json"
     echo "3. Replace YOUR_GEMINI_API_KEY_HERE with your actual key"
     echo "4. Run: mcporter list"
     echo ""

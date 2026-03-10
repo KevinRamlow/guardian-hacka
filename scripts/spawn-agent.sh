@@ -52,12 +52,13 @@ done
 [ -n "$TASK_FILE" ] && { [ -f "$TASK_FILE" ] && TASK_TEXT=$(cat "$TASK_FILE") || { echo "ERROR: File not found: $TASK_FILE" >&2; exit 1; }; }
 [ -z "$LABEL" ] && LABEL="$TASK_ID"
 
-# --- Dispatch guard: warn if task text contains forbidden patterns ---
+# --- Dispatch guard: BLOCK if task text contains forbidden patterns ---
 DISPATCH_GUARD="/Users/fonsecabc/.openclaw/workspace/scripts/dispatch-guard.sh"
 if [ -f "$DISPATCH_GUARD" ] && [ -n "$TASK_TEXT" ]; then
   if ! bash "$DISPATCH_GUARD" "$TASK_TEXT" 2>/dev/null; then
-    echo "WARN: Task text contains direct-launch patterns. Ensure eval is launched via run-guardian-eval.sh" >&2
-    # Warning only — don't block spawns, just log
+    echo "ERROR: Task text contains forbidden direct-launch patterns (sessions_spawn, nohup python, etc)." >&2
+    echo "  Evals must be launched via run-guardian-eval.sh inside the sub-agent, not in the task prompt." >&2
+    exit 1
   fi
 fi
 
@@ -210,17 +211,24 @@ fi
 AGENT_ID="${ROLE:-main}"
 TIMEOUT_SEC=$((TIMEOUT_MIN * 60))
 
+# Use exec to replace the wrapper shell with the actual openclaw process.
+# This ensures $AGENT_PID is the real openclaw PID, not a bash wrapper.
 nohup bash -c "
-  ~/.nvm/versions/node/v22.13.1/bin/openclaw agent \
+  exec ~/.nvm/versions/node/v22.13.1/bin/openclaw agent \
     --agent '$AGENT_ID' \
     --message \"\$(cat '$FULL_PROMPT_FILE')\" \
     --timeout $TIMEOUT_SEC \
     --json \
     > '$LOGS_DIR/${TASK_ID}-output.log' 2> '$LOGS_DIR/${TASK_ID}-stderr.log';
-  EXIT_CODE=\$?;
-  echo \"\$EXIT_CODE\" > '$LOGS_DIR/${TASK_ID}-exit-code';
 " &>/dev/null &
 AGENT_PID=$!
+
+# Write exit-code file when openclaw exits (separate watcher since exec replaces the shell)
+(
+  while kill -0 "$AGENT_PID" 2>/dev/null; do sleep 5; done
+  wait "$AGENT_PID" 2>/dev/null
+  echo "$?" > "$LOGS_DIR/${TASK_ID}-exit-code"
+) &>/dev/null &
 
 # Verify process started
 sleep 2
@@ -232,16 +240,9 @@ fi
 
 # Register + store role in state
 bash "$REGISTRY" register "$TASK_ID" "$AGENT_PID" 0 "$LABEL" "$SOURCE" "$TIMEOUT_MIN"
-# Set role field in state (register doesn't support it positionally)
+# Set role field via task-manager (locked)
 if [ -n "$ROLE" ]; then
-  python3 -c "
-import json
-f = '/Users/fonsecabc/.openclaw/tasks/state.json'
-d = json.load(open(f))
-t = d['tasks'].get('$TASK_ID')
-if t: t['role'] = '$ROLE'
-json.dump(d, open(f, 'w'), indent=2)
-" 2>/dev/null || true
+  bash "$REGISTRY" set-field "$TASK_ID" role "$ROLE" 2>/dev/null || true
 fi
 bash "$LOGGER" "$TASK_ID" spawn "PID=$AGENT_PID timeout=${TIMEOUT_MIN}min src=$SOURCE agent=$AGENT_ID$([ -n "$ROLE" ] && echo " role=$ROLE")" 2>/dev/null || true
 bash "$LINEAR_LOG" "$TASK_ID" "Agent spawned: $LABEL (timeout=${TIMEOUT_MIN}min, agent=$AGENT_ID$([ -n "$ROLE" ] && echo ", role=$ROLE"))" progress 2>/dev/null || true

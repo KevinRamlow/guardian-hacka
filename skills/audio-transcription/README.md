@@ -39,7 +39,7 @@ See [SKILL.md](SKILL.md) for complete usage, examples, and integration guide.
 
 Tested with Caio's voice memo:
 ```bash
-./transcribe.sh /root/.openclaw/media/inbound/ce3f6537-b0d2-4942-9653-bbfe12e24dd4.m4a
+./transcribe.sh /Users/fonsecabc/.openclaw/media/inbound/ce3f6537-b0d2-4942-9653-bbfe12e24dd4.m4a
 # Output: "Just a check, I'm just here to listen. Audios."
 ```
 

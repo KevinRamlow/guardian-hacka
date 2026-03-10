@@ -99,9 +99,9 @@ Tasks are tagged with:
 **Anton's orchestration work is tracked in LINEAR (caio-tests workspace).**
 
 - **Workspace:** caio-tests (team: CAI)
-- **API Key:** Configured in `/root/.openclaw/workspace/.env.linear`
+- **API Key:** Configured in `/Users/fonsecabc/.openclaw/workspace/.env.linear`
 - **Linear URL:** https://linear.app/caio-tests
-- **Local backup:** `/root/.openclaw/tasks/active.md` (synced from Linear)
+- **Local backup:** `/Users/fonsecabc/.openclaw/tasks/active.md` (synced from Linear)
 
 This keeps Anton's meta-work separate from Brandlovers product tasks (GUA workspace).
 
@@ -152,7 +152,7 @@ This keeps Anton's meta-work separate from Brandlovers product tasks (GUA worksp
 ## Auto-Tracking
 
 Anton automatically creates tasks when:
-- Spawning sub-agents (via `sessions_spawn`)
+- Spawning sub-agents (via `dispatcher.sh` → `spawn-agent.sh`)
 - Starting workflows (via workflow engine)
 - Caio explicitly asks for something
 
@@ -199,7 +199,7 @@ Automated stuck agent detection (runs every 10 min via cron):
 {baseDir}/scripts/agent-watchdog.sh
 ```
 
-Writes alerts to: `/root/.openclaw/workspace/tasks/agent-alerts.json`
+Writes alerts to: `/Users/fonsecabc/.openclaw/workspace/tasks/agent-alerts.json`
 
 Anton picks up alerts during heartbeat sweeps.
 

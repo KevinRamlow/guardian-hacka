@@ -16,7 +16,7 @@ Prevent workspace bloat by cleaning up:
 
 **Dry-run mode (safe, shows what would be deleted):**
 ```bash
-cd /root/.openclaw/workspace/skills/workspace-org
+cd /Users/fonsecabc/.openclaw/workspace/skills/workspace-org
 ./scripts/cleanup.sh --dry-run
 ```
 

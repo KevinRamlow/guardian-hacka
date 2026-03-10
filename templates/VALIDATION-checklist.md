@@ -5,7 +5,7 @@ Use this checklist after every agent completion. Do NOT report success without c
 ## 1. Read Agent Output
 
 ```bash
-cat /root/.openclaw/tasks/agent-logs/CAI-XXX-output.log
+cat /Users/fonsecabc/.openclaw/tasks/agent-logs/CAI-XXX-output.log
 ```
 
 **Check:**
@@ -48,11 +48,11 @@ grep "new feature" skills/feature-name/README.md
 **Analysis Claims:**
 ```bash
 # Verify output file exists
-ls -lh /root/.openclaw/workspace/analysis/YYYY-MM-DD-topic.md
+ls -lh /Users/fonsecabc/.openclaw/workspace/analysis/YYYY-MM-DD-topic.md
 
 # Check for actual findings (not empty)
-wc -l /root/.openclaw/workspace/analysis/YYYY-MM-DD-topic.md
-grep -c "Key finding" /root/.openclaw/workspace/analysis/YYYY-MM-DD-topic.md
+wc -l /Users/fonsecabc/.openclaw/workspace/analysis/YYYY-MM-DD-topic.md
+grep -c "Key finding" /Users/fonsecabc/.openclaw/workspace/analysis/YYYY-MM-DD-topic.md
 # Expected: >50 lines, 3-5 findings
 ```
 
@@ -172,15 +172,15 @@ bash scripts/spawn-agent.sh --task CAI-TEST --label "test-with-apostrophe's" --t
 **For Guardian analysis:**
 ```bash
 # Check output file exists and has content
-[ -f /root/.openclaw/workspace/analysis/guardian-disagreements.md ] && echo "✅ File exists" || echo "❌ Missing"
-wc -l /root/.openclaw/workspace/analysis/guardian-disagreements.md
+[ -f /Users/fonsecabc/.openclaw/workspace/analysis/guardian-disagreements.md ] && echo "✅ File exists" || echo "❌ Missing"
+wc -l /Users/fonsecabc/.openclaw/workspace/analysis/guardian-disagreements.md
 # Expected: >100 lines with findings
 ```
 
 **For Billy skills:**
 ```bash
 # Test skill end-to-end
-cd /root/.openclaw/workspace/clawdbots/agents/billy/workspace
+cd /Users/fonsecabc/.openclaw/workspace/clawdbots/agents/billy/workspace
 bash skills/skill-name/test.sh
 # Expected: Success output, no errors
 ```

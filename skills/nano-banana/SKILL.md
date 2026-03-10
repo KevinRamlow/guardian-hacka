@@ -62,7 +62,7 @@ python3 skills/nano-banana/scripts/generate_image.py \
 
 ### mcporter Setup
 
-Add to `/root/.openclaw/workspace/config/mcporter.json`:
+Add to `/Users/fonsecabc/.openclaw/workspace/config/mcporter.json`:
 
 ```json
 {
@@ -247,7 +247,7 @@ Or configure as MCP server for direct tool access (if OpenClaw supports MCP prot
 ## What Caio Needs to Provide
 
 1. **Gemini API key** from https://aistudio.google.com/apikey
-2. Add key to mcporter config at `/root/.openclaw/workspace/config/mcporter.json`
+2. Add key to mcporter config at `/Users/fonsecabc/.openclaw/workspace/config/mcporter.json`
 3. Restart OpenClaw gateway if needed for config reload
 
 Once configured, CaioBot can generate images on demand for presentations, team messages, memes, and more.

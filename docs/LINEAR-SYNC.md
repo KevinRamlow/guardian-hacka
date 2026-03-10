@@ -39,7 +39,7 @@
 
 ### 1. Sync Script
 
-**Location:** `/root/.openclaw/workspace/scripts/linear-sync.sh`
+**Location:** `/Users/fonsecabc/.openclaw/workspace/scripts/linear-sync.sh`
 
 **Functions:**
 - `linear_query()` — Call Linear GraphQL API
@@ -70,14 +70,14 @@
 ### 2. Cron Job
 
 **Schedule:** Every 15 minutes  
-**Command:** `/root/.openclaw/workspace/scripts/linear-sync.sh`  
-**Logs:** `/root/.openclaw/workspace/logs/linear-sync.log`
+**Command:** `/Users/fonsecabc/.openclaw/workspace/scripts/linear-sync.sh`  
+**Logs:** `/Users/fonsecabc/.openclaw/workspace/logs/linear-sync.log`
 
 **Installation:**
 ```bash
 crontab -e
 # Add:
-*/15 * * * * /root/.openclaw/workspace/scripts/linear-sync.sh >> /root/.openclaw/workspace/logs/linear-sync.log 2>&1
+*/15 * * * * /Users/fonsecabc/.openclaw/workspace/scripts/linear-sync.sh >> /Users/fonsecabc/.openclaw/workspace/logs/linear-sync.log 2>&1
 ```
 
 **Verify:**
@@ -89,7 +89,7 @@ crontab -l | grep linear-sync
 
 ### 3. State File
 
-**Location:** `/root/.openclaw/workspace/.linear-sync-state.json`
+**Location:** `/Users/fonsecabc/.openclaw/workspace/.linear-sync-state.json`
 
 **Format:**
 ```json
@@ -118,8 +118,8 @@ Session: <session-id>
 ```
 
 **Where to find session ID:**
-- OpenClaw subagents: `subagents list` → `sessionKey` field
-- Claude Code agents: `sessions_spawn` output → `sessionKey`
+- OpenClaw subagents: `openclaw agent --agent <role>` → PID tracked in state.json
+- All agents spawned via `dispatcher.sh` → `spawn-agent.sh` (NEVER directly)
 
 **Example task description:**
 ```markdown
@@ -169,7 +169,7 @@ When a sub-agent finishes (status = "done"), the sync script:
 ### Check Sync Logs
 
 ```bash
-tail -f /root/.openclaw/workspace/logs/linear-sync.log
+tail -f /Users/fonsecabc/.openclaw/workspace/logs/linear-sync.log
 ```
 
 **Expected output:**
@@ -187,14 +187,14 @@ tail -f /root/.openclaw/workspace/logs/linear-sync.log
 ### Manual Sync
 
 ```bash
-/root/.openclaw/workspace/scripts/linear-sync.sh
+/Users/fonsecabc/.openclaw/workspace/scripts/linear-sync.sh
 ```
 
 ### Check Cron Status
 
 ```bash
 # Last run
-ls -lh /root/.openclaw/workspace/logs/linear-sync.log
+ls -lh /Users/fonsecabc/.openclaw/workspace/logs/linear-sync.log
 
 # Cron schedule
 crontab -l | grep linear-sync
@@ -286,10 +286,10 @@ openclaw sessions-list --runtime acp --json
 subagents list
 
 # Check if session ID matches
-grep -r "Session: <id>" /root/.openclaw/workspace/
+grep -r "Session: <id>" /Users/fonsecabc/.openclaw/workspace/
 
 # Force manual sync
-/root/.openclaw/workspace/scripts/linear-sync.sh
+/Users/fonsecabc/.openclaw/workspace/scripts/linear-sync.sh
 ```
 
 ### Cron Not Running
@@ -313,7 +313,7 @@ crontab -l
 
 **Check Linear API key:**
 ```bash
-source /root/.openclaw/workspace/.env.linear
+source /Users/fonsecabc/.openclaw/workspace/.env.linear
 curl -s -X POST https://api.linear.app/graphql \
   -H "Authorization: $LINEAR_API_KEY" \
   -H "Content-Type: application/json" \
@@ -366,7 +366,7 @@ curl -s -X POST https://api.linear.app/graphql \
 
 ```bash
 # Watch sync logs
-tail -f /root/.openclaw/workspace/logs/linear-sync.log
+tail -f /Users/fonsecabc/.openclaw/workspace/logs/linear-sync.log
 
 # Check task in Linear
 open "https://linear.app/caio-tests/issue/CAI-35"
@@ -376,10 +376,10 @@ open "https://linear.app/caio-tests/issue/CAI-35"
 
 ```bash
 # Force sync now (doesn't wait for cron)
-/root/.openclaw/workspace/scripts/linear-sync.sh
+/Users/fonsecabc/.openclaw/workspace/scripts/linear-sync.sh
 
 # Check what changed
-git -C /root/.openclaw/workspace diff .linear-sync-state.json
+git -C /Users/fonsecabc/.openclaw/workspace diff .linear-sync-state.json
 ```
 
 ---

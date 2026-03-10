@@ -17,7 +17,7 @@
 - Token: $GITHUB_TOKEN (see .env.secrets)
 - Scopes: repo, read:org, read:user, notifications
 - Key repos: guardian-agents-api, guardian-api, guardian-ads-treatment (all in brandlovers-team org)
-- guardian-agents-api cloned locally at `/root/.openclaw/workspace/guardian-agents-api/`
+- guardian-agents-api cloned locally at `/Users/fonsecabc/.openclaw/workspace/guardian-agents-api/`
 
 ### GCP / gcloud
 - gcloud SDK installed at `/opt/google-cloud-sdk/` (v559.0.0)
@@ -28,15 +28,15 @@
 ### Linear
 - **Brandlovers** (READ): $LINEAR_API_KEY_BRANDLOVERS (see .env.secrets) | Teams: GUA, PLT, GTM, SMA, DevOps, CTX
 - **caio-tests** (R/W): $LINEAR_API_KEY (see .env.secrets) | Team: CAI | Track Anton orchestration
-- Config: /root/.openclaw/workspace/.env.linear
+- Config: /Users/fonsecabc/.openclaw/workspace/.env.linear
 
 ### Task Manager (Anton's Orchestration Tracking)
-- **Location:** `/root/.openclaw/workspace/skills/task-manager/`
+- **Location:** `/Users/fonsecabc/.openclaw/workspace/skills/task-manager/`
 - **Tracking method:** Local files (NOT Brandlovers Linear workspace)
-- **Active tasks:** `/root/.openclaw/tasks/active.md`
-- **History:** `/root/.openclaw/tasks/history/YYYY-MM-DD.md`
-- **State file:** `/root/.openclaw/tasks/state.json`
-- **Quick view:** `cat /root/.openclaw/tasks/active.md` or `./.shortcuts/tasks`
+- **Active tasks:** `/Users/fonsecabc/.openclaw/tasks/active.md`
+- **History:** `/Users/fonsecabc/.openclaw/tasks/history/YYYY-MM-DD.md`
+- **State file:** `/Users/fonsecabc/.openclaw/tasks/state.json`
+- **Quick view:** `cat /Users/fonsecabc/.openclaw/tasks/active.md` or `./.shortcuts/tasks`
 - **Status command:** `./skills/task-manager/scripts/task-manager.sh status`
 - **Note:** Anton's orchestration work stays separate from company product tasks
 
@@ -56,7 +56,7 @@
 - URL: https://metabase.brandlovers.ai (behind Cloudflare Access — not directly reachable)
 - API Key: $METABASE_API_KEY (see .env.secrets)
 - MCP config at: /root/.claude/mcp_config.json
-- mcporter configured at: /root/.openclaw/workspace/config/mcporter.json
+- mcporter configured at: /Users/fonsecabc/.openclaw/workspace/config/mcporter.json
 - **Status**: Not usable from server (Cloudflare Access blocks API calls)
 
 ### Langfuse

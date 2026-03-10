@@ -33,7 +33,7 @@ import yaml
 # Constants
 # ---------------------------------------------------------------------------
 
-WORKSPACE = Path(os.environ.get("OPENCLAW_WORKSPACE", "/root/.openclaw/workspace"))
+WORKSPACE = Path(os.environ.get("OPENCLAW_WORKSPACE", "/Users/fonsecabc/.openclaw/workspace"))
 WORKFLOWS_DIR = WORKSPACE / "workflows"
 STATE_DIR = WORKSPACE / ".openclaw" / "workflows"
 TEMPLATES_DIR = WORKFLOWS_DIR / "templates"

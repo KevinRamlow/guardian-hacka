@@ -23,9 +23,9 @@ cat << EOF
 - **Timeout:** $TIMEOUT minutes
 
 ## Logging (MANDATORY)
-Read /root/.openclaw/workspace/CLAUDE.md for full logging instructions.
+Read /Users/fonsecabc/.openclaw/workspace/CLAUDE.md for full logging instructions.
 
-Use this script: /root/.openclaw/workspace/skills/task-manager/scripts/linear-log.sh
+Use this script: /Users/fonsecabc/.openclaw/workspace/skills/task-manager/scripts/linear-log.sh
 
 **Log on:**
 - Start: \`linear-log.sh $TASK_ID "🚀 Starting: [brief]" progress\`
