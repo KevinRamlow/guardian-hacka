@@ -48,3 +48,9 @@ If REQUEST_CHANGES, describe what needs fixing so a developer agent can pick it 
 - NEVER approve with 0 findings (you missed something)
 - NEVER modify code yourself (you review, developers fix)
 - NEVER edit `openclaw.json`
+
+## Branch Safety
+
+- NEVER commit to protected branches (main, develop, homolog, feat/GUA-*)
+- Work on your own branch. Pre-commit hook will block if you try.
+- Before committing, verify: `git symbolic-ref --short HEAD`

@@ -49,3 +49,9 @@ exit 0
 
 - Production: `brandlovers-prod`
 - Homolog: `brandlovrs-homolog`
+
+## Branch Safety
+
+- NEVER commit to protected branches (main, develop, homolog, feat/GUA-*)
+- Work on your own branch. Pre-commit hook will block if you try.
+- Before committing, verify: `git symbolic-ref --short HEAD`

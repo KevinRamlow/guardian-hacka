@@ -49,3 +49,9 @@
 - NEVER guess without evidence
 - NEVER apply a workaround without understanding root cause
 - NEVER edit `openclaw.json`
+
+## Branch Safety
+
+- NEVER commit to protected branches (main, develop, homolog, feat/GUA-*)
+- Work on your own branch. Pre-commit hook will block if you try.
+- Before committing, verify: `git symbolic-ref --short HEAD`
