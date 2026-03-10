@@ -35,7 +35,7 @@ elif echo "$ALL_LOGS" | grep -qiE "max_tokens|MAX_TOKENS|context length"; then
   fix="FIX: Break task into smaller chunks"
 elif echo "$ALL_LOGS" | grep -qiE "ENOTFOUND|not found|No such file|ModuleNotFoundError"; then
   error_class="config_error"
-  fix="FIX: Check .env.guardian-eval and .env.secrets"
+  fix="FIX: Check .env.guardian-eval and .env"
 elif echo "$ALL_LOGS" | grep -qiE "idle"; then
   error_class="idle_killed"
   fix="FIX: Increase timeout or check if task has long setup"

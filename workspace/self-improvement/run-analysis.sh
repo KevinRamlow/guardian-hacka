@@ -3,7 +3,9 @@
 
 set -euo pipefail
 
-SELF_IMPROVEMENT="/Users/fonsecabc/.openclaw/workspace/self-improvement"
+OC_HOME="${OPENCLAW_HOME:-$HOME/.openclaw}"
+
+SELF_IMPROVEMENT="$OC_HOME/workspace/self-improvement"
 ANALYZERS_DIR="$SELF_IMPROVEMENT/analyzers"
 
 echo "╔════════════════════════════════════════════════════════╗"

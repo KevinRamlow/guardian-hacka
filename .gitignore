@@ -15,28 +15,46 @@ credentials/
 
 # ══════════════════════════════════════════════════════
 # OpenClaw runtime state (gateway-managed, not tracked)
+# Leading / = root-level only (won't match inside subdirs)
 # ══════════════════════════════════════════════════════
-tasks/
-agents/
-browser/
-canvas/
-completions/
-delivery-queue/
-devices/
-identity/
-logs/
-media/
-memory/
-skills/
-subagents/
-cron/
+/tasks/
+/agents/
+/browser/
+/canvas/
+/completions/
+/delivery-queue/
+/devices/
+/identity/
+/logs/
+/media/
+/memory/
+/skills/
+/subagents/
+/cron/
 gateway.lock
 update-check.json
 
 # ══════════════════════════════════════════════════════
-# Sub-agent role workspaces (runtime, symlinks)
+# Sub-agent role workspaces (built by setup-workspaces.sh, not tracked)
 # ══════════════════════════════════════════════════════
 workspace-*/
+
+# ══════════════════════════════════════════════════════
+# Heavy workspace subdirs (not needed in repo)
+# ══════════════════════════════════════════════════════
+workspace/.archive/
+workspace/**/.archive/
+workspace/billy-workspace/
+workspace/clawdbots/
+workspace/guardian-agents-api-real/
+workspace/son-of-anton-workspace/
+workspace/node_modules/
+workspace/**/__pycache__/
+workspace/presentations/
+workspace/dashboard/node_modules/
+workspace/.git/
+workspace/metrics/
+workspace/tasks/
 
 # ══════════════════════════════════════════════════════
 # Config backups

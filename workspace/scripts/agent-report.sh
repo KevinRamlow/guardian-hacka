@@ -17,8 +17,7 @@ TIMEOUT_MIN="${3:-}"
 LOGS_DIR="${OPENCLAW_HOME:-$HOME/.openclaw}/tasks/agent-logs"
 WORKSPACE="${OPENCLAW_HOME:-$HOME/.openclaw}/workspace"
 
-source "$WORKSPACE/.env.secrets" 2>/dev/null || true
-source "$WORKSPACE/.env.linear" 2>/dev/null || true
+OC_HOME="${OPENCLAW_HOME:-$HOME/.openclaw}"; source "$OC_HOME/.env" 2>/dev/null || true
 
 LINEAR_SCRIPT="$WORKSPACE/skills/linear/scripts/linear.sh"
 DIAGNOSE="$WORKSPACE/scripts/diagnose-failure.sh"

@@ -7,8 +7,10 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BASE_DIR="$(dirname "$SCRIPT_DIR")"
 METRICS_DIR="$BASE_DIR/metrics/daily-scores"
 
-# Source Linear API key
-source /Users/fonsecabc/.openclaw/workspace/.env.linear
+# Source secrets
+OC_HOME="${OPENCLAW_HOME:-$HOME/.openclaw}"
+source "$OC_HOME/.env" 2>/dev/null || true
+source "$OC_HOME/workspace/.env.linear" 2>/dev/null || true
 
 TODAY=$(date -u +%Y-%m-%d)
 OUTPUT_FILE="$METRICS_DIR/$TODAY.json"

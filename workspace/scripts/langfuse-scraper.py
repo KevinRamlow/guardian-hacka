@@ -15,8 +15,8 @@ SK = os.environ.get("LANGFUSE_SECRET_KEY", "")
 HOST = os.environ.get("LANGFUSE_BASE_URL", "https://us.cloud.langfuse.com")
 
 if not PK or not SK:
-    # Try loading from .env.secrets
-    secrets = Path("" + os.environ.get("OPENCLAW_HOME", os.path.expanduser("~/.openclaw")) + "/workspace/.env.secrets")
+    # Try loading from .env
+    secrets = Path("" + os.environ.get("OPENCLAW_HOME", os.path.expanduser("~/.openclaw")) + "/.env")
     if secrets.exists():
         for line in secrets.read_text().splitlines():
             line = line.strip()

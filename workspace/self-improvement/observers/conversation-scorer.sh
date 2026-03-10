@@ -2,12 +2,13 @@
 # conversation-scorer.sh - Score Anton's conversation quality using Claude Haiku
 
 set -euo pipefail
-source /Users/fonsecabc/.openclaw/workspace/.env.secrets 2>/dev/null || true
+OC_HOME="${OPENCLAW_HOME:-$HOME/.openclaw}"
+source "$OC_HOME/.env" 2>/dev/null || true
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BASE_DIR="$(dirname "$SCRIPT_DIR")"
 METRICS_DIR="$BASE_DIR/metrics/daily-scores"
-MEMORY_DIR="/Users/fonsecabc/.openclaw/workspace/memory"
+MEMORY_DIR="$OC_HOME/workspace/memory"
 
 # Get today and yesterday in YYYY-MM-DD format
 TODAY=$(date -u +%Y-%m-%d)

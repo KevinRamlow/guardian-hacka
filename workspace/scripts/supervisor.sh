@@ -36,8 +36,7 @@ if [ -f "$GUARDRAILS" ]; then
   bash "$GUARDRAILS" --check state 2>&1 | grep -v "^GUARDRAILS: OK" || true
 fi
 
-source ${OPENCLAW_HOME:-$HOME/.openclaw}/workspace/.env.linear 2>/dev/null || true
-source ${OPENCLAW_HOME:-$HOME/.openclaw}/workspace/.env.secrets 2>/dev/null || true
+source ${OPENCLAW_HOME:-$HOME/.openclaw}/.env 2>/dev/null || true
 
 python3 << 'PYEOF'
 import json, os, sys, time, subprocess, re, glob

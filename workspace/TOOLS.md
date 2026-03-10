@@ -55,8 +55,7 @@
 ### Metabase
 - URL: https://metabase.brandlovers.ai (behind Cloudflare Access — not directly reachable)
 - API Key: $METABASE_API_KEY (see .env.secrets)
-- MCP config at: /root/.claude/mcp_config.json
-- mcporter configured at: /Users/fonsecabc/.openclaw/workspace/config/mcporter.json
+- MCP config at: ${OPENCLAW_HOME}/workspace/config/mcporter.json
 - **Status**: Not usable from server (Cloudflare Access blocks API calls)
 
 ### Langfuse

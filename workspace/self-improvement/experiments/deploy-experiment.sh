@@ -3,13 +3,15 @@
 
 set -euo pipefail
 
+OC_HOME="${OPENCLAW_HOME:-$HOME/.openclaw}"
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BASE_DIR="$(dirname "$SCRIPT_DIR")"
 ACTIVE_DIR="$SCRIPT_DIR/active"
 BACKUPS_DIR="$SCRIPT_DIR/backups"
 PROBATION_FILE="$SCRIPT_DIR/probation.json"
 DEPLOYMENT_LOG="$SCRIPT_DIR/deployment-log.json"
-WORKSPACE_ROOT="/Users/fonsecabc/.openclaw/workspace"
+WORKSPACE_ROOT="$OC_HOME/workspace"
 
 # Ensure directories exist
 mkdir -p "$BACKUPS_DIR"

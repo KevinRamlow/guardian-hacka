@@ -17,8 +17,7 @@ DIAGNOSE="$WORKSPACE/scripts/diagnose-failure.sh"
 LINEAR_SCRIPT="$WORKSPACE/skills/linear/scripts/linear.sh"
 REPLICANTS_CHANNEL="D0AK1B981QR"
 
-source "$WORKSPACE/.env.secrets" 2>/dev/null || true
-source "$WORKSPACE/.env.linear" 2>/dev/null || true
+OC_HOME="${OPENCLAW_HOME:-$HOME/.openclaw}"; source "$OC_HOME/.env" 2>/dev/null || true
 
 CMD="${1:-help}"
 shift || true

@@ -1,6 +1,7 @@
 #!/bin/bash
 # Auto-restart dashboard on crash
-cd /Users/fonsecabc/.openclaw/workspace/dashboard
+OC_HOME="${OPENCLAW_HOME:-$HOME/.openclaw}"
+cd "$OC_HOME/workspace/dashboard"
 while true; do
   echo "[$(date)] Starting dashboard..."
   node server.js 2>&1

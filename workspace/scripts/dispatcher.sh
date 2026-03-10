@@ -8,8 +8,7 @@
 #
 set -euo pipefail
 
-source ${OPENCLAW_HOME:-$HOME/.openclaw}/workspace/.env.secrets 2>/dev/null || true
-source ${OPENCLAW_HOME:-$HOME/.openclaw}/workspace/.env.linear 2>/dev/null || true
+source ${OPENCLAW_HOME:-$HOME/.openclaw}/.env 2>/dev/null || true
 
 TASK_MGR="${OPENCLAW_HOME:-$HOME/.openclaw}/workspace/scripts/task-manager.sh"
 SPAWNER="${OPENCLAW_HOME:-$HOME/.openclaw}/workspace/scripts/spawn-agent.sh"

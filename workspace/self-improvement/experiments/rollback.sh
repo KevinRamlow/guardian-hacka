@@ -3,12 +3,14 @@
 
 set -euo pipefail
 
+OC_HOME="${OPENCLAW_HOME:-$HOME/.openclaw}"
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BASE_DIR="$(dirname "$SCRIPT_DIR")"
 ACTIVE_DIR="$SCRIPT_DIR/active"
 PROBATION_FILE="$SCRIPT_DIR/probation.json"
 METRICS_DIR="$BASE_DIR/metrics/daily-scores"
-WORKSPACE_ROOT="/Users/fonsecabc/.openclaw/workspace"
+WORKSPACE_ROOT="$OC_HOME/workspace"
 
 # Degradation threshold (percentage points)
 DEGRADATION_THRESHOLD=5

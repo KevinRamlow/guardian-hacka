@@ -13,6 +13,7 @@ memory/
 skills/
 subagents/
 cron/
+# Sub-agent workspaces (built at image build + container startup)
 workspace-*/
 
 # Secrets

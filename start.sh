@@ -29,6 +29,9 @@ if [ ${#MISSING[@]} -gt 0 ]; then
   exit 1
 fi
 
+# Setup sub-agent workspaces
+bash "$OPENCLAW_HOME/workspace/scripts/setup-workspaces.sh"
+
 echo "=== Starting OpenClaw Gateway ==="
 echo "OPENCLAW_HOME=${OPENCLAW_HOME}"
 openclaw gateway --port 18789

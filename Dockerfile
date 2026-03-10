@@ -11,9 +11,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Install OpenClaw
 RUN npm install -g openclaw@2026.3.8
 
-# Install Claude CLI (required for sub-agent spawning)
-RUN npm install -g @anthropic-ai/claude-code@latest
-
 # Create directory structure
 RUN mkdir -p /home/node/.openclaw/workspace \
              /home/node/.openclaw/tasks/agent-logs \
@@ -27,9 +24,11 @@ COPY --chown=node:node hooks/ /home/node/.openclaw/hooks/
 COPY --chown=node:node docker-entrypoint.sh /home/node/docker-entrypoint.sh
 RUN chmod +x /home/node/docker-entrypoint.sh
 
-# Copy workspace (scripts, config, templates, identity files)
-# PVC mount at /home/node/.openclaw overwrites these at runtime
+# Copy main workspace (scripts, config, templates, agent definitions)
 COPY --chown=node:node workspace/ /home/node/.openclaw/workspace/
+
+# Build sub-agent role workspaces from templates
+RUN bash /home/node/.openclaw/workspace/scripts/setup-workspaces.sh
 
 USER node
 WORKDIR /home/node

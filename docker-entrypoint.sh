@@ -14,6 +14,9 @@ if [ ${#MISSING[@]} -gt 0 ]; then
   exit 1
 fi
 
+# ── Setup sub-agent workspaces (idempotent) ──
+bash "${OPENCLAW_HOME}/workspace/scripts/setup-workspaces.sh"
+
 echo "=== Anton OpenClaw Gateway ==="
 echo "OPENCLAW_HOME=${OPENCLAW_HOME}"
 echo "NODE_ENV=${NODE_ENV:-development}"

@@ -36,7 +36,8 @@ os.makedirs(LOGS_DIR, exist_ok=True)
 
 # Load secrets for reporting
 secrets = {}
-for env_file in [f"{WORKSPACE}/.env.secrets", f"{WORKSPACE}/.env.linear"]:
+oc_home = os.environ.get("OPENCLAW_HOME", os.path.expanduser("~/.openclaw"))
+for env_file in [f"{oc_home}/.env"]:
     try:
         for line in open(env_file):
             line = line.strip()

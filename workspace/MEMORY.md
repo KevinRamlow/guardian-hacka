@@ -73,7 +73,7 @@ Each agent has its own isolated GitHub repo. No cross-contamination of SOUL.md o
 Billy repo is cloned inside my workspace but gitignored — it pushes/pulls independently.
 
 ### Security
-All secrets centralized in `.env.secrets` (gitignored). Scripts read from env vars:
+All secrets centralized in `$OPENCLAW_HOME/.env` (gitignored). Scripts read from env vars:
 `$GEMINI_API_KEY`, `$SLACK_USER_TOKEN`, `$METABASE_API_KEY`, `$GITHUB_TOKEN`, `$GOG_KEYRING_PASSWORD`
 Git history was scrubbed with `git-filter-repo` — zero secrets in any past commit.
 
@@ -133,7 +133,7 @@ The platform is called **CreatorAds** (repo: `brandlovers-team/creator-ads` — 
 
 ## nano-banana
 - Location: `/Users/fonsecabc/.openclaw/workspace/skills/nano-banana/`
-- API Key: stored in `.env.secrets` (GEMINI_API_KEY)
+- API Key: stored in `$OPENCLAW_HOME/.env` (GEMINI_API_KEY)
 - Tools: generate_image, edit_image, analyze_image
 
 ## Task Management v3 (2026-03-09 — Unified State Machine)
@@ -339,5 +339,5 @@ If reactivated: clone repo, configure .env, chmod +x scripts, shared GCP creds.
 
 ## SSH & Sync (2026-03-09)
 - **VMs:** Billy (`root@89.167.64.183`) — passwordless SSH, RUNNING (port 18790, gateway PID active)
-- Billy gateway token: in `.env.secrets`
+- Billy gateway token: in `$OPENCLAW_HOME/.env`
 - Billy allowlist: Caio, Luca, Victoria, Matheus, Victor Braga, João Souza (U06KB22AGDU)

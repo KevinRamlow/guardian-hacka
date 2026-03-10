@@ -11,18 +11,18 @@ fail() { FAILED+=("$1|$2"); }
 
 # --- Default checks (always run) ---
 
-# 1. Claude CLI available
-if ! which claude &>/dev/null; then
-  fail "Claude CLI not found" "npm install -g @anthropic-ai/claude-code"
+# 1. OpenClaw CLI available
+if ! which openclaw &>/dev/null; then
+  fail "OpenClaw CLI not found" "npm install -g openclaw"
 fi
 
 # 2. Secrets loaded
 if [[ -z "${ANTHROPIC_API_KEY:-}" ]]; then
-  if [[ -f "$WORKSPACE/.env.secrets" ]]; then
-    source "$WORKSPACE/.env.secrets" 2>/dev/null
+  if [[ -f "${OPENCLAW_HOME:-$HOME/.openclaw}/.env" ]]; then
+    source "${OPENCLAW_HOME:-$HOME/.openclaw}/.env" 2>/dev/null
   fi
   if [[ -z "${ANTHROPIC_API_KEY:-}" ]]; then
-    fail "ANTHROPIC_API_KEY not set" "source $WORKSPACE/.env.secrets"
+    fail "ANTHROPIC_API_KEY not set" "source ${OPENCLAW_HOME:-$HOME/.openclaw}/.env"
   fi
 fi
 
@@ -33,7 +33,7 @@ HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 \
   -d '{"query":"{ viewer { id } }"}' \
   https://api.linear.app/graphql 2>/dev/null || echo "000")
 if [[ "$HTTP_CODE" != "200" ]]; then
-  fail "Linear API unreachable (HTTP $HTTP_CODE)" "Check LINEAR_API_KEY in $WORKSPACE/.env.secrets"
+  fail "Linear API unreachable (HTTP $HTTP_CODE)" "Check LINEAR_API_KEY in ${OPENCLAW_HOME:-$HOME/.openclaw}/.env"
 fi
 
 # --- Guardian eval checks (only with --guardian-eval) ---

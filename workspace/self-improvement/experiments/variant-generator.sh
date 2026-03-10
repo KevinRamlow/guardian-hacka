@@ -3,12 +3,14 @@
 
 set -euo pipefail
 
+OC_HOME="${OPENCLAW_HOME:-$HOME/.openclaw}"
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BASE_DIR="$(dirname "$SCRIPT_DIR")"
 ACTIVE_DIR="$SCRIPT_DIR/active"
 VARIANTS_DIR="$SCRIPT_DIR/variants"
 BASELINES_DIR="$SCRIPT_DIR/baselines"
-WORKSPACE_ROOT="/Users/fonsecabc/.openclaw/workspace"
+WORKSPACE_ROOT="$OC_HOME/workspace"
 
 # Function to generate variant for experiment
 generate_variant() {

@@ -270,7 +270,7 @@ If you change SOUL.md, tell Caio — it's your soul and he should know.
 Canonical layout is in `docs/workspace-layout.md`. Key rules:
 
 1. **State lives in `~/.openclaw/tasks/`** (state.json), NOT workspace/tasks/. Scripts in `scripts/`, configs in `config/`, images in `presentations/`, skills in `skills/<name>/` with SKILL.md.
-2. **Cloned repos stay gitignored.** Role workspaces (`workspace-<role>/`) = SOUL.md + AGENTS.md + memory/ + .claude/ + symlinks only.
+2. **Cloned repos stay gitignored.** Role workspaces (`workspace-<role>/`) are built dynamically by `scripts/setup-workspaces.sh` from templates in `workspace/agents/`.
 3. **No empty dirs, no loose files in root.** Deprecated scripts → `scripts/.archive/`. Runtime state files (.json, .log, .jsonl) never committed.
 
 ## Presentation/Image Rules

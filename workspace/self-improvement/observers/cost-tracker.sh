@@ -3,10 +3,12 @@
 
 set -euo pipefail
 
+OC_HOME="${OPENCLAW_HOME:-$HOME/.openclaw}"
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BASE_DIR="$(dirname "$SCRIPT_DIR")"
 METRICS_DIR="$BASE_DIR/metrics/daily-scores"
-MEMORY_DIR="/Users/fonsecabc/.openclaw/workspace/memory"
+MEMORY_DIR="$OC_HOME/workspace/memory"
 
 TODAY=$(date -u +%Y-%m-%d)
 OUTPUT_FILE="$METRICS_DIR/$TODAY.json"

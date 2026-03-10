@@ -2,9 +2,10 @@
 # failure-analyzer.sh - Extract and classify failures from memory logs
 
 set -euo pipefail
-source /Users/fonsecabc/.openclaw/workspace/.env.secrets 2>/dev/null || true
+OC_HOME="${OPENCLAW_HOME:-$HOME/.openclaw}"
+source "$OC_HOME/.env" 2>/dev/null || true
 
-WORKSPACE="/Users/fonsecabc/.openclaw/workspace"
+WORKSPACE="$OC_HOME/workspace"
 SELF_IMPROVEMENT="$WORKSPACE/self-improvement"
 ANALYSIS_DIR="$SELF_IMPROVEMENT/analysis"
 FAILURES_DIR="$ANALYSIS_DIR/failures"

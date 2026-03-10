@@ -2,9 +2,10 @@
 # hypothesis-generator.sh - Generate improvement hypotheses from top patterns
 
 set -euo pipefail
-source /Users/fonsecabc/.openclaw/workspace/.env.secrets 2>/dev/null || true
+OC_HOME="${OPENCLAW_HOME:-$HOME/.openclaw}"
+source "$OC_HOME/.env" 2>/dev/null || true
 
-SELF_IMPROVEMENT="/Users/fonsecabc/.openclaw/workspace/self-improvement"
+SELF_IMPROVEMENT="$OC_HOME/workspace/self-improvement"
 ANALYSIS_DIR="$SELF_IMPROVEMENT/analysis"
 PATTERNS_FILE="$ANALYSIS_DIR/patterns.json"
 HYPOTHESES_FILE="$ANALYSIS_DIR/hypotheses.json"
