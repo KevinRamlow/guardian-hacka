@@ -9,10 +9,9 @@
 │   ├── process-registry.json         #   Long-running process tracking
 │   ├── agent-logs/                   #   Per-agent: output.log, stderr.log, activity.jsonl, exit-code
 │   ├── spawn-tasks/                  #   Task prompt files injected to agents
-│   ├── backlog/                      #   Auto-queue backlog
 │   ├── dedup/                        #   Deduplication cache
 │   └── checkpoints/                  #   Checkpoint state
-├── workspace/                        # MAIN WORKSPACE (git-tracked)
+├── workspace/                        # MAIN WORKSPACE (git-tracked: replicants-anton)
 │   ├── SOUL.md                       #   Identity + rules
 │   ├── AGENTS.md                     #   Boot sequence for all agents
 │   ├── MEMORY.md                     #   Long-term curated knowledge
@@ -23,19 +22,17 @@
 │   ├── config/                       #   JSON configs (auto-queue, timeout-rules, review-config)
 │   ├── skills/                       #   Skill modules (each has SKILL.md)
 │   ├── knowledge/                    #   Codemaps, patterns, best practices (shared via symlink)
-│   ├── templates/                    #   PRD, TASK, VALIDATION templates + claude-md/
-│   ├── memory/                       #   Daily notes: YYYY-MM-DD.md + state files
-│   ├── dashboard/                    #   Web cockpit (Express + WS, port 8765)
-│   ├── workflows/                    #   YAML workflow definitions
-│   ├── self-improvement/             #   Auto-loop infrastructure
-│   ├── docs/                         #   Architecture docs, setup guides
-│   ├── metrics/                      #   Performance metrics JSON
-│   ├── presentations/                #   Generated images, slides, org charts
+│   ├── templates/                    #   PRD, TASK, VALIDATION templates
+│   ├── memory/                       #   Daily notes: YYYY-MM-DD.md
+│   ├── dashboard/                    #   Web dashboard (Express + WS, port 8765)
+│   ├── agents/                       #   Sub-agent role templates (shared/ + per-role SOUL.md)
+│   ├── docs/                         #   Architecture docs
+│   ├── agents/                       #   Sub-agent role templates (shared/ + per-role SOUL.md)
+│   ├── presentations/                #   Generated images, slides
 │   │   └── slides/                   #   Individual slide images
 │   ├── guardian-agents-api-real/     #   Guardian repo clone (gitignored, has own .git)
 │   ├── clawdbots/                    #   Billy, Neuron configs (gitignored, has own .git)
-│   ├── billy-workspace/              #   Billy bot workspace (gitignored)
-│   └── son-of-anton-workspace/       #   Son of Anton workspace (gitignored)
+│   └── billy-workspace/              #   Billy bot workspace (gitignored)
 ├── workspace-developer/              # Role workspace (symlinks to workspace/)
 ├── workspace-reviewer/               # Role workspace (symlinks to workspace/)
 ├── workspace-architect/              # Role workspace (symlinks to workspace/)

@@ -1,6 +1,8 @@
 # GKE Deployment Architecture — Anton & Billy OpenClaw Gateways
 
-> **ADR-001** | Status: **Proposed** | Author: Architect Agent | 2026-03-09
+> **ADR-001** | Status: **Superseded** | Author: Architect Agent | 2026-03-09
+>
+> **NOTE:** This doc was written before the custom Dockerfile approach. Anton now uses a custom Docker image built by `reusable-workflows-ci` and pushed to `gcr.io/brandlovers-prod/brandlovers-team/anton-openclaw`. K8s manifests live in `cicd-k8s` repo, not in this repo. See `infra/k8s/anton-openclaw/` for current manifests.
 
 ## Context
 

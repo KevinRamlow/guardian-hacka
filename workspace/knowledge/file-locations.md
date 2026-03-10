@@ -12,9 +12,8 @@
 - `spawn-agent.sh` — Low-level agent spawner
 
 ## Supporting Scripts
-- `run-guardian-eval.sh` — wrapper for eval runs
-- `linear-sync-v2.sh` — Linear issue sync
 - `infra-maintenance.sh` — consolidated infra tasks (15min launchd)
+- `langfuse-query.sh` — Langfuse trace queries
 
 ## State
 - Unified state: `~/.openclaw/tasks/state.json`
@@ -33,7 +32,7 @@
 `~/.openclaw/workspace/config/`
 - `auto-queue.json` — auto-queue configuration (used by heartbeat)
 - `timeout-rules.json` — agent timeout rules
-- `cockpit-state.json` — dashboard state
+- `review-config.json` — review hook configuration
 
 ## Guardian Repo
 `~/.openclaw/workspace/guardian-agents-api-real/`
@@ -50,6 +49,5 @@
 - Eval runs output: `guardian-agents-api-real/evals/.runs/content_moderation/run_*/`
 
 ## Secrets (NEVER commit)
-- `~/.openclaw/workspace/.env.secrets` — API keys and secrets
+- `~/.openclaw/.env` — All API keys and secrets (single source)
 - `~/.openclaw/workspace/.env.guardian-eval` — eval environment vars
-- `~/.openclaw/workspace/.gcp-credentials.json` — GCP service account key

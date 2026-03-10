@@ -4,10 +4,8 @@ metadata:
   name: anton-openclaw
   namespace: argocd
   annotations:
-    argocd-image-updater.argoproj.io/image-list: >-
-      anton-openclaw=ghcr.io/openclaw/openclaw
-    argocd-image-updater.argoproj.io/update-strategy: semver
-    argocd-image-updater.argoproj.io/anton-openclaw.allow-tags: "regexp:^2026\\."
+    argocd-image-updater.argoproj.io/image-list: anton-openclaw=gcr.io/brandlovers-prod/brandlovers-team/anton-openclaw
+    argocd-image-updater.argoproj.io/update-strategy: newest-build
 spec:
   project: default
   source:

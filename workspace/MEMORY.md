@@ -55,11 +55,10 @@
 ### Guardian Evals GCP Config (2026-03-07)
 - **Problem:** Evals use prod GCS buckets → 403 if project set to homolog
 - **Solution:** Always `source .env.guardian-eval` or use `bash scripts/run-guardian-eval.sh --config ... --workers 10`
-- Both methods set `GOOGLE_CLOUD_PROJECT=brandlovers-prod` automatically. CLAUDE.md has full instructions.
+- Both methods set `GOOGLE_CLOUD_PROJECT=brandlovers-prod` automatically.
 
 ## Codebase Locations
-- guardian-agents-api: `/Users/fonsecabc/.openclaw/workspace/guardian-agents-api-real/`
-- Workflows: `/Users/fonsecabc/.openclaw/workspace/workflows/`
+- guardian-agents-api: `${OPENCLAW_HOME:-$HOME/.openclaw}/workspace/guardian-agents-api-real/`
 
 ## Repos — Separated Agent Workspaces (2026-03-09)
 
@@ -111,7 +110,7 @@ The platform is called **CreatorAds** (repo: `brandlovers-team/creator-ads` — 
 
 **Repos:**
 - `creator-ads` — Frontend (React)
-- `campaign-manager-api` — Main API (Go/Gin) — cloned at /Users/fonsecabc/.openclaw/workspace/campaign-manager-api/
+- `campaign-manager-api` — Main API (Go/Gin) — cloned at ${OPENCLAW_HOME:-$HOME/.openclaw}/workspace/campaign-manager-api/
 - `creatorads-backoffice-app` — Admin backoffice
 - `user-management-api` — Auth/users
 - `guardian-api` — Guardian moderation API (Go)
@@ -119,7 +118,7 @@ The platform is called **CreatorAds** (repo: `brandlovers-team/creator-ads` — 
 - `guardian-ads-treatment` — Media processing (Go)
 
 ## Work Preferences
-- Caio uses Opus model for Claude Code
+- Caio uses Opus model
 - MySQL MCP over Metabase for direct queries
 - `bq query --project_id <project> --use_legacy_sql=false` for BigQuery
 - Team messages: pt-BR, no tables, concise narrative
@@ -132,13 +131,13 @@ The platform is called **CreatorAds** (repo: `brandlovers-team/creator-ads` — 
 - Built, tested locally, not deployed yet
 
 ## nano-banana
-- Location: `/Users/fonsecabc/.openclaw/workspace/skills/nano-banana/`
+- Location: `${OPENCLAW_HOME:-$HOME/.openclaw}/workspace/skills/nano-banana/`
 - API Key: stored in `$OPENCLAW_HOME/.env` (GEMINI_API_KEY)
 - Tools: generate_image, edit_image, analyze_image
 
 ## Task Management v3 (2026-03-09 — Unified State Machine)
 
-**Single source of truth:** `state.json` (`/Users/fonsecabc/.openclaw/tasks/state.json`)
+**Single source of truth:** `state.json` (`${OPENCLAW_HOME:-$HOME/.openclaw}/tasks/state.json`)
 
 ### State Machine
 ```
@@ -188,9 +187,7 @@ Callback agents must update these after analyzing results.
 | Job | Interval | What |
 |---|---|---|
 | `com.anton.supervisor` | 30s | PID checks, completions, callbacks, timeouts, orphans, health |
-| `com.anton.infra` | 15min | Linear sync, GCP tokens, Langfuse, state cleanup |
-
-Old jobs removed: watchdog, process-checker, linear-sync, langfuse-scraper, gcp-token-push
+| `com.anton.infra` | 15min | Langfuse query, state cleanup |
 
 ### Backward Compatibility
 - `spawn-agent.sh` calls `task-manager.sh register` for state tracking
@@ -322,22 +319,9 @@ If reactivated: clone repo, configure .env, chmod +x scripts, shared GCP creds.
 ## Guardian Eval Dashboard (2026-03-08)
 - **URL:** http://localhost:8765/guardian-eval-dashboard.html (auto-refresh 30s)
 - Tracks target accuracy (87%), current eval progress, recent runs with delta
-- Part of cockpit server on port 8765
+- Part of dashboard server on port 8765
 
 
-## Anton Auto-Loops (2026-03-08)
-
-**Guardian Loop (every 4h, launchd: `com.anton.auto-loop`):**
-- Target: 87% accuracy. Spawns 3 agents, fast eval (5 min) + full validation (35 min). Auto-commits if +1pp.
-
-**Meta Loop (every 24h, launchd: `com.anton.meta-loop`):**
-- Target: 85% agent success rate. Improves templates, scripts, codemaps. Auto-commits if +5%.
-
-**Key Files:** `OBJECTIVES.md` (control panel), `scripts/anton-auto-loop.sh`, `scripts/anton-meta-loop.sh`, `scripts/fast-eval.sh`
-**Status:** `bash .shortcuts/auto-loop-status`
-**Self-monitored** via BMAD role architecture (supervisor.sh handles completions/health)
-
-## SSH & Sync (2026-03-09)
-- **VMs:** Billy (`root@89.167.64.183`) — passwordless SSH, RUNNING (port 18790, gateway PID active)
-- Billy gateway token: in `$OPENCLAW_HOME/.env`
-- Billy allowlist: Caio, Luca, Victoria, Matheus, Victor Braga, João Souza (U06KB22AGDU)
+## SSH & VMs (2026-03-09)
+- **Billy VM** (`89.167.64.183`) — STOPPED. Own repo: `replicants-billy`.
+- **Son of Anton VM** (`89.167.23.2`) — Own repo: `replicants-son-of-anton`. Uses ClawdBot, not OpenClaw.

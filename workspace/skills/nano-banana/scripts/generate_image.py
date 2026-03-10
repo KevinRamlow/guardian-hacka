@@ -13,7 +13,7 @@ import requests
 # Default API key from env or config
 API_KEY = os.environ.get("GEMINI_API_KEY", "")
 if not API_KEY:
-    print(json.dumps({"success": False, "error": "GEMINI_API_KEY not set. Source .env.secrets first."}), file=sys.stderr)
+    print(json.dumps({"success": False, "error": "GEMINI_API_KEY not set. Source $OPENCLAW_HOME/.env first."}), file=sys.stderr)
     sys.exit(1)
 
 # Model mappings

@@ -47,7 +47,7 @@ workspace/**/.archive/
 workspace/billy-workspace/
 workspace/clawdbots/
 workspace/guardian-agents-api-real/
-workspace/son-of-anton-workspace/
+workspace/campaign-manager-api/
 workspace/node_modules/
 workspace/**/__pycache__/
 workspace/presentations/
@@ -55,6 +55,7 @@ workspace/dashboard/node_modules/
 workspace/.git/
 workspace/metrics/
 workspace/tasks/
+workspace/logs/
 
 # ══════════════════════════════════════════════════════
 # Config backups

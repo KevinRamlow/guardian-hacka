@@ -1,7 +1,7 @@
 #!/bin/bash
 # dispatch-guard.sh — Block direct eval/agent launches outside dispatcher
 #
-# This script is meant to be sourced in agent CLAUDE.md or called as a pre-check.
+# This script is called as a pre-check before agent spawns.
 # It scans a command string for forbidden patterns and blocks execution.
 #
 # Usage as pre-check:

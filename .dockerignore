@@ -34,7 +34,7 @@ infra/
 workspace/billy-workspace/
 workspace/clawdbots/
 workspace/guardian-agents-api-real/
-workspace/son-of-anton-workspace/
+workspace/campaign-manager-api/
 workspace/.archive/
 workspace/**/.archive/
 workspace/node_modules/
@@ -47,6 +47,7 @@ workspace/.git/
 workspace/.env*
 workspace/metrics/
 workspace/tasks/
+workspace/logs/
 
 # Large/generated files
 *.bak*

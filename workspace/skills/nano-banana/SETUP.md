@@ -31,7 +31,7 @@ It can **generate**, **edit**, and **analyze** images through simple text prompt
 
 The package is already installed and configured in mcporter. You just need to add your API key.
 
-**File:** `/Users/fonsecabc/.openclaw/workspace/config/mcporter.json`
+**File:** `${OPENCLAW_HOME:-$HOME/.openclaw}/workspace/config/mcporter.json`
 
 Find the `nano-banana` section and replace the placeholder:
 
@@ -77,7 +77,7 @@ If successful, you should see `test-output.png` created with your generated imag
 Alternatively, run the demo script:
 
 ```bash
-cd /Users/fonsecabc/.openclaw/workspace/skills/nano-banana
+cd ${OPENCLAW_HOME:-$HOME/.openclaw}/workspace/skills/nano-banana
 ./test-demo.sh
 ```
 
@@ -238,7 +238,7 @@ Save outputs to organized directories:
 
 ```bash
 # Check if server is in config
-cat /Users/fonsecabc/.openclaw/workspace/config/mcporter.json | grep nano-banana
+cat ${OPENCLAW_HOME:-$HOME/.openclaw}/workspace/config/mcporter.json | grep nano-banana
 
 # List all servers
 mcporter list
@@ -251,14 +251,14 @@ which nano-banana-pro-mcp
 
 ✅ **Installation:** Complete (package installed, mcporter configured)  
 ⚠️ **API Key:** Get from https://aistudio.google.com/apikey  
-⚠️ **Config Update:** Replace `YOUR_GEMINI_API_KEY_HERE` in `/Users/fonsecabc/.openclaw/workspace/config/mcporter.json`
+⚠️ **Config Update:** Replace `YOUR_GEMINI_API_KEY_HERE` in `${OPENCLAW_HOME:-$HOME/.openclaw}/workspace/config/mcporter.json`
 
 That's it! Just need the API key and CaioBot will be ready to generate images.
 
 ## Next Steps
 
 1. **Get your Gemini API key** from https://aistudio.google.com/apikey
-2. **Update mcporter config** at `/Users/fonsecabc/.openclaw/workspace/config/mcporter.json`
+2. **Update mcporter config** at `${OPENCLAW_HOME:-$HOME/.openclaw}/workspace/config/mcporter.json`
 3. **Test it** with the demo script: `cd skills/nano-banana && ./test-demo.sh`
 4. **Explore examples** in `examples.md` for common use cases
 5. **Read SKILL.md** for detailed documentation and integration tips

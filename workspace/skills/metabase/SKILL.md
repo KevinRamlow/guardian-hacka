@@ -4,7 +4,7 @@ Query the Brandlovrs Metabase instance for dashboards, questions, and data.
 
 ## Configuration
 - **URL:** https://metabase.brandlovers.ai
-- **API Key:** Set in ~/.env.secrets as METABASE_API_KEY
+- **API Key:** $METABASE_API_KEY in `$OPENCLAW_HOME/.env`
 
 ## Usage
 

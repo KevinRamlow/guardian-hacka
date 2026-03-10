@@ -6,4 +6,4 @@ resources:
   - pvc.yaml
   - serviceaccount.yaml
 images:
-  - name: ghcr.io/openclaw/openclaw
+  - name: gcr.io/brandlovers-prod/brandlovers-team/anton-openclaw

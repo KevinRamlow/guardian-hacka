@@ -99,9 +99,9 @@ Tasks are tagged with:
 **Anton's orchestration work is tracked in LINEAR (caio-tests workspace).**
 
 - **Workspace:** caio-tests (team: CAI)
-- **API Key:** Configured in `/Users/fonsecabc/.openclaw/workspace/.env.linear`
+- **API Key:** $LINEAR_API_KEY from `$OPENCLAW_HOME/.env`
 - **Linear URL:** https://linear.app/caio-tests
-- **Local backup:** `/Users/fonsecabc/.openclaw/tasks/active.md` (synced from Linear)
+- **Local backup:** `${OPENCLAW_HOME:-$HOME/.openclaw}/tasks/active.md` (synced from Linear)
 
 This keeps Anton's meta-work separate from Brandlovers product tasks (GUA workspace).
 
@@ -199,26 +199,8 @@ Automated stuck agent detection (runs every 10 min via cron):
 {baseDir}/scripts/agent-watchdog.sh
 ```
 
-Writes alerts to: `/Users/fonsecabc/.openclaw/workspace/tasks/agent-alerts.json`
+Writes alerts to: `${OPENCLAW_HOME:-$HOME/.openclaw}/workspace/tasks/agent-alerts.json`
 
 Anton picks up alerts during heartbeat sweeps.
 
-### Spawn Template Helper
-Generate standardized spawn descriptions with logging instructions:
-
-```bash
-{baseDir}/scripts/spawn-template.sh CAI-XX 15 "Task description"
-```
-
-Arguments:
-- `CAI-XX`: Linear task ID
-- `15`: Timeout in minutes
-- `"Task description"`: What the agent should do
-
-Outputs spawn description with:
-- Task context (Linear ID, timeout)
-- Mandatory logging instructions
-- Task description
-
-Use this to ensure every spawn includes proper logging setup.
 

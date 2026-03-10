@@ -21,11 +21,10 @@ Deploy Anton (orchestrator) and Billy (data assistant) as always-on pods in `bl-
 
 ```bash
 # Check if the image exists and what tags are available
-docker manifest inspect ghcr.io/openclaw/openclaw:2026.3.8 2>/dev/null
-# If not public or doesn't exist, we need to build a custom image (see Appendix A)
+gcloud container images list-tags gcr.io/brandlovers-prod/brandlovers-team/anton-openclaw --limit=5
 ```
 
-**BLOCKER if image doesn't exist:** OpenClaw may not publish public Docker images. If so, we need a custom Dockerfile (see Appendix A). This must be resolved before proceeding.
+**Image source:** Custom Dockerfile in `replicants-anton` repo, built by `reusable-workflows-ci` and pushed to `gcr.io/brandlovers-prod/brandlovers-team/anton-openclaw`. ArgoCD image-updater auto-deploys new builds.
 
 ---
 
@@ -256,15 +255,15 @@ The `openclaw.json` needs adaptations for running in a container vs locally:
 |---------|----------------|--------------|
 | `gateway.bind` | `loopback` | `lan` (K8s service routing) |
 | `gateway.mode` | `local` | `local` (unchanged) |
-| `agents.defaults.workspace` | `/Users/fonsecabc/.openclaw/workspace` | `/home/node/.openclaw/workspace` |
-| All script paths | `/Users/fonsecabc/.openclaw/...` | `/home/node/.openclaw/...` |
+| `agents.defaults.workspace` | `${OPENCLAW_HOME:-$HOME/.openclaw}/workspace` | `/home/node/.openclaw/workspace` |
+| All script paths | `${OPENCLAW_HOME:-$HOME/.openclaw}/...` | `/home/node/.openclaw/...` |
 | `channels.whatsapp` | enabled | **disable** (no WhatsApp in GKE initially) |
 | `channels.slack.botToken` | hardcoded | via env var `SLACK_BOT_TOKEN` |
 | `channels.slack.appToken` | hardcoded | via env var `SLACK_APP_TOKEN` |
 
 ### 4.2 Scripts path migration
 
-**20+ scripts have hardcoded `/Users/fonsecabc/.openclaw/`**. Before deploying, refactor all scripts to use:
+**20+ scripts have hardcoded `${OPENCLAW_HOME:-$HOME/.openclaw}/`**. Before deploying, refactor all scripts to use:
 
 ```bash
 OPENCLAW_HOME="${OPENCLAW_HOME:-/home/node/.openclaw}"
@@ -283,7 +282,7 @@ Scripts to update:
 - `spawn-agent.sh`
 - `task-manager.sh`
 - `supervisor.sh`
-- (any others referencing `/Users/fonsecabc/`)
+- (all scripts now use `${OPENCLAW_HOME}` — migration complete)
 
 ### 4.3 Launchd → In-Container Cron
 
@@ -303,7 +302,7 @@ Local Anton uses `launchd` for supervisor (30s) and infra (15min). In GKE, these
 ```bash
 # On Caio's Mac
 tar -czf anton-state.tar.gz \
-  -C /Users/fonsecabc/.openclaw \
+  -C ${OPENCLAW_HOME:-$HOME/.openclaw} \
   --exclude='*.log' \
   --exclude='node_modules' \
   --exclude='.git' \
@@ -343,8 +342,8 @@ POD=$(kubectl get pod -n prod -l app=anton-openclaw -o jsonpath='{.items[0].meta
 kubectl exec -it -n prod $POD -- sh -c '
   cd /home/node/.openclaw
   # Update all path references
-  sed -i "s|/Users/fonsecabc/.openclaw|/home/node/.openclaw|g" workspace/scripts/*.sh
-  sed -i "s|/Users/fonsecabc/.openclaw|/home/node/.openclaw|g" openclaw.json
+  sed -i "s|${OPENCLAW_HOME:-$HOME/.openclaw}|/home/node/.openclaw|g" workspace/scripts/*.sh
+  sed -i "s|${OPENCLAW_HOME:-$HOME/.openclaw}|/home/node/.openclaw|g" openclaw.json
 '
 ```
 
@@ -393,40 +392,17 @@ kubectl logs -n prod -l app=anton-openclaw --tail=100 | grep -i heartbeat
 
 ## Open Questions / Blockers
 
-### BLOCKER: OpenClaw Docker Image
-Does `ghcr.io/openclaw/openclaw` exist as a public image? If not, we need a custom Dockerfile. Check with OpenClaw team/docs.
+### RESOLVED: Docker Image
+Custom Dockerfile at repo root. Installs `openclaw@2026.3.8` + system tools. Sub-agents spawn via `openclaw agent --agent <role>` natively.
 
-### BLOCKER: Claude CLI in Container
-Anton spawns sub-agents via `openclaw agent --agent <role>` which internally runs Claude CLI. The container must have Claude CLI installed. Verify the official image includes it, or build a custom image.
-
-### QUESTION: Slack Bot Token in Env vs Config
-OpenClaw reads Slack tokens from `openclaw.json` (hardcoded). Can it read from env vars? If not, the config must be baked into the PVC with the actual tokens, and we can't use sm-k8s for Slack tokens specifically.
-
-### QUESTION: WhatsApp Web Session
-Anton uses WhatsApp locally. WhatsApp Web requires a persistent browser session with QR code auth. This won't work in a headless container without additional setup (puppeteer + persistent profile). Defer to Phase 3.
+### RESOLVED: Slack Tokens
+OpenClaw reads Slack tokens from env vars (`SLACK_BOT_TOKEN`, `SLACK_APP_TOKEN`). K8s Secret `anton-openclaw` provides them.
 
 ---
 
 ## Appendix A: Custom Dockerfile (if needed)
 
-If the official image doesn't exist or lacks Claude CLI:
-
-```dockerfile
-FROM node:22-bookworm-slim
-
-# Install OpenClaw
-RUN npm install -g @openclaw/openclaw@2026.3.8
-
-# Install Claude CLI (needed for sub-agent spawning)
-RUN npm install -g @anthropic-ai/claude-code@latest
-
-# Install system tools used by scripts
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl jq git bash coreutils \
-    && rm -rf /var/lib/apt/lists/*
-
-# Create workspace structure
-RUN mkdir -p /home/node/.openclaw/workspace && chown -R node:node /home/node/.openclaw
+See `Dockerfile` at repo root for the actual image definition.
 
 USER node
 WORKDIR /home/node

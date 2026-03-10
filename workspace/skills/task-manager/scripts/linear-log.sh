@@ -7,11 +7,8 @@ set -e
 OC_HOME="${OPENCLAW_HOME:-$HOME/.openclaw}"
 LINEAR_SCRIPT="$OC_HOME/workspace/skills/linear/scripts/linear.sh"
 
-# Source secrets (root .env first, workspace .env.linear as fallback)
+# Source secrets
 source "$OC_HOME/.env" 2>/dev/null || true
-if [ -f "$OC_HOME/workspace/.env.linear" ]; then
-    source "$OC_HOME/workspace/.env.linear"
-fi
 export LINEAR_API_KEY="${LINEAR_API_KEY}"
 export LINEAR_DEFAULT_TEAM="${LINEAR_DEFAULT_TEAM:-AUT}"
 

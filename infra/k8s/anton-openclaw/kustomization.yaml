@@ -6,4 +6,4 @@ resources:
   - pvc.yaml
   - serviceaccount.yaml
 images:
-  - name: us-east1-docker.pkg.dev/brandlovers-prod/clawdbots/anton-openclaw
+  - name: gcr.io/brandlovers-prod/brandlovers-team/anton-openclaw

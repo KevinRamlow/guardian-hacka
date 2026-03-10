@@ -91,7 +91,7 @@ This script can be used directly or wrapped in shell functions/aliases for conve
 
 ```bash
 # Add to ~/.bashrc or similar
-alias gen-image='python3 /Users/fonsecabc/.openclaw/workspace/skills/nano-banana/scripts/generate_image.py'
+alias gen-image='python3 ${OPENCLAW_HOME:-$HOME/.openclaw}/workspace/skills/nano-banana/scripts/generate_image.py'
 
 # Then use:
 gen-image --prompt "cool image" --output ./cool.png

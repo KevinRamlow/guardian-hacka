@@ -5,7 +5,7 @@ You are running in INTERACTIVE mode. After completing each major step:
 1. Save your progress (commit if code changes)
 2. Call the checkpoint script:
    ```bash
-   bash /Users/fonsecabc/.openclaw/workspace/scripts/interactive-checkpoint.sh \
+   bash ${OPENCLAW_HOME:-$HOME/.openclaw}/workspace/scripts/interactive-checkpoint.sh \
      AUTO-XX "step-name" "Summary of what you did and what's next"
    ```
 3. Read the response:

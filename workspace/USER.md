@@ -45,7 +45,7 @@
 - Prefers to investigate, analyze data, and iterate in tight loops
 - Runs evals against datasets to validate changes before shipping
 - Always writes team messages in pt-BR after significant work
-- Uses Claude Code extensively for development (Opus model, 196+ sessions across 14 projects)
+- Uses Opus model for development
 - Tags Manoel and Juani as PR reviewers
 - Uses Linear for task management (Guardian team = GUA)
 

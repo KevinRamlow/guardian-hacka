@@ -23,7 +23,7 @@ TASKS_DIR="${OPENCLAW_HOME:-$HOME/.openclaw}/tasks/spawn-tasks"
 DEDUP_CHECK="${OPENCLAW_HOME:-$HOME/.openclaw}/workspace/scripts/dedup-check.sh"
 
 TIMEOUT_RULES="${OPENCLAW_HOME:-$HOME/.openclaw}/workspace/config/timeout-rules.json"
-INTERACTIVE_TEMPLATE="${OPENCLAW_HOME:-$HOME/.openclaw}/workspace/templates/claude-md/interactive-mode.md"
+INTERACTIVE_TEMPLATE="${OPENCLAW_HOME:-$HOME/.openclaw}/workspace/templates/interactive-mode.md"
 
 TASK_ID="" LABEL="" TIMEOUT_MIN=25 EXPLICIT_TIMEOUT=false SOURCE="manual" TASK_TEXT="" TASK_FILE="" FORCE_SPAWN=false
 ROLE="" AGENT_MODE="yolo"
@@ -123,7 +123,7 @@ COST_PER_MIN = 0.08  # sonnet rate (all native agents use sonnet)
 OC = os.environ.get("OPENCLAW_HOME", os.path.expanduser("~/.openclaw"))
 
 STATE_FILE = Path(f"{OC}/tasks/api-usage-state.json")
-BUDGET_FILE = Path(f"{OC}/workspace/self-improvement/loop/budget-status.json")
+BUDGET_FILE = Path(f"{OC}/workspace/config/budget/budget-status.json")
 
 try:
     state = json.loads(STATE_FILE.read_text())

@@ -35,8 +35,10 @@ WORKDIR /home/node
 
 ENV OPENCLAW_HOME=/home/node/.openclaw
 ENV NODE_ENV=production
+ENV GATEWAY_PORT=18789
+ENV GATEWAY_BIND=lan
 
 EXPOSE 18789
 
 ENTRYPOINT ["/home/node/docker-entrypoint.sh"]
-CMD ["gateway", "--port", "18789", "--bind", "lan"]
+CMD ["gateway"]

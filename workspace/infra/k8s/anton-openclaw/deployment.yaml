@@ -26,20 +26,12 @@ spec:
         fsGroup: 1000  # node user group — ensures PVC writes work
       containers:
         - name: anton-openclaw
-          image: ghcr.io/openclaw/openclaw:2026.3.8
-          args:
-            - "gateway"
-            - "--port"
-            - "18789"
-            - "--bind"
-            - "lan"
+          image: gcr.io/brandlovers-prod/brandlovers-team/anton-openclaw:latest
           ports:
             - name: gateway
               containerPort: 18789
               protocol: TCP
           env:
-            - name: NODE_ENV
-              value: "production"
             - name: DD_ENV
               valueFrom:
                 fieldRef:

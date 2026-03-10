@@ -11,10 +11,6 @@ if [ -f "$OPENCLAW_HOME/.env" ]; then
   set -a
   source "$OPENCLAW_HOME/.env"
   set +a
-elif [ -f "$OPENCLAW_HOME/workspace/.env.secrets" ]; then
-  # Legacy fallback
-  echo "=== Loading secrets from workspace/.env.secrets (migrate to .env) ==="
-  source "$OPENCLAW_HOME/workspace/.env.secrets"
 fi
 
 # Validate critical env vars
@@ -34,4 +30,4 @@ bash "$OPENCLAW_HOME/workspace/scripts/setup-workspaces.sh"
 
 echo "=== Starting OpenClaw Gateway ==="
 echo "OPENCLAW_HOME=${OPENCLAW_HOME}"
-openclaw gateway --port 18789
+openclaw gateway --port "${GATEWAY_PORT:-18789}"

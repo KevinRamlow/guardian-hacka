@@ -50,18 +50,18 @@ Look for:
 
 ### C. Memory Files (staleness check)
 ```
-Read MEMORY.md, SOUL.md, HEARTBEAT.md, templates/claude-md/*.md
+Read MEMORY.md, SOUL.md, HEARTBEAT.md, templates/*.md
 ```
 Look for:
-- **Wrong paths** (`/root/` instead of `/Users/fonsecabc/`)
+- **Wrong paths** (`/root/` instead of `$HOME/`)
 - **Outdated facts** (old baselines, stopped services listed as active, wrong project IDs)
 - **Hardcoded secrets** (API keys in .md files instead of .env references)
 - **Contradictions** (SOUL says X, HEARTBEAT says opposite)
 - **Missing knowledge** that caused agent failures
 
-### D. Session Transcripts (if available)
+### D. Agent Logs
 ```bash
-ls -t ~/.claude/projects/-Users-fonsecabc--openclaw-workspace/*.jsonl | head -3
+ls -t ${OPENCLAW_HOME:-$HOME/.openclaw}/tasks/agent-logs/*-output.log | head -3
 ```
 Look for:
 - Tools used excessively (50+ Bash calls = probably polling)
@@ -78,7 +78,7 @@ For each signal, classify where the fix belongs:
 |---|---|---|
 | Caio corrected your communication style | SOUL.md Communication Rules | Behavioral rule |
 | Caio corrected a factual claim | MEMORY.md | Wrong knowledge |
-| Agent failed from missing context | templates/claude-md/*.md or knowledge/*.md | Sub-agent config gap |
+| Agent failed from missing context | templates/*.md or knowledge/*.md | Sub-agent config gap |
 | Same agent error 3+ times | spawn-agent.sh or knowledge/common-errors.md | Spawn or error handling |
 | You asked permission when you shouldn't | SOUL.md or HEARTBEAT.md | Behavioral rule |
 | Stale data in memory | MEMORY.md | Outdated facts |
@@ -133,7 +133,7 @@ Self-improved:
 - **NEVER remove existing rules** unless they directly contradict a new rule or are factually wrong.
 - **NEVER rewrite a file wholesale** — make targeted edits.
 - **Keep MEMORY.md under 250 lines** — if adding, also trim stale sections.
-- **Secrets**: If you find hardcoded keys in .md files, replace with `.env.secrets` references.
+- **Secrets**: If you find hardcoded keys in .md files, replace with `$OPENCLAW_HOME/.env` references.
 - **Short sessions**: If conversation is <10 messages, say so. Don't fabricate signals.
 - **Confidence threshold**: Apply fixes for clear patterns (2+ occurrences or factual errors). For ambiguous single-occurrence signals, log them in daily memory and watch for recurrence — don't change rules based on one data point.
 

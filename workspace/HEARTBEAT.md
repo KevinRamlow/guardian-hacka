@@ -69,7 +69,7 @@ Recommend: [your best next step]
   ```
 - Apply spawn criteria (skip quick-wins, manual tasks, read-only analysis)
 - Spawn via `bash scripts/dispatcher.sh --title "X" --desc "Y" --label Bug`
-- Budget check: read `self-improvement/loop/budget-status.json` — skip if over_monthly_limit
+- Budget check: read `config/budget/budget-status.json` — skip if over_monthly_limit
 - **Blocked queue detection (CRITICAL):** If slots > 0 AND todo tasks > 0 AND you spawned 0 agents for 2+ consecutive heartbeats → investigate immediately.
 
 **Priority 3 — Agent Health Monitoring:**

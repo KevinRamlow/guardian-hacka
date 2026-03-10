@@ -2,6 +2,8 @@
 set -euo pipefail
 
 OPENCLAW_HOME="${OPENCLAW_HOME:-/home/node/.openclaw}"
+GATEWAY_PORT="${GATEWAY_PORT:-18789}"
+GATEWAY_BIND="${GATEWAY_BIND:-lan}"
 
 # ── Validate critical env vars ──
 MISSING=()
@@ -20,7 +22,25 @@ bash "${OPENCLAW_HOME}/workspace/scripts/setup-workspaces.sh"
 echo "=== Anton OpenClaw Gateway ==="
 echo "OPENCLAW_HOME=${OPENCLAW_HOME}"
 echo "NODE_ENV=${NODE_ENV:-development}"
+echo "GATEWAY_PORT=${GATEWAY_PORT}"
 echo "Secrets: loaded from environment (${#ANTHROPIC_API_KEY} chars ANTHROPIC_API_KEY)"
 
+# ── Start background schedulers (replaces Mac launchd jobs) ──
+echo "Starting supervisor (30s interval)..."
+(
+  while true; do
+    bash "${OPENCLAW_HOME}/workspace/scripts/supervisor.sh" 2>/dev/null || true
+    sleep 30
+  done
+) &
+
+echo "Starting infra-maintenance (15m interval)..."
+(
+  while true; do
+    sleep 900
+    bash "${OPENCLAW_HOME}/workspace/scripts/infra-maintenance.sh" 2>/dev/null || true
+  done
+) &
+
 # ── Exec into OpenClaw ──
-exec openclaw "$@"
+exec openclaw "$@" --port "${GATEWAY_PORT}" --bind "${GATEWAY_BIND}"

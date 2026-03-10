@@ -4,16 +4,14 @@ metadata:
   name: anton-openclaw
   namespace: argocd
   annotations:
-    argocd-image-updater.argoproj.io/image-list: >-
-      anton-openclaw=us-east1-docker.pkg.dev/brandlovers-prod/clawdbots/anton-openclaw
+    argocd-image-updater.argoproj.io/image-list: anton-openclaw=gcr.io/brandlovers-prod/brandlovers-team/anton-openclaw
     argocd-image-updater.argoproj.io/update-strategy: newest-build
-    argocd-image-updater.argoproj.io/anton-openclaw.allow-tags: "regexp:^[a-f0-9]{7}$|^latest$"
 spec:
   project: default
   source:
-    repoURL: git@github.com:fonsecabc/replicants-anton.git
+    repoURL: git@github.com:brandlovers-team/cicd-k8s.git
     targetRevision: main
-    path: infra/k8s/anton-openclaw
+    path: apps/prod/anton-openclaw
   destination:
     server: https://kubernetes.default.svc
     namespace: prod

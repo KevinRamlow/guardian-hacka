@@ -16,7 +16,7 @@ Anton is an autonomous AI agent that coordinates sub-agents to execute tasks, se
                     └────────────┬─────────────────────┘
                                  │ spawns via dispatcher.sh
                     ┌────────────▼─────────────────────┐
-                    │     Claude Code Sub-Agents         │
+                    │      OpenClaw Sub-Agents            │
                     │  (5-60 min tasks, auto-tracked)    │
                     └──────────────────────────────────┘
 ```
@@ -38,11 +38,7 @@ Each task carries `history[]` and `learnings[]` — callback agents get full con
 | Job | Script | Interval | Purpose |
 |-----|--------|----------|---------|
 | `com.anton.supervisor` | supervisor.sh | 30s | PID checks, completions, callbacks, timeouts, orphans |
-| `com.anton.infra` | infra-maintenance.sh | 15min | Linear sync, GCP tokens, Langfuse, state cleanup |
-| `com.anton.gateway-respawn` | gateway-respawn.sh | 60s | Keep OpenClaw gateway alive |
-| `com.anton.sync-replicants` | sync-replicants.sh | 4h | Bidirectional sync with Son of Anton VM |
-| `com.anton.auto-loop` | anton-auto-loop.sh | 4h | Guardian accuracy improvement loop |
-| `com.anton.meta-loop` | anton-meta-loop.sh | 24h | Self-improvement (templates, scripts, codemaps) |
+| `com.anton.infra` | infra-maintenance.sh | 15min | Langfuse query, state cleanup |
 | Native heartbeat | HEARTBEAT.md | 5min | Auto-queue, health monitoring, backlog generation |
 
 ## Directory Structure
@@ -51,29 +47,27 @@ Each task carries `history[]` and `learnings[]` — callback agents get full con
 ├── SOUL.md                 # Anton's identity + behavior rules
 ├── HEARTBEAT.md            # Heartbeat instructions (5min cycle)
 ├── MEMORY.md               # Long-term knowledge
-├── CLAUDE.md               # Sub-agent instructions (injected on spawn)
 ├── AGENTS.md               # OpenClaw workspace config
 ├── TOOLS.md                # Local tool notes
 ├── USER.md                 # About the user (Caio)
 ├── IDENTITY.md             # OpenClaw identity template
 │
 ├── scripts/                # All operational scripts (see below)
-├── skills/                 # OpenClaw skills (17 skill dirs)
+├── skills/                 # OpenClaw skills
 ├── knowledge/              # Agent knowledge base (codemaps, patterns, errors)
-├── templates/              # Task templates + claude-md templates
-├── config/                 # Auto-queue, timeout rules, sync configs
+├── templates/              # Task + validation templates
+├── config/                 # Auto-queue, timeout rules, review config
 ├── memory/                 # Daily memory files (YYYY-MM-DD.md)
-├── docs/                   # Architecture docs, objectives, setup guides
-├── workflows/              # YAML workflow definitions
-├── dashboard/              # Web cockpit (localhost:8765)
+├── docs/                   # Architecture docs
+├── dashboard/              # Web dashboard (localhost:8765)
 ├── clawdbots/              # ClawdBots platform (Billy, Neuron agents)
-├── self-improvement/       # Self-improvement system (analyzers, experiments)
-└── .shortcuts/             # Quick-access shell scripts
+├── agents/                 # Sub-agent role templates (developer, reviewer, etc.)
+└── agents/                 # Sub-agent role templates (developer, reviewer, etc.)
 ```
 
 ## Scripts
 
-### Core (5) — The New Architecture
+### Core (5) — The Architecture
 
 | Script | Purpose |
 |--------|---------|
@@ -87,14 +81,8 @@ Each task carries `history[]` and `learnings[]` — callback agents get full con
 
 | Script | Purpose |
 |--------|---------|
-| `infra-maintenance.sh` | Consolidated 15min job: Linear sync + GCP tokens + Langfuse + cleanup. |
-| `gateway-respawn.sh` | Auto-restart OpenClaw gateway if down (60s launchd). |
-| `sync-replicants.sh` | Bidirectional sync with Son of Anton VM (4h launchd). |
-| `linear-sync-v2.sh` | Sync Linear task statuses (called by infra-maintenance). |
+| `infra-maintenance.sh` | Consolidated 15min job: Langfuse query + state cleanup. |
 | `langfuse-query.sh` | Query Langfuse traces (called by infra-maintenance). |
-| `langfuse-scraper.py` | Scrape Langfuse data. |
-| `health-check.sh` | System health check. |
-| `notify-slack.sh` | Send Slack notifications to #replicants. |
 
 ### Agent Lifecycle
 
@@ -106,9 +94,9 @@ Each task carries `history[]` and `learnings[]` — callback agents get full con
 | `agent-report.sh` | Generate completion reports for agents. |
 | `agent-peek.sh` | Peek at agent activity (overview / detail / follow). |
 | `kill-agent-tree.sh` | Kill agent + all child processes. |
-| `detect-agent-idle.sh` | Detect hung/idle agents. |
 | `diagnose-failure.sh` | Diagnose why an agent failed. |
 | `validate-agent.sh` | Validate agent session state. |
+| `interactive-checkpoint.sh` | Interactive mode checkpoint handling. |
 
 ### Queue & Dispatch
 
@@ -117,6 +105,7 @@ Each task carries `history[]` and `learnings[]` — callback agents get full con
 | `queue-control.sh` | Pause/resume auto-queue. |
 | `classify-task.sh` | Auto-classify task type for timeout/role rules. |
 | `dedup-check.sh` | Prevent duplicate agent spawns. |
+| `dispatch-guard.sh` | Pre-dispatch validation guards. |
 | `backlog-generator.sh` | Generate new tasks from analysis. |
 
 > **Note:** Auto-queue logic is handled by the native heartbeat (HEARTBEAT.md), not a standalone script.
@@ -126,23 +115,19 @@ Each task carries `history[]` and `learnings[]` — callback agents get full con
 | Script | Purpose |
 |--------|---------|
 | `run-guardian-eval.sh` | Wrapper for running Guardian evals (sources .env, activates venv). |
-| `fast-eval.sh` | Quick 5-min eval on 10% of dataset. |
 | `guardian-eval-status.sh` | Report eval progress/status. |
 | `eval-analyze-breakdown.py` | Analyze eval results breakdown by category. |
 | `preflight-check.sh` | Validate auth + config before eval run. |
 
-### Loops
+### Setup & Utilities
 
 | Script | Purpose |
 |--------|---------|
-| `anton-auto-loop.sh` | Guardian improvement loop (4h): hypotheses → eval → iterate. |
-| `anton-meta-loop.sh` | Self-improvement loop (24h): improve templates, scripts, codemaps. |
-
-### Utilities
-
-| Script | Purpose |
-|--------|---------|
-| `generate-codemap.sh` | Generate knowledge codemaps from repos. |
+| `setup-workspaces.sh` | Generate role workspaces from agent templates. |
+| `review-hook.sh` | Auto-spawn adversarial reviews post-completion. |
+| `alert-dedup.sh` | Prevent duplicate Slack alerts. |
+| `link-logs-to-linear.sh` | Attach agent logs to Linear tasks. |
+| `guardrails.sh` | Validate architecture invariants. |
 | `slack_upload_image.py` | Upload images to Slack. |
 
 ## Quick Commands
@@ -171,6 +156,6 @@ bash scripts/task-manager.sh add-learning AUTO-XX "what worked"
 |------|---------|
 | `~/.openclaw/tasks/state.json` | Unified task state (single source of truth) |
 | `~/.openclaw/tasks/agent-logs/` | Per-agent output, stderr, activity logs |
-| `~/.openclaw/workspace/.env.secrets` | All credentials (never committed) |
+| `~/.openclaw/.env` | All credentials (never committed) |
 | `~/.openclaw/workspace/.env.guardian-eval` | Guardian eval env vars |
-| `~/Library/LaunchAgents/com.anton.*.plist` | Launchd job definitions |
+| `~/Library/LaunchAgents/com.anton.*.plist` | Launchd job definitions (2 active) |

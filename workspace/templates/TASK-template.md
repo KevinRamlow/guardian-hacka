@@ -87,7 +87,7 @@ cat analysis-output.md | grep "Key findings"
 ## Output Format
 
 Where should results be saved? What format?
-- Analysis → `/Users/fonsecabc/.openclaw/workspace/analysis/YYYY-MM-DD-topic.md`
+- Analysis → `${OPENCLAW_HOME:-$HOME/.openclaw}/workspace/analysis/YYYY-MM-DD-topic.md`
 - Fix → PR link or commit hash
 - Feature → Documentation path
 - Test → Test output log
