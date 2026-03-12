@@ -36,7 +36,8 @@ RUN cd /home/node/.openclaw/workspace/dashboard \
     && chown -R node:node /home/node/.openclaw/workspace/dashboard
 
 # Build sub-agent role workspaces from templates
-RUN OPENCLAW_HOME=/home/node bash /home/node/.openclaw/workspace/scripts/setup-workspaces.sh
+RUN OPENCLAW_HOME=/home/node bash /home/node/.openclaw/workspace/scripts/setup-workspaces.sh \
+    && chown -R node:node /home/node/.openclaw/workspace-*
 
 USER node
 WORKDIR /home/node
