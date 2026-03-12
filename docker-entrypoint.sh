@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-OPENCLAW_HOME="${OPENCLAW_HOME:-/home/node/.openclaw}"
+OPENCLAW_HOME="${OPENCLAW_HOME:-/home/node}"
 GATEWAY_PORT="${GATEWAY_PORT:-18789}"
 GATEWAY_BIND="${GATEWAY_BIND:-lan}"
 
@@ -15,6 +15,12 @@ if [ ${#MISSING[@]} -gt 0 ]; then
   echo "FATAL: Missing required env vars: ${MISSING[*]}" >&2
   exit 1
 fi
+
+# ── Clean stale lock files (pod restart safety) ──
+rm -f /tmp/openclaw-*/gateway.*.lock 2>/dev/null || true
+
+# ── Initialize OpenClaw runtime state ──
+mkdir -p "${OPENCLAW_HOME}/.openclaw/agents/main/sessions"
 
 # ── Git identity & auth (needed for agents to commit/push) ──
 GIT_AUTHOR_NAME="${GIT_AUTHOR_NAME:-Anton [bot]}"
@@ -33,7 +39,7 @@ else
 fi
 
 # ── Setup sub-agent workspaces (idempotent) ──
-bash "${OPENCLAW_HOME}/workspace/scripts/setup-workspaces.sh"
+bash "${OPENCLAW_HOME}/.openclaw/workspace/scripts/setup-workspaces.sh"
 
 echo "=== Anton OpenClaw Gateway ==="
 echo "OPENCLAW_HOME=${OPENCLAW_HOME}"
@@ -46,9 +52,16 @@ echo "Starting infra-maintenance (15m interval)..."
 (
   while true; do
     sleep 900
-    bash "${OPENCLAW_HOME}/workspace/scripts/infra-maintenance.sh" 2>/dev/null || true
+    bash "${OPENCLAW_HOME}/.openclaw/workspace/scripts/infra-maintenance.sh" 2>/dev/null || true
   done
 ) &
+
+# ── Start dashboard ──
+DASHBOARD_DIR="${OPENCLAW_HOME}/.openclaw/workspace/dashboard"
+if [ -f "${DASHBOARD_DIR}/server.js" ]; then
+  echo "Starting dashboard on port 8765..."
+  node "${DASHBOARD_DIR}/server.js" &
+fi
 
 # ── Exec into OpenClaw ──
 exec openclaw "$@" --port "${GATEWAY_PORT}" --bind "${GATEWAY_BIND}"

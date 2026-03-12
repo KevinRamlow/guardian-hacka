@@ -29,6 +29,12 @@ RUN chmod +x /home/node/docker-entrypoint.sh
 # Copy main workspace (scripts, config, templates, agent definitions)
 COPY --chown=node:node workspace/ /home/node/.openclaw/workspace/
 
+# Install dashboard dependencies and build UI
+RUN cd /home/node/.openclaw/workspace/dashboard \
+    && npm install --production --silent \
+    && cd ui && npm install --silent && npm run build && rm -rf node_modules \
+    && chown -R node:node /home/node/.openclaw/workspace/dashboard
+
 # Build sub-agent role workspaces from templates
 RUN OPENCLAW_HOME=/home/node bash /home/node/.openclaw/workspace/scripts/setup-workspaces.sh
 
@@ -40,7 +46,7 @@ ENV NODE_ENV=production
 ENV GATEWAY_PORT=18789
 ENV GATEWAY_BIND=lan
 
-EXPOSE 18789
+EXPOSE 18789 8765
 
 ENTRYPOINT ["/home/node/docker-entrypoint.sh"]
 CMD ["gateway"]
