@@ -39,14 +39,14 @@ else
 fi
 
 # ── GCP credentials (from GOOGLE_ACCOUNT_CREDENTIALS env var) ──
-if [ -n "${GOOGLE_ACCOUNT_CREDENTIALS:-}" ]; then
+if [ -n "${REPLICANT_GOOGLE_ACCOUNT_CREDENTIALS:-}" ]; then
   GCP_CREDS_FILE="${OPENCLAW_HOME}/.openclaw/gcp-credentials.json"
-  echo "${GOOGLE_ACCOUNT_CREDENTIALS}" > "${GCP_CREDS_FILE}"
+  echo "${REPLICANT_GOOGLE_ACCOUNT_CREDENTIALS}" > "${GCP_CREDS_FILE}"
   chmod 600 "${GCP_CREDS_FILE}"
   export GOOGLE_APPLICATION_CREDENTIALS="${GCP_CREDS_FILE}"
   echo "GCP: credentials written to ${GCP_CREDS_FILE}"
 else
-  echo "WARN: GOOGLE_ACCOUNT_CREDENTIALS not set — GCP tools will not work" >&2
+  echo "WARN: REPLICANT_GOOGLE_ACCOUNT_CREDENTIALS not set — GCP tools will not work" >&2
 fi
 
 # ── Setup sub-agent workspaces (idempotent) ──
