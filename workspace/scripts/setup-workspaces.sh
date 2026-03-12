@@ -4,8 +4,11 @@
 # Run at container startup or after fresh clone
 set -euo pipefail
 
-OC_HOME="${OPENCLAW_HOME:-$HOME/.openclaw}"
-AGENTS_DIR="$OC_HOME/workspace/agents"
+# OPENCLAW_HOME can be user home (Docker: /home/node) or .openclaw dir (local: $HOME/.openclaw)
+OC_BASE="${OPENCLAW_HOME:-$HOME}"
+OC_ROOT="${OC_BASE}/.openclaw"
+[[ "$OC_BASE" == */.openclaw ]] && OC_ROOT="$OC_BASE"
+AGENTS_DIR="$OC_ROOT/workspace/agents"
 SHARED_DIR="$AGENTS_DIR/shared"
 
 ROLES=(developer reviewer architect guardian-tuner debugger)
@@ -17,7 +20,7 @@ if [ ! -d "$SHARED_DIR" ]; then
 fi
 
 for role in "${ROLES[@]}"; do
-  WS="$OC_HOME/workspace-${role}"
+  WS="$OC_ROOT/workspace-${role}"
   echo "[setup] workspace-${role}"
 
   mkdir -p "$WS" "$WS/memory"
