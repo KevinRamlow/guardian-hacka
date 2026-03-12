@@ -8,14 +8,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl jq git bash coreutils ca-certificates gnupg python3 \
     && rm -rf /var/lib/apt/lists/*
 
-# Install OpenClaw
-RUN npm install -g openclaw@2026.3.8
+# Install OpenClaw + fix permissions for plugin installs at runtime
+RUN npm install -g openclaw@2026.3.8 \
+    && chown -R node:node /usr/local/lib/node_modules/openclaw/extensions/
 
 # Create directory structure
 RUN mkdir -p /home/node/.openclaw/workspace \
              /home/node/.openclaw/tasks/agent-logs \
              /home/node/.openclaw/tasks/spawn-tasks \
              /home/node/.openclaw/hooks \
+             /home/node/.openclaw/agents/main/sessions \
     && chown -R node:node /home/node/.openclaw
 
 # Copy platform config (secrets come from env vars, NOT baked in)
@@ -28,12 +30,12 @@ RUN chmod +x /home/node/docker-entrypoint.sh
 COPY --chown=node:node workspace/ /home/node/.openclaw/workspace/
 
 # Build sub-agent role workspaces from templates
-RUN bash /home/node/.openclaw/workspace/scripts/setup-workspaces.sh
+RUN OPENCLAW_HOME=/home/node bash /home/node/.openclaw/workspace/scripts/setup-workspaces.sh
 
 USER node
 WORKDIR /home/node
 
-ENV OPENCLAW_HOME=/home/node/.openclaw
+ENV OPENCLAW_HOME=/home/node
 ENV NODE_ENV=production
 ENV GATEWAY_PORT=18789
 ENV GATEWAY_BIND=lan
