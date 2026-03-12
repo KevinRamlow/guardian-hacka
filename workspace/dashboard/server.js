@@ -48,7 +48,11 @@ const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
 
 // --- Paths ---
-const OPENCLAW_HOME = process.env.HOME ? path.join(process.env.HOME, '.openclaw') : '/Users/fonsecabc/.openclaw';
+const OPENCLAW_HOME = process.env.OPENCLAW_HOME
+  ? path.join(process.env.OPENCLAW_HOME, '.openclaw')
+  : process.env.HOME
+    ? path.join(process.env.HOME, '.openclaw')
+    : '/home/node/.openclaw';
 const PROCESS_REGISTRY_FILE = path.join(OPENCLAW_HOME, 'tasks/process-registry.json');
 const STATE_FILE = path.join(OPENCLAW_HOME, 'tasks/state.json');
 const AGENT_LOGS_DIR = path.join(OPENCLAW_HOME, 'tasks/agent-logs');
@@ -882,6 +886,9 @@ wss.on('connection', (ws) => {
 });
 
 // --- Static Files ---
+// React dashboard (primary) — serves from ui/dist/
+app.use(express.static(path.join(__dirname, 'ui/dist')));
+// Legacy fallback
 app.use(express.static(path.join(__dirname, 'public')));
 
 // --- API ---
@@ -1135,6 +1142,17 @@ app.get('/api/stream/:taskId', (req, res) => {
   }, 1500);
 
   req.on('close', () => clearInterval(watcher));
+});
+
+// --- SPA Catch-all (serve React app for any non-API route) ---
+app.use((req, res, next) => {
+  if (req.path.startsWith('/api/') || req.path.startsWith('/ws')) return next();
+  const indexPath = path.join(__dirname, 'ui/dist/index.html');
+  if (fs.existsSync(indexPath)) {
+    res.sendFile(indexPath);
+  } else {
+    res.sendFile(path.join(__dirname, 'public/index.html'));
+  }
 });
 
 // --- Start ---

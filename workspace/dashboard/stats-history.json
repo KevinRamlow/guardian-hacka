@@ -1,8 +1,344 @@
 {
-  "date": "2026-03-10",
-  "completedToday": 66,
-  "failedToday": 47,
+  "date": "2026-03-12",
+  "completedToday": 57,
+  "failedToday": 4,
   "recentAgents": [
+    {
+      "sessionKey": "completed:LOCAL-376",
+      "label": "eval:TC human_evals 100cases post-improvements",
+      "runtimeMs": 888000,
+      "status": "error",
+      "taskId": "LOCAL-376",
+      "source": "manual",
+      "role": null,
+      "completedAt": "2026-03-12T14:29:27Z",
+      "runtimeMin": "14.8",
+      "success": false
+    },
+    {
+      "sessionKey": "completed:LOCAL-375",
+      "label": "eval:Eval TC 100 cases post severity template improvements",
+      "runtimeMs": 1344000,
+      "status": "done",
+      "taskId": "LOCAL-375",
+      "source": "manual",
+      "role": null,
+      "completedAt": "2026-03-12T13:54:52Z",
+      "runtimeMin": "22.4",
+      "success": true
+    },
+    {
+      "sessionKey": "completed:AUTO-346",
+      "label": "TC-accuracy:-73%-→-85%-—-analyze-err",
+      "runtimeMs": 2868000,
+      "status": "done",
+      "taskId": "AUTO-346",
+      "source": "dispatch",
+      "role": "developer",
+      "completedAt": "2026-03-12T13:54:01Z",
+      "runtimeMin": "47.8",
+      "success": true
+    },
+    {
+      "sessionKey": "completed:LOCAL-374",
+      "label": "TC-iteration-2:-analyze-59%-regression-a",
+      "runtimeMs": 65244000.00000001,
+      "status": "done",
+      "taskId": "LOCAL-374",
+      "source": "dispatch",
+      "role": "developer",
+      "completedAt": "2026-03-11T20:15:01Z",
+      "runtimeMin": "1087.4",
+      "success": true
+    },
+    {
+      "sessionKey": "completed:LOCAL-372",
+      "label": "eval:TC eval post LOCAL-370 fixes on feat/GUA-1114",
+      "runtimeMs": 67818000,
+      "status": "done",
+      "taskId": "LOCAL-372",
+      "source": "manual",
+      "role": null,
+      "completedAt": "2026-03-11T20:03:11Z",
+      "runtimeMin": "1130.3",
+      "success": true
+    },
+    {
+      "sessionKey": "completed:LOCAL-373",
+      "label": "GENERAL:-prompt-enrichment-for-verbal-pa",
+      "runtimeMs": 67692000,
+      "status": "done",
+      "taskId": "LOCAL-373",
+      "source": "dispatch",
+      "role": "developer",
+      "completedAt": "2026-03-11T19:33:23Z",
+      "runtimeMin": "1128.2",
+      "success": true
+    },
+    {
+      "sessionKey": "completed:LOCAL-370",
+      "label": "TC-error-analysis:-73%-to-85%-—-classi",
+      "runtimeMs": 68370000,
+      "status": "done",
+      "taskId": "LOCAL-370",
+      "source": "dispatch",
+      "role": "developer",
+      "completedAt": "2026-03-11T19:30:33Z",
+      "runtimeMin": "1139.5",
+      "success": true
+    },
+    {
+      "sessionKey": "completed:LOCAL-371",
+      "label": "GENERAL-395-case:-fix-false-positives-an",
+      "runtimeMs": 68346000,
+      "status": "error",
+      "taskId": "LOCAL-371",
+      "source": "dispatch",
+      "role": "developer",
+      "completedAt": "2026-03-11T19:30:33Z",
+      "runtimeMin": "1139.1",
+      "success": false
+    },
+    {
+      "sessionKey": "completed:AUTO-345",
+      "label": "AUTO-345",
+      "runtimeMs": 85632000,
+      "status": "done",
+      "taskId": "AUTO-345",
+      "source": "dispatch",
+      "role": "reviewer",
+      "completedAt": "2026-03-11T14:34:31Z",
+      "runtimeMin": "1427.2",
+      "success": true
+    },
+    {
+      "sessionKey": "completed:LOCAL-367",
+      "label": "eval:Eval TC 100 cases post overfitting cleanup",
+      "runtimeMs": 87630000,
+      "status": "done",
+      "taskId": "LOCAL-367",
+      "source": "manual",
+      "role": null,
+      "completedAt": "2026-03-11T14:18:26Z",
+      "runtimeMin": "1460.5",
+      "success": true
+    },
+    {
+      "sessionKey": "completed:LOCAL-368",
+      "label": "TC-iteration:-analyze-76.8%-errors-and-f",
+      "runtimeMs": 87606000,
+      "status": "done",
+      "taskId": "LOCAL-368",
+      "source": "dispatch",
+      "role": "developer",
+      "completedAt": "2026-03-11T14:08:31Z",
+      "runtimeMin": "1460.1",
+      "success": true
+    },
+    {
+      "sessionKey": "completed:LOCAL-369",
+      "label": "GENERAL-395-case-error-fix:-false-positi",
+      "runtimeMs": 87588000,
+      "status": "done",
+      "taskId": "LOCAL-369",
+      "source": "dispatch",
+      "role": "developer",
+      "completedAt": "2026-03-11T14:08:31Z",
+      "runtimeMin": "1459.8",
+      "success": true
+    },
+    {
+      "sessionKey": "completed:LOCAL-366",
+      "label": "eval:Eval GENERAL 395 cases post-360",
+      "runtimeMs": 93588000,
+      "status": "done",
+      "taskId": "LOCAL-366",
+      "source": "manual",
+      "role": null,
+      "completedAt": "2026-03-11T13:36:36Z",
+      "runtimeMin": "1559.8",
+      "success": true
+    },
+    {
+      "sessionKey": "completed:LOCAL-359",
+      "label": "TC-error-analysis:-push-from-76.8%-towar",
+      "runtimeMs": 96540000,
+      "status": "done",
+      "taskId": "LOCAL-359",
+      "source": "dispatch",
+      "role": "developer",
+      "completedAt": "2026-03-11T11:48:01Z",
+      "runtimeMin": "1609.0",
+      "success": true
+    },
+    {
+      "sessionKey": "completed:LOCAL-360",
+      "label": "Fix-GENERAL-false-positives:-naming-tole",
+      "runtimeMs": 96522000,
+      "status": "done",
+      "taskId": "LOCAL-360",
+      "source": "dispatch",
+      "role": "developer",
+      "completedAt": "2026-03-11T11:48:01Z",
+      "runtimeMin": "1608.7",
+      "success": true
+    },
+    {
+      "sessionKey": "completed:LOCAL-354",
+      "label": "TC-iteration:-deep-error-analysis-on-rem",
+      "runtimeMs": 132258000.00000001,
+      "status": "done",
+      "taskId": "LOCAL-354",
+      "source": "dispatch",
+      "role": "developer",
+      "completedAt": "2026-03-11T01:36:32Z",
+      "runtimeMin": "2204.3",
+      "success": true
+    },
+    {
+      "sessionKey": "completed:LOCAL-350",
+      "label": "eval:Eval GENERAL expanded (395 cases) v2",
+      "runtimeMs": 134670000,
+      "status": "done",
+      "taskId": "LOCAL-350",
+      "source": "manual",
+      "role": null,
+      "completedAt": "2026-03-11T01:16:45Z",
+      "runtimeMin": "2244.5",
+      "success": true
+    },
+    {
+      "sessionKey": "completed:LOCAL-351",
+      "label": "eval:Eval TC post-all-fixes (100 cases)",
+      "runtimeMs": 134058000.00000001,
+      "status": "done",
+      "taskId": "LOCAL-351",
+      "source": "manual",
+      "role": null,
+      "completedAt": "2026-03-11T01:16:45Z",
+      "runtimeMin": "2234.3",
+      "success": true
+    },
+    {
+      "sessionKey": "completed:LOCAL-352",
+      "label": "eval:Eval TC post-subjective-threshold-fix (100 cases)",
+      "runtimeMs": 133476000,
+      "status": "done",
+      "taskId": "LOCAL-352",
+      "source": "manual",
+      "role": null,
+      "completedAt": "2026-03-11T01:16:45Z",
+      "runtimeMin": "2224.6",
+      "success": true
+    },
+    {
+      "sessionKey": "completed:LOCAL-349",
+      "label": "eval:Eval TC post-threshold-fix v2 (100 cases)",
+      "runtimeMs": 134958000,
+      "status": "done",
+      "taskId": "LOCAL-349",
+      "source": "manual",
+      "role": null,
+      "completedAt": "2026-03-11T01:01:44Z",
+      "runtimeMin": "2249.3",
+      "success": true
+    },
+    {
+      "sessionKey": "completed:LOCAL-343",
+      "label": "eval:Full 455-case eval: combined improvements validation",
+      "runtimeMs": 138708000,
+      "status": "done",
+      "taskId": "LOCAL-343",
+      "source": "manual",
+      "role": null,
+      "completedAt": "2026-03-11T00:45:29Z",
+      "runtimeMin": "2311.8",
+      "success": true
+    },
+    {
+      "sessionKey": "completed:LOCAL-344",
+      "label": "Expand-GENERAL-dataset-from-200-to-400+-",
+      "runtimeMs": 138270000,
+      "status": "done",
+      "taskId": "LOCAL-344",
+      "source": "dispatch",
+      "role": "developer",
+      "completedAt": "2026-03-11T00:05:44Z",
+      "runtimeMin": "2304.5",
+      "success": true
+    },
+    {
+      "sessionKey": "completed:LOCAL-345",
+      "label": "TC-iteration:-target-80%-(from-64%)",
+      "runtimeMs": 138246000,
+      "status": "done",
+      "taskId": "LOCAL-345",
+      "source": "dispatch",
+      "role": "developer",
+      "completedAt": "2026-03-11T00:05:44Z",
+      "runtimeMin": "2304.1",
+      "success": true
+    },
+    {
+      "sessionKey": "completed:LOCAL-346",
+      "label": "Expand-GENERAL-guidelines-dataset-to-400",
+      "runtimeMs": 138234000,
+      "status": "done",
+      "taskId": "LOCAL-346",
+      "source": "dispatch",
+      "role": "developer",
+      "completedAt": "2026-03-11T00:05:44Z",
+      "runtimeMin": "2303.9",
+      "success": true
+    },
+    {
+      "sessionKey": "completed:LOCAL-342",
+      "label": "eval:Eval GENERAL post-fixes (200 cases)",
+      "runtimeMs": 140520000,
+      "status": "done",
+      "taskId": "LOCAL-342",
+      "source": "manual",
+      "role": null,
+      "completedAt": "2026-03-10T23:44:27Z",
+      "runtimeMin": "2342.0",
+      "success": true
+    },
+    {
+      "sessionKey": "completed:LOCAL-334",
+      "label": "eval:Eval CAPTIONS post-fixes (112 cases)",
+      "runtimeMs": 141726000,
+      "status": "done",
+      "taskId": "LOCAL-334",
+      "source": "manual",
+      "role": null,
+      "completedAt": "2026-03-10T23:09:40Z",
+      "runtimeMin": "2362.1",
+      "success": true
+    },
+    {
+      "sessionKey": "completed:LOCAL-333",
+      "label": "eval:Eval TC post-duration+image fixes (100 cases)",
+      "runtimeMs": 142638000,
+      "status": "done",
+      "taskId": "LOCAL-333",
+      "source": "manual",
+      "role": null,
+      "completedAt": "2026-03-10T22:54:26Z",
+      "runtimeMin": "2377.3",
+      "success": true
+    },
+    {
+      "sessionKey": "completed:LOCAL-332",
+      "label": "Fix-remaining-TC-errors:-duration-tolera",
+      "runtimeMs": 142842000,
+      "status": "done",
+      "taskId": "LOCAL-332",
+      "source": "dispatch",
+      "role": "developer",
+      "completedAt": "2026-03-10T22:39:10Z",
+      "runtimeMin": "2380.7",
+      "success": true
+    },
     {
       "sessionKey": "completed:REVIEW-316",
       "label": "review-AUTO-316",
@@ -36,15 +372,6 @@
       "source": "manual",
       "role": null,
       "completedAt": "2026-03-10T21:54:38Z",
-      "linear": {
-        "title": "Eval TC post-prompt-naming (100 cases)",
-        "state": "In Progress",
-        "stateColor": "#f2c94c",
-        "lastCommentAt": "2026-03-10T21:38:54.526Z",
-        "lastCommentPreview": "Eval launched (agentless, timeout=60min, workers=5, parent=AUTO-339)",
-        "commentCount": 1,
-        "updatedAt": "2026-03-10T21:38:55.514Z"
-      },
       "runtimeMin": "32.3",
       "success": true
     },
@@ -57,15 +384,6 @@
       "source": "manual",
       "role": null,
       "completedAt": "2026-03-10T21:38:47Z",
-      "linear": {
-        "title": "Eval TC post-naming+duration fixes (100 cases)",
-        "state": "In Progress",
-        "stateColor": "#f2c94c",
-        "lastCommentAt": "2026-03-10T21:10:41.734Z",
-        "lastCommentPreview": "Eval launched (agentless, timeout=60min, workers=5, parent=AUTO-336)",
-        "commentCount": 1,
-        "updatedAt": "2026-03-10T21:10:42.647Z"
-      },
       "runtimeMin": "60.5",
       "success": true
     },
@@ -78,15 +396,6 @@
       "source": "dispatch",
       "role": "developer",
       "completedAt": "2026-03-10T21:25:38Z",
-      "linear": {
-        "title": "Revert product naming tool, replace with prompt-based approach",
-        "state": "In Progress",
-        "stateColor": "#f2c94c",
-        "lastCommentAt": "2026-03-10T21:21:55.907Z",
-        "lastCommentPreview": "Agent spawned (timeout=15min, agent=developer, role=developer)",
-        "commentCount": 1,
-        "updatedAt": "2026-03-10T21:21:56.876Z"
-      },
       "runtimeMin": "49.1",
       "success": true
     },
@@ -99,15 +408,6 @@
       "source": "dispatch",
       "role": "developer",
       "completedAt": "2026-03-10T21:10:09Z",
-      "linear": {
-        "title": "Fix TC Pantene naming + Amazon duration (18 errors)",
-        "state": "In Progress",
-        "stateColor": "#f2c94c",
-        "lastCommentAt": "2026-03-10T21:05:11.629Z",
-        "lastCommentPreview": "Agent spawned (timeout=20min, agent=developer, role=developer)",
-        "commentCount": 1,
-        "updatedAt": "2026-03-10T21:05:12.704Z"
-      },
       "runtimeMin": "65.9",
       "success": true
     },
@@ -120,13 +420,6 @@
       "source": "manual",
       "role": null,
       "completedAt": "2026-03-10T21:05:00Z",
-      "linear": {
-        "title": "Eval TC post-code-fixes (100 cases, human_evals)",
-        "state": "Todo",
-        "stateColor": "#e2e2e2",
-        "commentCount": 0,
-        "updatedAt": "2026-03-10T20:51:10.718Z"
-      },
       "runtimeMin": "79.9",
       "success": true
     },
@@ -139,13 +432,6 @@
       "source": "manual",
       "role": null,
       "completedAt": "2026-03-10T21:03:55Z",
-      "linear": {
-        "title": "Eval TC post-ADK-fix (100 cases)",
-        "state": "Todo",
-        "stateColor": "#e2e2e2",
-        "commentCount": 0,
-        "updatedAt": "2026-03-10T20:31:27.174Z"
-      },
       "runtimeMin": "99.6",
       "success": false
     },
@@ -158,15 +444,6 @@
       "source": "manual",
       "role": null,
       "completedAt": "2026-03-10T20:29:43Z",
-      "linear": {
-        "title": "Eval TC post-AUTO-332 (code fixes)",
-        "state": "In Progress",
-        "stateColor": "#f2c94c",
-        "lastCommentAt": "2026-03-10T20:22:29.088Z",
-        "lastCommentPreview": "Eval launched (agentless, timeout=60min, workers=5, parent=AUTO-332)",
-        "commentCount": 1,
-        "updatedAt": "2026-03-10T20:22:29.958Z"
-      },
       "runtimeMin": "108.7",
       "success": false
     },
@@ -179,13 +456,6 @@
       "source": "manual",
       "role": null,
       "completedAt": "2026-03-10T20:29:01Z",
-      "linear": {
-        "title": "Eval CAPTIONS post-AUTO-330 (112 cases)",
-        "state": "Todo",
-        "stateColor": "#e2e2e2",
-        "commentCount": 0,
-        "updatedAt": "2026-03-10T20:15:07.103Z"
-      },
       "runtimeMin": "115.9",
       "success": false
     },
@@ -198,15 +468,6 @@
       "source": "dispatch",
       "role": "developer",
       "completedAt": "2026-03-10T20:22:20Z",
-      "linear": {
-        "title": "Code fix: TC time tool inversion + subjective post-processing",
-        "state": "In Progress",
-        "stateColor": "#f2c94c",
-        "lastCommentAt": "2026-03-10T20:17:45.657Z",
-        "lastCommentPreview": "Agent spawned (timeout=25min, agent=developer, role=developer)",
-        "commentCount": 1,
-        "updatedAt": "2026-03-10T20:17:46.654Z"
-      },
       "runtimeMin": "113.3",
       "success": true
     },
@@ -219,15 +480,6 @@
       "source": "dispatch",
       "role": "developer",
       "completedAt": "2026-03-10T20:10:00Z",
-      "linear": {
-        "title": "Fix CAPTIONS Bet MGM legal disclaimer detection (16 errors)",
-        "state": "In Progress",
-        "stateColor": "#f2c94c",
-        "lastCommentAt": "2026-03-10T20:09:26.224Z",
-        "lastCommentPreview": "Agent spawned (timeout=20min, agent=developer, role=developer)",
-        "commentCount": 1,
-        "updatedAt": "2026-03-10T20:09:27.380Z"
-      },
       "runtimeMin": "121.6",
       "success": true
     },
@@ -240,15 +492,6 @@
       "source": "dispatch",
       "role": "debugger",
       "completedAt": "2026-03-10T20:08:41Z",
-      "linear": {
-        "title": "Deep analysis: TC FN root cause from eval traces",
-        "state": "In Progress",
-        "stateColor": "#f2c94c",
-        "lastCommentAt": "2026-03-10T20:03:39.024Z",
-        "lastCommentPreview": "Agent spawned (timeout=20min, agent=debugger, role=debugger)",
-        "commentCount": 1,
-        "updatedAt": "2026-03-10T20:03:39.922Z"
-      },
       "runtimeMin": "127.4",
       "success": false
     },
@@ -261,13 +504,6 @@
       "source": "manual",
       "role": null,
       "completedAt": "2026-03-10T20:02:13Z",
-      "linear": {
-        "title": "Eval TC post-AUTO-327 (a_partir_de fix)",
-        "state": "Todo",
-        "stateColor": "#e2e2e2",
-        "commentCount": 0,
-        "updatedAt": "2026-03-10T19:47:39.003Z"
-      },
       "runtimeMin": "143.4",
       "success": true
     },
@@ -280,15 +516,6 @@
       "source": "dispatch",
       "role": "developer",
       "completedAt": "2026-03-10T19:47:30Z",
-      "linear": {
-        "title": "Fix TC a_partir_de inversion (19 Dr Wolff errors)",
-        "state": "In Progress",
-        "stateColor": "#f2c94c",
-        "lastCommentAt": "2026-03-10T19:37:22.284Z",
-        "lastCommentPreview": "Agent spawned (timeout=15min, agent=developer, role=developer)",
-        "commentCount": 1,
-        "updatedAt": "2026-03-10T19:37:23.200Z"
-      },
       "runtimeMin": "153.7",
       "success": true
     },
@@ -331,13 +558,13 @@
     {
       "sessionKey": "completed:AUTO-322",
       "label": "Fix-GUA-1113-video-duration-tolerance",
-      "runtimeMs": 28392000,
+      "runtimeMs": 172728000,
       "status": "done",
       "taskId": "AUTO-322",
       "source": "manual",
       "role": null,
       "completedAt": "2026-03-10T14:21:02Z",
-      "runtimeMin": "473.2",
+      "runtimeMin": "2878.8",
       "success": true
     },
     {
@@ -353,356 +580,28 @@
       "success": true
     },
     {
-      "sessionKey": "completed:AUTO-321",
-      "label": "AUTO-321",
-      "runtimeMs": 75072000,
-      "status": "error",
-      "taskId": "AUTO-321",
-      "source": "manual",
-      "role": "guardian-tuner",
-      "completedAt": "2026-03-10T01:21:29.001589+00:00",
-      "runtimeMin": "1251.2",
-      "success": false
-    },
-    {
-      "sessionKey": "completed:AUTO-317",
-      "label": "Fix-TIME_CONSTRAINTS-over-reje",
-      "runtimeMs": 76398000,
-      "status": "done",
-      "taskId": "AUTO-317",
-      "source": "dispatch",
-      "role": "guardian-tuner",
-      "completedAt": "2026-03-10T01:07:15.756107+00:00",
-      "linear": {
-        "title": "Fix TIME_CONSTRAINTS over-rejection (18 FN, 59% accuracy)",
-        "state": "Done",
-        "stateColor": "#5e6ad2",
-        "lastCommentAt": "2026-03-10T00:57:45.005Z",
-        "lastCommentPreview": "Agent spawned: Fix-TIME_CONSTRAINTS-over-reje (timeout=25min, agent=guardian-tuner, role=guardian-tuner)",
-        "commentCount": 1,
-        "updatedAt": "2026-03-10T12:41:15.310Z"
-      },
-      "runtimeMin": "1273.3",
-      "success": true
-    },
-    {
-      "sessionKey": "completed:AUTO-318",
-      "label": "Fix-AUTO-313-analysis:-old-mod",
-      "runtimeMs": 76386000,
-      "status": "done",
-      "taskId": "AUTO-318",
-      "source": "dispatch",
-      "role": "developer",
-      "completedAt": "2026-03-10T01:07:15.756107+00:00",
-      "linear": {
-        "title": "Fix AUTO-313 analysis: old model comparison from _meta.old_model_answer",
-        "state": "Done",
-        "stateColor": "#5e6ad2",
-        "lastCommentAt": "2026-03-10T00:57:57.254Z",
-        "lastCommentPreview": "Agent spawned: Fix-AUTO-313-analysis:-old-mod (timeout=15min, agent=developer, role=developer)",
-        "commentCount": 1,
-        "updatedAt": "2026-03-10T01:00:43.396Z"
-      },
-      "runtimeMin": "1273.1",
-      "success": true
-    },
-    {
       "sessionKey": "completed:AUTO-319",
       "label": "Write-GKE-deploy-architecture-",
-      "runtimeMs": 76374000,
+      "runtimeMs": 220704000,
       "status": "done",
       "taskId": "AUTO-319",
       "source": "dispatch",
       "role": "architect",
       "completedAt": "2026-03-10T01:07:15.756107+00:00",
-      "linear": {
-        "title": "Write GKE deploy architecture doc",
-        "state": "Done",
-        "stateColor": "#5e6ad2",
-        "lastCommentAt": "2026-03-10T00:58:10.935Z",
-        "lastCommentPreview": "Agent spawned: Write-GKE-deploy-architecture- (timeout=20min, agent=architect, role=architect)",
-        "commentCount": 1,
-        "updatedAt": "2026-03-10T01:01:18.535Z"
-      },
-      "runtimeMin": "1272.9",
+      "runtimeMin": "3678.4",
       "success": true
     },
     {
       "sessionKey": "completed:AUTO-320",
       "label": "Generate-Guardian-system-conte",
-      "runtimeMs": 76140000,
+      "runtimeMs": 220476000,
       "status": "done",
       "taskId": "AUTO-320",
       "source": "dispatch",
       "role": "developer",
       "completedAt": "2026-03-10T01:07:15.756107+00:00",
-      "runtimeMin": "1269.0",
+      "runtimeMin": "3674.6",
       "success": true
-    },
-    {
-      "sessionKey": "completed:AUTO-316",
-      "label": "AUTO-316",
-      "runtimeMs": 87444000,
-      "status": "done",
-      "taskId": "AUTO-316",
-      "source": "manual",
-      "role": "architect",
-      "completedAt": "2026-03-09T22:01:59Z",
-      "linear": {
-        "title": "GKE Deploy Architecture for Anton & Billy (retry)",
-        "state": "Done",
-        "stateColor": "#5e6ad2",
-        "lastCommentAt": "2026-03-09T21:53:41.346Z",
-        "lastCommentPreview": "Agent spawned: AUTO-316 (timeout=25min, agent=architect, role=architect)",
-        "commentCount": 1,
-        "updatedAt": "2026-03-09T22:02:01.447Z"
-      },
-      "runtimeMin": "1457.4",
-      "success": true
-    },
-    {
-      "sessionKey": "completed:AUTO-311",
-      "label": "🛡️-Severity-3-hard-gates",
-      "runtimeMs": 96816000,
-      "status": "error",
-      "taskId": "AUTO-311",
-      "source": "dispatch",
-      "role": "guardian-tuner",
-      "completedAt": "2026-03-09T19:17:27Z",
-      "runtimeMin": "1613.6",
-      "success": false
-    },
-    {
-      "sessionKey": "completed:AUTO-312",
-      "label": "🔍-Compound-requirements-det",
-      "runtimeMs": 98436000,
-      "status": "error",
-      "taskId": "AUTO-312",
-      "source": "dispatch",
-      "role": "guardian-tuner",
-      "completedAt": "2026-03-09T18:50:28Z",
-      "runtimeMin": "1640.6",
-      "success": false
-    },
-    {
-      "sessionKey": "completed:AUTO-LOOP-3-error-patterns",
-      "label": "Error pattern analysis + targeted fixes",
-      "runtimeMs": 462000,
-      "status": "error",
-      "taskId": "AUTO-LOOP-3-error-patterns",
-      "source": "manual",
-      "completedAt": "2026-03-09T13:25:44.265Z",
-      "runtimeMin": "7.7",
-      "success": false
-    },
-    {
-      "sessionKey": "completed:AUTO-LOOP-3-tolerance-tuning",
-      "label": "Tolerance tuning for borderline cases",
-      "runtimeMs": 348000,
-      "status": "done",
-      "taskId": "AUTO-LOOP-3-tolerance-tuning",
-      "source": "manual",
-      "completedAt": "2026-03-09T13:23:52.230Z",
-      "runtimeMin": "5.8",
-      "success": true
-    },
-    {
-      "sessionKey": "completed:AUTO-LOOP-2-routing-optimization",
-      "label": "anton-auto:routing-optimization",
-      "runtimeMs": 414000,
-      "status": "done",
-      "taskId": "AUTO-LOOP-2-routing-optimization",
-      "source": "manual",
-      "completedAt": "2026-03-09T12:56:52.503Z",
-      "runtimeMin": "6.9",
-      "success": true
-    },
-    {
-      "sessionKey": "completed:AUTO-307",
-      "label": "guardian-critical",
-      "runtimeMs": 245999.99999999997,
-      "status": "done",
-      "taskId": "AUTO-307",
-      "source": "manual",
-      "completedAt": "2026-03-09T01:10:49.974Z",
-      "runtimeMin": "4.1",
-      "success": true
-    },
-    {
-      "sessionKey": "completed:AUTO-305",
-      "label": "guardian-accuracy",
-      "runtimeMs": 738000,
-      "status": "error",
-      "taskId": "AUTO-305",
-      "source": "manual",
-      "completedAt": "2026-03-09T00:43:50.295Z",
-      "runtimeMin": "12.3",
-      "success": false
-    },
-    {
-      "sessionKey": "completed:AUTO-306",
-      "label": "guardian-accuracy",
-      "runtimeMs": 300000,
-      "status": "done",
-      "taskId": "AUTO-306",
-      "source": "manual",
-      "completedAt": "2026-03-09T00:37:44.697Z",
-      "runtimeMin": "5.0",
-      "success": true
-    },
-    {
-      "sessionKey": "completed:AUTO-304",
-      "label": "guardian-accuracy",
-      "runtimeMs": 294000,
-      "status": "done",
-      "taskId": "AUTO-304",
-      "source": "manual",
-      "completedAt": "2026-03-09T00:36:16.672Z",
-      "runtimeMin": "4.9",
-      "success": true
-    },
-    {
-      "sessionKey": "completed:AUTO-299",
-      "label": "debug",
-      "runtimeMs": 132000,
-      "status": "done",
-      "taskId": "AUTO-299",
-      "source": "manual",
-      "completedAt": "2026-03-09T00:15:45.885Z",
-      "runtimeMin": "2.2",
-      "success": true
-    },
-    {
-      "sessionKey": "completed:AUTO-292",
-      "label": "fix",
-      "runtimeMs": 84000,
-      "status": "done",
-      "taskId": "AUTO-292",
-      "source": "manual",
-      "completedAt": "2026-03-09T00:15:06.155Z",
-      "runtimeMin": "1.4",
-      "success": true
-    },
-    {
-      "sessionKey": "completed:AUTO-LOOP-1-routing-optimization",
-      "label": "anton-auto:routing-optimization",
-      "runtimeMs": 6000,
-      "status": "done",
-      "taskId": "AUTO-LOOP-1-routing-optimization",
-      "source": "manual",
-      "completedAt": "2026-03-08T20:52:24.846Z",
-      "runtimeMin": "0.1",
-      "success": true
-    },
-    {
-      "sessionKey": "completed:AUTO-297",
-      "label": "AUTO-297-add-archetype-detection-valida",
-      "runtimeMs": 438000,
-      "status": "error",
-      "taskId": "AUTO-297",
-      "source": "auto-queue",
-      "completedAt": "2026-03-08T17:16:50.406Z",
-      "runtimeMin": "7.3",
-      "success": false
-    },
-    {
-      "sessionKey": "completed:AUTO-294",
-      "label": "guardian_improvement",
-      "runtimeMs": 96000,
-      "status": "done",
-      "taskId": "AUTO-294",
-      "source": "manual",
-      "completedAt": "2026-03-08T17:16:02.390Z",
-      "runtimeMin": "1.6",
-      "success": true
-    },
-    {
-      "sessionKey": "completed:AUTO-295",
-      "label": "AUTO-295-implement-regression-detection",
-      "runtimeMs": 282000,
-      "status": "done",
-      "taskId": "AUTO-295",
-      "source": "auto-queue",
-      "completedAt": "2026-03-08T17:14:17.786Z",
-      "runtimeMin": "4.7",
-      "success": true
-    },
-    {
-      "sessionKey": "completed:AUTO-298",
-      "label": "AUTO-298-implement-agent-timeout-recove",
-      "runtimeMs": 168000,
-      "status": "done",
-      "taskId": "AUTO-298",
-      "source": "auto-queue",
-      "completedAt": "2026-03-08T17:12:17.750Z",
-      "runtimeMin": "2.8",
-      "success": true
-    },
-    {
-      "sessionKey": "completed:CAI-326",
-      "label": "CAI-326--feature-budget-aware-agent-",
-      "runtimeMs": 234000,
-      "status": "done",
-      "taskId": "CAI-326",
-      "source": "auto-queue",
-      "completedAt": "2026-03-08T16:11:13.246Z",
-      "runtimeMin": "3.9",
-      "success": true
-    },
-    {
-      "sessionKey": "completed:CAI-330",
-      "label": "CAI-330--resilincia-gateway-restar",
-      "runtimeMs": 348000,
-      "status": "done",
-      "taskId": "CAI-330",
-      "source": "auto-queue",
-      "completedAt": "2026-03-08T15:56:56.989Z",
-      "runtimeMin": "5.8",
-      "success": true
-    },
-    {
-      "sessionKey": "completed:GUARD-product-visibility-v2",
-      "label": "guardian_improvement",
-      "runtimeMs": 378000,
-      "status": "error",
-      "taskId": "GUARD-product-visibility-v2",
-      "source": "manual",
-      "completedAt": "2026-03-08T06:27:10.352Z",
-      "runtimeMin": "6.3",
-      "success": false
-    },
-    {
-      "sessionKey": "completed:GUARD-brand-mention-v2",
-      "label": "guardian_improvement",
-      "runtimeMs": 330000,
-      "status": "done",
-      "taskId": "GUARD-brand-mention-v2",
-      "source": "manual",
-      "completedAt": "2026-03-08T06:26:22.328Z",
-      "runtimeMin": "5.5",
-      "success": true
-    },
-    {
-      "sessionKey": "completed:GUARD-cta-detection-v2",
-      "label": "guardian_improvement",
-      "runtimeMs": 234000,
-      "status": "done",
-      "taskId": "GUARD-cta-detection-v2",
-      "source": "manual",
-      "completedAt": "2026-03-08T05:38:52.097Z",
-      "runtimeMin": "3.9",
-      "success": true
-    },
-    {
-      "sessionKey": "completed:GUARD-timing-fix",
-      "label": "guardian_improvement",
-      "runtimeMs": 402000,
-      "status": "error",
-      "taskId": "GUARD-timing-fix",
-      "source": "manual",
-      "completedAt": "2026-03-08T04:16:58.894Z",
-      "runtimeMin": "6.7",
-      "success": false
     }
   ]
 }
