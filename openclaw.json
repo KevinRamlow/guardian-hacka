@@ -77,7 +77,7 @@
         },
         "target": "slack",
         "directPolicy": "allow",
-        "to": "D0AK1B981QR",
+        "to": "U04PHF0L65P",
         "ackMaxChars": 300,
         "lightContext": false
       },

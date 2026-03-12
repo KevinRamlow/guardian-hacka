@@ -40,7 +40,8 @@
 
 ### MySQL
 - Instance: brandlovers-prod:us-east1 (Cloud SQL 8.0) | DB: db-maestro-prod
-- Connection: `mysql -e "query"` (creds in ~/.my.cnf)
+- Connection: Direct TCP via `mcporter call mysql-creator-ads.*` or `mcporter call mysql-catalyst.*`
+- Config: `workspace/config/mcporter.json` (env vars: CREATOR_ADS_DB_*, DB_CATALYST_*)
 - Tables: proofread_medias, media_content, actions, campaigns, guidelines
 - Join: proofread_medias.action_id → actions.id ← media_content.action_id
 

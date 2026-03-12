@@ -8,8 +8,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl jq git bash coreutils ca-certificates gnupg python3 \
     && rm -rf /var/lib/apt/lists/*
 
-# Install OpenClaw + fix permissions for plugin installs at runtime
-RUN npm install -g openclaw@2026.3.8 \
+# Install OpenClaw + mcporter + fix permissions for plugin installs at runtime
+RUN npm install -g openclaw@2026.3.8 mcporter \
     && chown -R node:node /usr/local/lib/node_modules/openclaw/extensions/
 
 # Create directory structure
