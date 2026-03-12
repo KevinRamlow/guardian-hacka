@@ -70,7 +70,7 @@ echo "Starting infra-maintenance (15m interval)..."
 # ── Start dashboard ──
 DASHBOARD_DIR="${OPENCLAW_HOME}/.openclaw/workspace/dashboard"
 if [ -f "${DASHBOARD_DIR}/server.js" ]; then
-  echo "Starting dashboard on port 8765..."
+  echo "Starting dashboard on port 8080..."
   node "${DASHBOARD_DIR}/server.js" &
 fi
 

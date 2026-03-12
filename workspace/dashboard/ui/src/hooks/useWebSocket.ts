@@ -8,7 +8,8 @@ interface UseWebSocketReturn {
 }
 
 const RECONNECT_DELAY = 3000;
-const WS_URL = `ws://${window.location.hostname}:8765`;
+const WS_PROTOCOL = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+const WS_URL = `${WS_PROTOCOL}//${window.location.host}`;
 
 export function useWebSocket(): UseWebSocketReturn {
   const [state, setState] = useState<DashboardState | null>(null);

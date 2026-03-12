@@ -47,7 +47,7 @@ ENV NODE_ENV=production
 ENV GATEWAY_PORT=18789
 ENV GATEWAY_BIND=lan
 
-EXPOSE 18789 8765
+EXPOSE 18789 8080
 
 ENTRYPOINT ["/home/node/docker-entrypoint.sh"]
 CMD ["gateway"]

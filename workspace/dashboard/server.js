@@ -30,8 +30,8 @@ for (const envFile of [
   }
 }
 
-const PORT = 8765;
-const BIND = '127.0.0.1';
+const PORT = parseInt(process.env.DASHBOARD_PORT || '8080', 10);
+const BIND = process.env.DASHBOARD_BIND || '0.0.0.0';
 const POLL_INTERVAL = 8000;
 const LINEAR_API_KEY = process.env.LINEAR_API_KEY || '';
 if (!LINEAR_API_KEY) console.log('WARNING: No LINEAR_API_KEY — Linear disabled');
