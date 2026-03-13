@@ -14,6 +14,7 @@ RUN npm install -g openclaw@2026.3.8 mcporter \
 
 # Create directory structure
 RUN mkdir -p /home/node/.openclaw/workspace \
+             /home/node/.openclaw/workspace/memory \
              /home/node/.openclaw/tasks/agent-logs \
              /home/node/.openclaw/tasks/spawn-tasks \
              /home/node/.openclaw/hooks \

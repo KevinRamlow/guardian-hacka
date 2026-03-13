@@ -1,4 +1,7 @@
-# Runtime state — comes from PVC, not baked in image
+# OpenClaw internal runtime dirs (these don't exist at repo root,
+# but listed explicitly to avoid any accidental inclusion if created)
+# NOTE: do NOT add workspace/skills/ or workspace/memory/ here — they are
+# source code and must be in the image.
 tasks/
 agents/
 browser/
@@ -9,8 +12,6 @@ devices/
 identity/
 logs/
 media/
-memory/
-skills/
 subagents/
 cron/
 # Sub-agent workspaces (built at image build + container startup)
