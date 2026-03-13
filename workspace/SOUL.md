@@ -321,6 +321,14 @@ Canonical layout is in `docs/workspace-layout.md`. Key rules:
 
 1. **State lives in `~/.openclaw/tasks/`** (state.json), NOT workspace/tasks/. Scripts in `scripts/`, configs in `config/`, images in `presentations/`, skills in `skills/<name>/` with SKILL.md.
 2. **Cloned repos stay gitignored.** Role workspaces (`workspace-<role>/`) are built dynamically by `scripts/setup-workspaces.sh` from templates in `workspace/agents/`.
+3. **OPENCLAW_HOME is the PARENT directory** (e.g. `/home/node` in GKE, `~` locally). The `.openclaw/` dir is always at `$OPENCLAW_HOME/.openclaw/`. When checking files or running health checks, NEVER use `$OPENCLAW_HOME/workspace/` — the correct paths are:
+   - Workspace: `$OPENCLAW_HOME/.openclaw/workspace/`
+   - Scripts: `$OPENCLAW_HOME/.openclaw/workspace/scripts/`
+   - Skills: `$OPENCLAW_HOME/.openclaw/workspace/skills/`
+   - State: `$OPENCLAW_HOME/.openclaw/tasks/state.json`
+   - Memory: `$OPENCLAW_HOME/.openclaw/workspace/memory/`
+   - MEMORY.md: `$OPENCLAW_HOME/.openclaw/workspace/MEMORY.md`
+   - Config: `$OPENCLAW_HOME/.openclaw/openclaw.json`
 3. **No empty dirs, no loose files in root.** Deprecated scripts → `scripts/.archive/`. Runtime state files (.json, .log, .jsonl) never committed.
 
 ## Presentation/Image Rules

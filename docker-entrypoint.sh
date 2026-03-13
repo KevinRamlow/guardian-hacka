@@ -49,6 +49,22 @@ else
   echo "WARN: REPLICANT_GOOGLE_ACCOUNT_CREDENTIALS not set — GCP tools will not work" >&2
 fi
 
+# ── Persist MEMORY.md across deploys (backed up to PVC tasks/) ──
+MEMORY_FILE="${OPENCLAW_HOME}/.openclaw/workspace/MEMORY.md"
+MEMORY_BACKUP="${OPENCLAW_HOME}/.openclaw/tasks/MEMORY.md"
+if [ -f "${MEMORY_BACKUP}" ]; then
+  echo "Memory: restoring MEMORY.md from PVC backup ($(wc -l < "${MEMORY_BACKUP}") lines)"
+  cp "${MEMORY_BACKUP}" "${MEMORY_FILE}"
+elif [ -f "${MEMORY_FILE}" ]; then
+  echo "Memory: seeding PVC backup from image MEMORY.md"
+  cp "${MEMORY_FILE}" "${MEMORY_BACKUP}"
+fi
+# Background sync: save MEMORY.md to PVC every 2 minutes
+(while true; do
+  sleep 120
+  [ -f "${MEMORY_FILE}" ] && cp "${MEMORY_FILE}" "${MEMORY_BACKUP}" 2>/dev/null || true
+done) &
+
 # ── Setup sub-agent workspaces (idempotent) ──
 bash "${OPENCLAW_HOME}/.openclaw/workspace/scripts/setup-workspaces.sh"
 
