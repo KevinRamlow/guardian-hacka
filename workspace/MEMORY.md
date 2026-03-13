@@ -58,7 +58,7 @@
 - Both methods set `GOOGLE_CLOUD_PROJECT=brandlovers-prod` automatically.
 
 ## Codebase Locations
-- guardian-agents-api: `${OPENCLAW_HOME:-$HOME/.openclaw}/workspace/guardian-agents-api-real/`
+- guardian-agents-api: `${OPENCLAW_HOME:-$HOME}/.openclaw/workspace/guardian-agents-api-real/`
 
 ## Repos — Separated Agent Workspaces (2026-03-09)
 
@@ -110,7 +110,7 @@ The platform is called **CreatorAds** (repo: `brandlovers-team/creator-ads` — 
 
 **Repos:**
 - `creator-ads` — Frontend (React)
-- `campaign-manager-api` — Main API (Go/Gin) — cloned at ${OPENCLAW_HOME:-$HOME/.openclaw}/workspace/campaign-manager-api/
+- `campaign-manager-api` — Main API (Go/Gin) — cloned at ${OPENCLAW_HOME:-$HOME}/.openclaw/workspace/campaign-manager-api/
 - `creatorads-backoffice-app` — Admin backoffice
 - `user-management-api` — Auth/users
 - `guardian-api` — Guardian moderation API (Go)
@@ -138,13 +138,13 @@ The platform is called **CreatorAds** (repo: `brandlovers-team/creator-ads` — 
 - Built, tested locally, not deployed yet
 
 ## nano-banana
-- Location: `${OPENCLAW_HOME:-$HOME/.openclaw}/workspace/skills/nano-banana/`
+- Location: `${OPENCLAW_HOME:-$HOME}/.openclaw/workspace/skills/nano-banana/`
 - API Key: stored in `$OPENCLAW_HOME/.env` (GEMINI_API_KEY)
 - Tools: generate_image, edit_image, analyze_image
 
 ## Task Management v4 (2026-03-10 — Atomic Architecture)
 
-**Single source of truth:** `state.json` (`${OPENCLAW_HOME:-$HOME/.openclaw}/tasks/state.json`)
+**Single source of truth:** `state.json` (`${OPENCLAW_HOME:-$HOME}/.openclaw/tasks/state.json`)
 
 ### State Machine
 ```

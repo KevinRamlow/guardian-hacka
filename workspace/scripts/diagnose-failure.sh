@@ -2,7 +2,7 @@
 set -euo pipefail
 
 TASK_ID="${1:?Usage: diagnose-failure.sh CAI-XXX}"
-LOG_DIR="${OPENCLAW_HOME:-$HOME/.openclaw}/tasks/agent-logs"
+LOG_DIR="${OPENCLAW_HOME:-$HOME}/.openclaw/tasks/agent-logs"
 
 STDERR_FILE="${LOG_DIR}/${TASK_ID}-stderr.log"
 OUTPUT_FILE="${LOG_DIR}/${TASK_ID}-output.log"

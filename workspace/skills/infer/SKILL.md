@@ -27,7 +27,7 @@ Read DM `D0AK1B981QR` history (last 2d). Look for:
 
 ### B. Agent Logs (recent failures)
 ```bash
-ls -t ${OPENCLAW_HOME:-$HOME/.openclaw}/tasks/agent-logs/*-stderr.log | head -10
+ls -t ${OPENCLAW_HOME:-$HOME}/.openclaw/tasks/agent-logs/*-stderr.log | head -10
 ```
 Look for: same error 3+ times, token waste (polling/retrying), agents dying without output.
 
@@ -101,7 +101,7 @@ Self-improved:
 - **NEVER remove existing rules** unless contradicted or factually wrong.
 - **NEVER rewrite a file wholesale** — targeted edits only.
 - **Keep MEMORY.md under 250 lines** — trim stale sections when adding.
-- **Secrets**: Replace hardcoded keys with `${OPENCLAW_HOME:-$HOME/.openclaw}/.env` refs.
+- **Secrets**: Replace hardcoded keys with `${OPENCLAW_HOME:-$HOME}/.openclaw/.env` refs.
 - **Confidence threshold**: Apply for clear patterns (2+ occurrences or factual errors).
   For single-occurrence ambiguous signals, log in daily memory and watch for recurrence.
 - **Short evidence**: If <10 Slack messages in window, say so. Don't fabricate signals.

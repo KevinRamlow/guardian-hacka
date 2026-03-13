@@ -101,7 +101,7 @@ Tasks are tagged with:
 - **Workspace:** caio-tests (team: CAI)
 - **API Key:** $LINEAR_API_KEY from `$OPENCLAW_HOME/.env`
 - **Linear URL:** https://linear.app/caio-tests
-- **Local backup:** `${OPENCLAW_HOME:-$HOME/.openclaw}/tasks/active.md` (synced from Linear)
+- **Local backup:** `${OPENCLAW_HOME:-$HOME}/.openclaw/tasks/active.md` (synced from Linear)
 
 This keeps Anton's meta-work separate from Brandlovers product tasks (GUA workspace).
 

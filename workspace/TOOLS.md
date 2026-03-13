@@ -16,7 +16,7 @@
 - Token: $GITHUB_TOKEN (in $OPENCLAW_HOME/.env)
 - Scopes: repo, read:org, read:user, notifications
 - Key repos: guardian-agents-api, guardian-api, guardian-ads-treatment (all in brandlovers-team org)
-- guardian-agents-api cloned locally at `${OPENCLAW_HOME:-$HOME/.openclaw}/workspace/guardian-agents-api/`
+- guardian-agents-api cloned locally at `${OPENCLAW_HOME:-$HOME}/.openclaw/workspace/guardian-agents-api/`
 
 ### GCP / gcloud
 - gcloud SDK installed at `/opt/google-cloud-sdk/` (v559.0.0)
@@ -28,8 +28,8 @@
 - **caio-tests** (R/W): $LINEAR_API_KEY (in $OPENCLAW_HOME/.env) | Team: AUTO | Track Anton orchestration
 
 ### Task Manager (Anton's Orchestration Tracking)
-- **State file:** `${OPENCLAW_HOME:-$HOME/.openclaw}/tasks/state.json` (single source of truth)
-- **Agent logs:** `${OPENCLAW_HOME:-$HOME/.openclaw}/tasks/agent-logs/`
+- **State file:** `${OPENCLAW_HOME:-$HOME}/.openclaw/tasks/state.json` (single source of truth)
+- **Agent logs:** `${OPENCLAW_HOME:-$HOME}/.openclaw/tasks/agent-logs/`
 - **Status command:** `bash scripts/task-manager.sh list`
 
 ### GCP

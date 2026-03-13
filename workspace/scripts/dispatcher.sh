@@ -31,7 +31,7 @@
 #
 set -euo pipefail
 
-OC_HOME="${OPENCLAW_HOME:-$HOME/.openclaw}"
+OC_HOME="${OPENCLAW_HOME:-$HOME}/.openclaw"
 TASK_MGR="$OC_HOME/workspace/scripts/task-manager.sh"
 LINEAR_SCRIPT="$OC_HOME/workspace/skills/linear/scripts/linear.sh"
 KILL_TREE="$OC_HOME/workspace/scripts/kill-agent-tree.sh"
@@ -249,7 +249,7 @@ from pathlib import Path
 
 timeout_min = float($TIMEOUT_MIN)
 COST_PER_MIN = 0.08
-OC = os.environ.get('OPENCLAW_HOME', os.path.expanduser('~/.openclaw'))
+OC = os.path.join(os.environ.get('OPENCLAW_HOME', os.path.expanduser('~')), '.openclaw')
 
 try:
     state = json.loads(Path(f'{OC}/tasks/api-usage-state.json').read_text())

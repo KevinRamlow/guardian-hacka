@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-WORKSPACE="${OPENCLAW_HOME:-$HOME/.openclaw}/workspace"
+WORKSPACE="${OPENCLAW_HOME:-$HOME}/.openclaw/workspace"
 GUARDIAN_EVAL=false
 FAILED=()
 
@@ -18,11 +18,11 @@ fi
 
 # 2. Secrets loaded
 if [[ -z "${ANTHROPIC_API_KEY:-}" ]]; then
-  if [[ -f "${OPENCLAW_HOME:-$HOME/.openclaw}/.env" ]]; then
-    source "${OPENCLAW_HOME:-$HOME/.openclaw}/.env" 2>/dev/null
+  if [[ -f "${OPENCLAW_HOME:-$HOME}/.openclaw/.env" ]]; then
+    source "${OPENCLAW_HOME:-$HOME}/.openclaw/.env" 2>/dev/null
   fi
   if [[ -z "${ANTHROPIC_API_KEY:-}" ]]; then
-    fail "ANTHROPIC_API_KEY not set" "source ${OPENCLAW_HOME:-$HOME/.openclaw}/.env"
+    fail "ANTHROPIC_API_KEY not set" "source ${OPENCLAW_HOME:-$HOME}/.openclaw/.env"
   fi
 fi
 
@@ -33,7 +33,7 @@ HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 \
   -d '{"query":"{ viewer { id } }"}' \
   https://api.linear.app/graphql 2>/dev/null || echo "000")
 if [[ "$HTTP_CODE" != "200" ]]; then
-  fail "Linear API unreachable (HTTP $HTTP_CODE)" "Check LINEAR_API_KEY in ${OPENCLAW_HOME:-$HOME/.openclaw}/.env"
+  fail "Linear API unreachable (HTTP $HTTP_CODE)" "Check LINEAR_API_KEY in ${OPENCLAW_HOME:-$HOME}/.openclaw/.env"
 fi
 
 # --- Guardian eval checks (only with --guardian-eval) ---

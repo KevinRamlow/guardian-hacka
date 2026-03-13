@@ -5,7 +5,7 @@ Use this checklist after every agent completion. Do NOT report success without c
 ## 1. Read Agent Output
 
 ```bash
-cat ${OPENCLAW_HOME:-$HOME/.openclaw}/tasks/agent-logs/CAI-XXX-output.log
+cat ${OPENCLAW_HOME:-$HOME}/.openclaw/tasks/agent-logs/CAI-XXX-output.log
 ```
 
 **Check:**
@@ -48,11 +48,11 @@ grep "new feature" skills/feature-name/README.md
 **Analysis Claims:**
 ```bash
 # Verify output file exists
-ls -lh ${OPENCLAW_HOME:-$HOME/.openclaw}/workspace/analysis/YYYY-MM-DD-topic.md
+ls -lh ${OPENCLAW_HOME:-$HOME}/.openclaw/workspace/analysis/YYYY-MM-DD-topic.md
 
 # Check for actual findings (not empty)
-wc -l ${OPENCLAW_HOME:-$HOME/.openclaw}/workspace/analysis/YYYY-MM-DD-topic.md
-grep -c "Key finding" ${OPENCLAW_HOME:-$HOME/.openclaw}/workspace/analysis/YYYY-MM-DD-topic.md
+wc -l ${OPENCLAW_HOME:-$HOME}/.openclaw/workspace/analysis/YYYY-MM-DD-topic.md
+grep -c "Key finding" ${OPENCLAW_HOME:-$HOME}/.openclaw/workspace/analysis/YYYY-MM-DD-topic.md
 # Expected: >50 lines, 3-5 findings
 ```
 
@@ -172,15 +172,15 @@ bash scripts/dispatcher.sh --task CAI-TEST --timeout 5 "echo test"
 **For Guardian analysis:**
 ```bash
 # Check output file exists and has content
-[ -f ${OPENCLAW_HOME:-$HOME/.openclaw}/workspace/analysis/guardian-disagreements.md ] && echo "✅ File exists" || echo "❌ Missing"
-wc -l ${OPENCLAW_HOME:-$HOME/.openclaw}/workspace/analysis/guardian-disagreements.md
+[ -f ${OPENCLAW_HOME:-$HOME}/.openclaw/workspace/analysis/guardian-disagreements.md ] && echo "✅ File exists" || echo "❌ Missing"
+wc -l ${OPENCLAW_HOME:-$HOME}/.openclaw/workspace/analysis/guardian-disagreements.md
 # Expected: >100 lines with findings
 ```
 
 **For Billy skills:**
 ```bash
 # Test skill end-to-end
-cd ${OPENCLAW_HOME:-$HOME/.openclaw}/workspace/clawdbots/agents/billy/workspace
+cd ${OPENCLAW_HOME:-$HOME}/.openclaw/workspace/clawdbots/agents/billy/workspace
 bash skills/skill-name/test.sh
 # Expected: Success output, no errors
 ```

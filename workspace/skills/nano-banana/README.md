@@ -10,7 +10,7 @@
 ## Quick Start
 
 ### 1. Configure
-Add to `${OPENCLAW_HOME:-$HOME/.openclaw}/workspace/config/mcporter.json`:
+Add to `${OPENCLAW_HOME:-$HOME}/.openclaw/workspace/config/mcporter.json`:
 ```json
 {
   "mcpServers": {

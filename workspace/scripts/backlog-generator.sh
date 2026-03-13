@@ -6,11 +6,11 @@ set -euo pipefail
 
 export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
 
-WORKSPACE="${OPENCLAW_HOME:-$HOME/.openclaw}/workspace"
-AGENT_LOGS="${OPENCLAW_HOME:-$HOME/.openclaw}/tasks/agent-logs"
+WORKSPACE="${OPENCLAW_HOME:-$HOME}/.openclaw/workspace"
+AGENT_LOGS="${OPENCLAW_HOME:-$HOME}/.openclaw/tasks/agent-logs"
 LOG_PREFIX="[$(date -u +%H:%M)]"
 
-OC_HOME="${OPENCLAW_HOME:-$HOME/.openclaw}"; source "$OC_HOME/.env" 2>/dev/null || true
+OC_HOME="${OPENCLAW_HOME:-$HOME}/.openclaw"; source "$OC_HOME/.env" 2>/dev/null || true
 
 MIN_BACKLOG=3  # Generate tasks if fewer than this many Todos exist
 

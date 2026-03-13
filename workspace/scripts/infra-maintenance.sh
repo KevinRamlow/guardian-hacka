@@ -4,13 +4,13 @@
 #
 set -euo pipefail
 
-WORKSPACE="${OPENCLAW_HOME:-$HOME/.openclaw}/workspace"
+WORKSPACE="${OPENCLAW_HOME:-$HOME}/.openclaw/workspace"
 LOCKFILE="/tmp/infra-maintenance.lock"
 
 exec 200>"$LOCKFILE"
 flock -n 200 || { exit 0; }
 
-OC_HOME="${OPENCLAW_HOME:-$HOME/.openclaw}"; source "$OC_HOME/.env" 2>/dev/null || true
+OC_HOME="${OPENCLAW_HOME:-$HOME}/.openclaw"; source "$OC_HOME/.env" 2>/dev/null || true
 
 TS=$(date -u +"%H:%M:%S")
 echo "[$TS] Infra maintenance starting"

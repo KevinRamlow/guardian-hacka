@@ -255,15 +255,15 @@ The `openclaw.json` needs adaptations for running in a container vs locally:
 |---------|----------------|--------------|
 | `gateway.bind` | `loopback` | `lan` (K8s service routing) |
 | `gateway.mode` | `local` | `local` (unchanged) |
-| `agents.defaults.workspace` | `${OPENCLAW_HOME:-$HOME/.openclaw}/workspace` | `/home/node/.openclaw/workspace` |
-| All script paths | `${OPENCLAW_HOME:-$HOME/.openclaw}/...` | `/home/node/.openclaw/...` |
+| `agents.defaults.workspace` | `${OPENCLAW_HOME:-$HOME}/.openclaw/workspace` | `/home/node/.openclaw/workspace` |
+| All script paths | `${OPENCLAW_HOME:-$HOME}/.openclaw/...` | `/home/node/.openclaw/...` |
 | `channels.whatsapp` | enabled | **disable** (no WhatsApp in GKE initially) |
 | `channels.slack.botToken` | hardcoded | via env var `SLACK_BOT_TOKEN` |
 | `channels.slack.appToken` | hardcoded | via env var `SLACK_APP_TOKEN` |
 
 ### 4.2 Scripts path migration
 
-**20+ scripts have hardcoded `${OPENCLAW_HOME:-$HOME/.openclaw}/`**. Before deploying, refactor all scripts to use:
+**20+ scripts have hardcoded `${OPENCLAW_HOME:-$HOME}/.openclaw/`**. Before deploying, refactor all scripts to use:
 
 ```bash
 OPENCLAW_HOME="${OPENCLAW_HOME:-/home/node/.openclaw}"
@@ -295,7 +295,7 @@ Local Anton uses `launchd` for infra-maintenance (15min). In GKE, this needs to 
 ```bash
 # On Caio's Mac
 tar -czf anton-state.tar.gz \
-  -C ${OPENCLAW_HOME:-$HOME/.openclaw} \
+  -C ${OPENCLAW_HOME:-$HOME}/.openclaw \
   --exclude='*.log' \
   --exclude='node_modules' \
   --exclude='.git' \
@@ -335,8 +335,8 @@ POD=$(kubectl get pod -n prod -l app=anton-openclaw -o jsonpath='{.items[0].meta
 kubectl exec -it -n prod $POD -- sh -c '
   cd /home/node/.openclaw
   # Update all path references
-  sed -i "s|${OPENCLAW_HOME:-$HOME/.openclaw}|/home/node/.openclaw|g" workspace/scripts/*.sh
-  sed -i "s|${OPENCLAW_HOME:-$HOME/.openclaw}|/home/node/.openclaw|g" openclaw.json
+  sed -i "s|${OPENCLAW_HOME:-$HOME}/.openclaw|/home/node/.openclaw|g" workspace/scripts/*.sh
+  sed -i "s|${OPENCLAW_HOME:-$HOME}/.openclaw|/home/node/.openclaw|g" openclaw.json
 '
 ```
 

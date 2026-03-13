@@ -5,7 +5,7 @@
 #        queue-control.sh status   — show current state
 set -euo pipefail
 
-CONFIG="${OPENCLAW_HOME:-$HOME/.openclaw}/workspace/config/auto-queue.json"
+CONFIG="${OPENCLAW_HOME:-$HOME}/.openclaw/workspace/config/auto-queue.json"
 
 case "${1:-status}" in
   pause|stop|disable)

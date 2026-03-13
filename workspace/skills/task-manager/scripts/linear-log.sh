@@ -4,7 +4,7 @@
 
 set -e
 
-OC_HOME="${OPENCLAW_HOME:-$HOME/.openclaw}"
+OC_HOME="${OPENCLAW_HOME:-$HOME}/.openclaw"
 LINEAR_SCRIPT="$OC_HOME/workspace/skills/linear/scripts/linear.sh"
 
 # Source secrets
