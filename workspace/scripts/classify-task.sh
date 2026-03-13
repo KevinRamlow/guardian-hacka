@@ -63,7 +63,7 @@ if echo "$COMBINED" | grep -qE "(resilience|reliability|timeout|idle|watchdog|he
 fi
 
 # Queue
-if echo "$COMBINED" | grep -qE "(queue|auto-queue|dispatch|spawn.*agent)"; then
+if echo "$COMBINED" | grep -qE "(queue|dispatch|spawn.*agent)"; then
   LABELS+=("$LABEL_QUEUE")
 fi
 

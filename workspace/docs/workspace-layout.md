@@ -19,7 +19,7 @@
 │   ├── IDENTITY.md / USER.md / TOOLS.md / README.md
 │   ├── scripts/                      #   All management scripts (single source)
 │   │   └── .archive/                 #   Deprecated scripts (never delete, archive)
-│   ├── config/                       #   JSON configs (auto-queue, timeout-rules, review-config)
+│   ├── config/                       #   JSON configs (timeout-rules, review-config)
 │   ├── skills/                       #   Skill modules (each has SKILL.md)
 │   ├── knowledge/                    #   Codemaps, patterns, best practices (shared via symlink)
 │   ├── templates/                    #   PRD, TASK, VALIDATION templates

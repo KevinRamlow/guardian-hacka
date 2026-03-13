@@ -161,7 +161,7 @@ callback_pending → agent_running → ...
 | `dispatcher.sh` | THE only spawn path: Linear + state + spawn + exit-code watcher |
 | `kill-agent-tree.sh` | Kill PID tree (utility) |
 | `guardrails.sh` | Invariant checks |
-| **HEARTBEAT.md** | The brain: Slack reporting, timeouts, orphans, auto-queue, callbacks |
+| **HEARTBEAT.md** | The brain: Slack reporting, timeouts, orphans, callbacks |
 
 **Deprecated (2026-03-10):** supervisor.sh, spawn-agent.sh, reporter.sh, agent-report.sh, link-logs-to-linear.sh, alert-dedup.sh, agent-logger.sh
 
@@ -251,7 +251,7 @@ bash scripts/task-manager.sh get AUTO-XX       # single task detail
 **When to intervene:**
 - Same task failing 3+ times → investigate root cause
 - Agent running >15min with 0 tool calls → check session transcript
-- Systemic failures → pause auto-queue, fix pipeline
+- Systemic failures → fix pipeline, reduce maxConcurrent if needed
 
 ## Autonomy Principle
 - Fix problems immediately, report what you fixed. Exception: destructive prod ops need approval. Full details in SOUL.md.

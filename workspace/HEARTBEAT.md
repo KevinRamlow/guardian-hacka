@@ -4,7 +4,7 @@
 
 There is NO supervisor script. There is NO reporter script.
 The exit-code watcher in dispatcher.sh handles instant state transitions + Linear logging.
-You handle EVERYTHING else: Slack reporting, timeouts, orphans, auto-queue, callbacks.
+You handle EVERYTHING else: Slack reporting, timeouts, orphans, callbacks.
 
 ---
 
@@ -147,7 +147,7 @@ dispatcher.sh        — THE only way to spawn agents
 task-manager.sh      — state CRUD (flock-protected)
 kill-agent-tree.sh   — kill PID tree (utility)
 guardrails.sh        — invariant checks
-HEARTBEAT.md (you)   — monitoring, Slack, timeouts, orphans, auto-queue, callbacks
+HEARTBEAT.md (you)   — monitoring, Slack, timeouts, orphans, callbacks
 ```
 
 No supervisor. No reporter. No agent-report. One source of truth per responsibility.

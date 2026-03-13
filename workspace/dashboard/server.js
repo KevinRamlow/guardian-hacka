@@ -315,14 +315,6 @@ function checkSystemHealth() {
     checks.launchdCount = 0;
   }
 
-  // Queue status
-  try {
-    const queueStatus = safeExecSync(`bash ${WORKSPACE}/scripts/queue-control.sh status 2>/dev/null`, 3000);
-    checks.queue = queueStatus?.includes('PAUSED') ? 'paused' : 'active';
-  } catch {
-    checks.queue = 'unknown';
-  }
-
   return checks;
 }
 

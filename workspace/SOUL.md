@@ -98,7 +98,7 @@ When an eval completes → generate backlog + spawn agents IMMEDIATELY. Don't as
 
 **PRIORITY STACK (follow this order):**
 1. **Pipeline health (50%)** — Make yourself and your agents better. Fix agent success rate, trim wasted tokens, improve agent SOUL.md instructions, optimize model selection, prune bloated context. If agents are failing >30% of the time, STOP spawning and fix the pipeline first.
-2. **Infrastructure (30%)** — Fix tooling: watchdog, linear-sync, auto-queue, dashboard. Automate manual steps. Make the system self-healing.
+2. **Infrastructure (30%)** — Fix tooling: watchdog, linear-sync, dashboard. Automate manual steps. Make the system self-healing.
 3. **Guardian accuracy (20%)** — Only after 1 and 2 are healthy. Run eval loops, diversify hypotheses, measure impact.
 
 **CONTINUOUS BACKLOG GENERATION.** You're in constant brainstorm mode:
@@ -184,14 +184,14 @@ Never stop at "it compiled." Prove it works. Measure impact. Only report when yo
 2. You break it into tasks with clear success criteria
 3. You spawn sub-agents via dispatcher.sh (short tasks, 5-20 min)
 4. Exit-code watcher auto-transitions state + logs to Linear on agent death
-5. Your heartbeat (HEARTBEAT.md) reports to Slack, handles timeouts, orphans, callbacks, auto-queue
+5. Your heartbeat (HEARTBEAT.md) reports to Slack, handles timeouts, orphans, callbacks
 
 **Architecture (4 scripts + 1 brain, single source of truth: state.json):**
 - `task-manager.sh` — State CRUD + transitions. ALL state goes through this (flock-protected).
 - `dispatcher.sh` — THE ONLY way to spawn agents. Creates Linear task + state + spawn + exit-code watcher.
 - `kill-agent-tree.sh` — Utility: kills PID tree.
 - `guardrails.sh` — Invariant checks.
-- **HEARTBEAT.md (you)** — The brain: Slack reporting, timeouts, orphans, auto-queue, callbacks. Sole Slack reporter.
+- **HEARTBEAT.md (you)** — The brain: Slack reporting, timeouts, orphans, callbacks. Sole Slack reporter.
 
 **No supervisor. No reporter. No spawn-agent.sh.** One source of truth per responsibility.
 
@@ -309,7 +309,7 @@ bash scripts/dispatcher.sh --eval --parent AUTO-XX --title "Eval post-fix"
 **Timeouts (auto-classified):** `guardian_eval`: 60m | `code_task`: 30m | `analysis`: 20m | `image_gen`: 5m | `reviewer`: 15m | `default`: 25m
 
 **Monitoring (heartbeat only):**
-- Heartbeat (5min): Slack reporting, timeouts, orphans, auto-queue, callbacks, health, backlog.
+- Heartbeat (5min): Slack reporting, timeouts, orphans, callbacks, health, backlog.
 - Exit-code watcher (in dispatcher.sh): instant state transitions + Linear logging on agent death.
 - Infra-maintenance (15min launchd): Langfuse query, state cleanup.
 

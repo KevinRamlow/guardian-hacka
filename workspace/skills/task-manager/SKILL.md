@@ -180,7 +180,7 @@ Task state is stored in:
 
 Monitoring is handled by HEARTBEAT.md (the brain). No separate dashboard or watchdog scripts needed.
 
-- **Heartbeat (5min):** Reads state.json, reports to Slack, handles timeouts, orphans, auto-queue, callbacks
+- **Heartbeat (5min):** Reads state.json, reports to Slack, handles timeouts, orphans, callbacks
 - **Exit-code watcher (in dispatcher.sh):** Instant state transitions + Linear logging on agent death
 - **Check state:** `bash scripts/task-manager.sh list` / `get AUTO-XX` / `slots`
 

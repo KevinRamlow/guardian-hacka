@@ -7,7 +7,7 @@
 # What it does:
 #   - Saves a JSON checkpoint to ${OPENCLAW_HOME:-$HOME}/.openclaw/tasks/checkpoints/<task_id>/
 #   - Each call overwrites the "latest" checkpoint (one active checkpoint per task)
-#   - Checkpoint is read by auto-queue when re-spawning a timed-out agent
+#   - Checkpoint is read when re-spawning a timed-out agent
 #
 # Example:
 #   agent-checkpoint.sh CAI-42 "phase1_complete" "Analyzed 50/200 eval items. Accuracy so far: 72%. Next: items 51-100."

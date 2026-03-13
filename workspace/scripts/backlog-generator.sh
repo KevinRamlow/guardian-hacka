@@ -73,7 +73,7 @@ fi
 # --- Gather context for Claude ---
 # Recent completed agent logs (last 5 task logs, excluding infra logs)
 RECENT_LOGS=""
-for logfile in $(ls -t "$AGENT_LOGS"/*.log 2>/dev/null | grep -v 'auto-queue\|watchdog\|master\|gateway\|linear-sync\|langfuse\|fallback' | head -5); do
+for logfile in $(ls -t "$AGENT_LOGS"/*.log 2>/dev/null | grep -v 'watchdog\|master\|gateway\|linear-sync\|langfuse\|fallback' | head -5); do
   RECENT_LOGS="$RECENT_LOGS
 --- $(basename "$logfile") ---
 $(tail -30 "$logfile" 2>/dev/null)
@@ -96,7 +96,7 @@ You are the backlog generator for Anton, an autonomous AI agent that improves th
 Current state:
 - Guardian eval baseline accuracy: 76.86%
 - Known improvement areas: severity scoring, archetype detection, edge cases in CAPTIONS/TIME_CONSTRAINTS guidelines
-- Infrastructure: auto-queue, watchdog, eval pipeline, Linear integration
+- Infrastructure: watchdog, eval pipeline, Linear integration
 
 Recent agent task logs:
 PROMPT_EOF

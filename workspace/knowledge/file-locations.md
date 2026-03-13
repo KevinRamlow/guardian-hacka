@@ -9,7 +9,7 @@
 - `dispatcher.sh` — THE only spawn path: Linear + state + spawn + exit-code watcher
 - `kill-agent-tree.sh` — Kill PID tree (utility)
 - `guardrails.sh` — Invariant checks
-- **HEARTBEAT.md** — The brain: Slack reporting, timeouts, orphans, auto-queue, callbacks
+- **HEARTBEAT.md** — The brain: Slack reporting, timeouts, orphans, callbacks
 
 ## Supporting Scripts
 - `review-hook.sh` — Auto-fires adversarial reviewer after agent completion
@@ -31,7 +31,6 @@
 
 ## Config
 `~/.openclaw/workspace/config/`
-- `auto-queue.json` — auto-queue configuration (used by heartbeat)
 - `timeout-rules.json` — agent timeout rules
 - `review-config.json` — review hook configuration
 

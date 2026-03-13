@@ -284,7 +284,7 @@ Local Anton uses `launchd` for infra-maintenance (15min). In GKE, this needs to 
 - **Option B:** Sidecar container running cron
 - **Option C:** CronJob K8s resources calling the pod via `kubectl exec`
 
-**Recommendation:** Rely on OpenClaw native heartbeat. The heartbeat already runs every 5min and drives auto-queue, health checks, Slack reporting, timeouts, orphans, and callbacks. No supervisor script needed — HEARTBEAT.md is the brain.
+**Recommendation:** Rely on OpenClaw native heartbeat. The heartbeat already runs every 5min and drives health checks, Slack reporting, timeouts, orphans, and callbacks. No supervisor script needed — HEARTBEAT.md is the brain.
 
 ---
 
