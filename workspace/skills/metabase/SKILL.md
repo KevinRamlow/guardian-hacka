@@ -1,41 +1,47 @@
 # Metabase Query Skill
 
-Query the Brandlovrs Metabase instance for dashboards, questions, and data.
+Query the Brandlovrs Metabase instance via mcporter.
 
 ## Configuration
+- **MCP server:** `metabase` in `workspace/config/mcporter.json`
 - **URL:** https://metabase.brandlovers.ai
-- **API Key:** $METABASE_API_KEY in `$OPENCLAW_HOME/.env`
+- **API Key:** $METABASE_API_KEY env var
 
 ## Usage
 
-### Search for questions/dashboards
+All Metabase access goes through mcporter:
+
 ```bash
-curl -s -H "x-api-key: $METABASE_API_KEY" "https://metabase.brandlovers.ai/api/search?q=SEARCH_TERM" | python3 -m json.tool
+# Discover available tools first
+mcporter list metabase --schema
+
+# Call any tool
+mcporter call metabase.<tool_name> [params] --output json
 ```
 
-### Get a specific question's data
+## Common Operations
+
+### Search questions/dashboards
 ```bash
-curl -s -H "x-api-key: $METABASE_API_KEY" "https://metabase.brandlovers.ai/api/card/CARD_ID" | python3 -m json.tool
+mcporter call metabase.search q="campaign performance" --output json
 ```
 
-### Run a question (get results)
+### Run a saved question
 ```bash
-curl -s -X POST -H "x-api-key: $METABASE_API_KEY" -H "Content-Type: application/json" "https://metabase.brandlovers.ai/api/card/CARD_ID/query" | python3 -m json.tool
+mcporter call metabase.run_card card_id=123 --output json
 ```
 
-### Run native SQL query
+### Run native SQL
 ```bash
-curl -s -X POST -H "x-api-key: $METABASE_API_KEY" -H "Content-Type: application/json" \
-  "https://metabase.brandlovers.ai/api/dataset" \
-  -d '{"database": 1, "type": "native", "native": {"query": "SELECT 1"}}' | python3 -m json.tool
-```
-
-### List databases
-```bash
-curl -s -H "x-api-key: $METABASE_API_KEY" "https://metabase.brandlovers.ai/api/database" | python3 -m json.tool
+mcporter call metabase.run_sql database_id=1 "query=SELECT COUNT(*) FROM campaigns" --output json
 ```
 
 ### List dashboards
 ```bash
-curl -s -H "x-api-key: $METABASE_API_KEY" "https://metabase.brandlovers.ai/api/dashboard" | python3 -m json.tool
+mcporter call metabase.list_dashboards --output json
+```
+
+### List databases
+```bash
+mcporter call metabase.list_databases --output json
 ```

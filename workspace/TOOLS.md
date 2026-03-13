@@ -46,13 +46,14 @@
 - Join: proofread_medias.action_id → actions.id ← media_content.action_id
 
 ### Metabase
-- URL: https://metabase.brandlovers.ai (behind Cloudflare Access — not directly reachable)
-- API Key: $METABASE_API_KEY (in $OPENCLAW_HOME/.env)
-- MCP config at: ${OPENCLAW_HOME}/workspace/config/mcporter.json
-- **Status**: Not usable from server (Cloudflare Access blocks API calls)
+- URL: https://metabase.brandlovers.ai
+- MCP server: `metabase` in `workspace/config/mcporter.json`
+- Access: `mcporter call metabase.<tool> --output json`
+- Discover tools: `mcporter list metabase --schema`
 
 ### Langfuse
 - URL: https://us.cloud.langfuse.com | Project: cmhdj3t2z088oad08j6wngqhc
-- Keys: $LANGFUSE_PUBLIC_KEY, $LANGFUSE_SECRET_KEY (in $OPENCLAW_HOME/.env)
-- Note: Anton's own project (NOT Guardian's)
-- Usage: Guardian agent trace analysis (256K+ traces)
+- MCP server: `langfuse` in `workspace/config/mcporter.json`
+- Access: `mcporter call langfuse.<tool> --output json`
+- Discover tools: `mcporter list langfuse --schema`
+- Note: Anton's own project (NOT Guardian's) | 256K+ traces
