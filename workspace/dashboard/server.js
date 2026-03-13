@@ -1007,6 +1007,241 @@ app.get('/api/eval', (req, res) => {
   }
 });
 
+// --- DORA Metrics endpoint ---
+app.get('/api/dora', (req, res) => {
+  try {
+    let allTasks = [];
+    try {
+      const data = JSON.parse(fs.readFileSync(STATE_FILE, 'utf-8'));
+      allTasks = Object.entries(data.tasks || {}).map(([id, t]) => ({ id, ...t }));
+    } catch {
+      allTasks = [];
+    }
+
+    const now = Date.now();
+    const DAY_MS = 86400000;
+
+    // Helper: parse a timestamp to ms epoch
+    function toMs(ts) {
+      if (!ts) return null;
+      const d = new Date(ts);
+      return isNaN(d.getTime()) ? null : d.getTime();
+    }
+
+    // Helper: get date string YYYY-MM-DD
+    function toDate(ms) {
+      return new Date(ms).toISOString().split('T')[0];
+    }
+
+    // Compute per-day buckets for last 30 days
+    const buckets = {};
+    for (let i = 29; i >= 0; i--) {
+      const d = toDate(now - i * DAY_MS);
+      buckets[d] = { date: d, completed: 0, failed: 0, leadTimes: [] };
+    }
+
+    const last30Days = now - 30 * DAY_MS;
+    const last7Days = now - 7 * DAY_MS;
+
+    // For MTTR: group failures by label prefix (e.g. "CAI", "AUTO", "REVIEW" or first word)
+    // key = label category, value = [{failedAt, recoveredAt}]
+    const failureGroups = {};
+
+    for (const t of allTasks) {
+      const completedMs = toMs(t.completedAt) || toMs(t.reportedAt);
+      const createdMs = toMs(t.createdAt);
+      const isTerminal = ['done', 'failed', 'timeout', 'error'].includes(t.status);
+
+      if (!isTerminal || !completedMs) continue;
+      if (completedMs < last30Days) continue;
+
+      const dateStr = toDate(completedMs);
+      if (!buckets[dateStr]) continue;
+
+      const isFailed = t.status !== 'done';
+
+      if (isFailed) {
+        buckets[dateStr].failed++;
+
+        // Track failure for MTTR, keyed by label category
+        const cat = (t.label || t.id || '').match(/^([A-Z]+-\d+|[A-Z]+|[^\s]+)/)?.[1] || 'unknown';
+        const labelKey = (t.labels && Array.isArray(t.labels) && t.labels[0]) ? t.labels[0] : cat;
+        if (!failureGroups[labelKey]) failureGroups[labelKey] = [];
+        failureGroups[labelKey].push({ failedAt: completedMs, taskId: t.id, resolved: false });
+      } else {
+        buckets[dateStr].completed++;
+
+        // Lead time
+        if (createdMs && completedMs > createdMs) {
+          const leadMin = (completedMs - createdMs) / 60000;
+          buckets[dateStr].leadTimes.push(leadMin);
+        }
+
+        // Try to resolve a prior failure in same label group
+        const cat = (t.label || t.id || '').match(/^([A-Z]+-\d+|[A-Z]+|[^\s]+)/)?.[1] || 'unknown';
+        const labelKey = (t.labels && Array.isArray(t.labels) && t.labels[0]) ? t.labels[0] : cat;
+        if (failureGroups[labelKey]) {
+          for (const f of failureGroups[labelKey]) {
+            if (!f.resolved && completedMs > f.failedAt) {
+              f.resolved = true;
+              f.recoveredAt = completedMs;
+            }
+          }
+        }
+      }
+    }
+
+    // --- Deployment Frequency (7-day rolling) ---
+    const last7Buckets = Object.values(buckets).filter(b => toMs(b.date + 'T00:00:00Z') >= last7Days);
+    const totalCompleted7 = last7Buckets.reduce((s, b) => s + b.completed, 0);
+    const deployFreq = totalCompleted7 / 7;
+
+    // Compare prior 7 days for trend
+    const prior7Start = now - 14 * DAY_MS;
+    const prior7Buckets = Object.values(buckets).filter(b => {
+      const ms = toMs(b.date + 'T00:00:00Z');
+      return ms >= prior7Start && ms < last7Days;
+    });
+    const totalCompleted7Prior = prior7Buckets.reduce((s, b) => s + b.completed, 0);
+    const deployFreqPrior = totalCompleted7Prior / 7;
+
+    let deployTrend = null;
+    if (deployFreqPrior > 0) {
+      const pct = ((deployFreq - deployFreqPrior) / deployFreqPrior) * 100;
+      deployTrend = (pct >= 0 ? '+' : '') + pct.toFixed(0) + '%';
+    }
+
+    function rateDeployFreq(v) {
+      if (v >= 3) return 'elite';
+      if (v >= 1) return 'high';
+      if (v >= 1 / 7) return 'medium';
+      return 'low';
+    }
+
+    // --- Lead Time (median, last 30 days) ---
+    const allLeadTimes = Object.values(buckets).flatMap(b => b.leadTimes).sort((a, b) => a - b);
+    let leadTimeMedian = null;
+    if (allLeadTimes.length > 0) {
+      const mid = Math.floor(allLeadTimes.length / 2);
+      leadTimeMedian = allLeadTimes.length % 2 === 0
+        ? (allLeadTimes[mid - 1] + allLeadTimes[mid]) / 2
+        : allLeadTimes[mid];
+    }
+
+    // Trend: compare recent 7-day median vs prior 7-day
+    function medianOf(arr) {
+      if (!arr.length) return null;
+      const s = [...arr].sort((a, b) => a - b);
+      const m = Math.floor(s.length / 2);
+      return s.length % 2 === 0 ? (s[m - 1] + s[m]) / 2 : s[m];
+    }
+    const recentLeadTimes = last7Buckets.flatMap(b => b.leadTimes);
+    const priorLeadTimes = prior7Buckets.flatMap(b => b.leadTimes);
+    const recentLTMedian = medianOf(recentLeadTimes);
+    const priorLTMedian = medianOf(priorLeadTimes);
+    let leadTrend = null;
+    if (recentLTMedian !== null && priorLTMedian !== null && priorLTMedian > 0) {
+      const pct = ((recentLTMedian - priorLTMedian) / priorLTMedian) * 100;
+      leadTrend = (pct >= 0 ? '+' : '') + pct.toFixed(0) + '%';
+    }
+
+    function rateLeadTime(v) {
+      if (v == null) return 'low';
+      if (v <= 30) return 'elite';
+      if (v <= 120) return 'high';
+      if (v <= 1440) return 'medium';
+      return 'low';
+    }
+
+    // --- Change Failure Rate (last 30 days) ---
+    const totalDone30 = Object.values(buckets).reduce((s, b) => s + b.completed, 0);
+    const totalFailed30 = Object.values(buckets).reduce((s, b) => s + b.failed, 0);
+    const totalAll30 = totalDone30 + totalFailed30;
+    const cfr = totalAll30 > 0 ? (totalFailed30 / totalAll30) * 100 : 0;
+
+    // Trend: compare recent 7 vs prior 7
+    const recentTotal = last7Buckets.reduce((s, b) => s + b.completed + b.failed, 0);
+    const recentFailed = last7Buckets.reduce((s, b) => s + b.failed, 0);
+    const priorTotal = prior7Buckets.reduce((s, b) => s + b.completed + b.failed, 0);
+    const priorFailed = prior7Buckets.reduce((s, b) => s + b.failed, 0);
+    const recentCFR = recentTotal > 0 ? (recentFailed / recentTotal) * 100 : 0;
+    const priorCFR = priorTotal > 0 ? (priorFailed / priorTotal) * 100 : 0;
+    let cfrTrend = null;
+    if (priorCFR > 0) {
+      const pct = ((recentCFR - priorCFR) / priorCFR) * 100;
+      cfrTrend = (pct >= 0 ? '+' : '') + pct.toFixed(0) + '%';
+    }
+
+    function rateCFR(v) {
+      if (v <= 5) return 'elite';
+      if (v <= 10) return 'high';
+      if (v <= 20) return 'medium';
+      return 'low';
+    }
+
+    // --- MTTR ---
+    const recoveryTimes = [];
+    for (const group of Object.values(failureGroups)) {
+      for (const f of group) {
+        if (f.resolved && f.recoveredAt) {
+          recoveryTimes.push((f.recoveredAt - f.failedAt) / 60000);
+        }
+      }
+    }
+    const mttr = recoveryTimes.length > 0
+      ? recoveryTimes.reduce((s, v) => s + v, 0) / recoveryTimes.length
+      : null;
+
+    function rateMTTR(v) {
+      if (v == null) return 'low';
+      if (v <= 30) return 'elite';
+      if (v <= 120) return 'high';
+      if (v <= 480) return 'medium';
+      return 'low';
+    }
+
+    // --- History (last 30 days for chart) ---
+    const history = Object.values(buckets).map(b => ({
+      date: b.date,
+      completed: b.completed,
+      failed: b.failed,
+      avgLeadTime: b.leadTimes.length > 0
+        ? Math.round(b.leadTimes.reduce((s, v) => s + v, 0) / b.leadTimes.length)
+        : null,
+    }));
+
+    res.json({
+      deploymentFrequency: {
+        value: Math.round(deployFreq * 10) / 10,
+        unit: 'per day',
+        trend: deployTrend,
+        rating: rateDeployFreq(deployFreq),
+      },
+      leadTime: {
+        value: leadTimeMedian !== null ? Math.round(leadTimeMedian) : null,
+        unit: 'minutes',
+        trend: leadTrend,
+        rating: rateLeadTime(leadTimeMedian),
+      },
+      changeFailureRate: {
+        value: Math.round(cfr * 10) / 10,
+        unit: '%',
+        trend: cfrTrend,
+        rating: rateCFR(cfr),
+      },
+      mttr: {
+        value: mttr !== null ? Math.round(mttr) : null,
+        unit: 'minutes',
+        trend: null,
+        rating: rateMTTR(mttr),
+      },
+      history,
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // Stream live agent activity via SSE
 app.get('/api/stream/:taskId', (req, res) => {
   const taskId = req.params.taskId;

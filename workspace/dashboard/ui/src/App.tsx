@@ -4,6 +4,7 @@ import AgentDetail from './components/AgentDetail';
 import DashboardPage from './pages/DashboardPage';
 import TasksPage from './pages/TasksPage';
 import ActivityPage from './pages/ActivityPage';
+import DoraPage from './pages/DoraPage';
 import { useWebSocket } from './hooks/useWebSocket';
 import type { Page, NavigationState } from './types';
 
@@ -52,8 +53,8 @@ const App: React.FC = () => {
             </div>
           )}
 
-          {/* Loading state */}
-          {!state && (
+          {/* Loading state — only show spinner for pages that need WS state */}
+          {!state && nav.page !== 'dora' && (
             <div className="flex items-center justify-center min-h-[60vh]">
               <div className="text-center space-y-3">
                 <div className="h-8 w-8 border-2 border-accent-blue/30 border-t-accent-blue rounded-full animate-spin mx-auto" />
@@ -88,6 +89,8 @@ const App: React.FC = () => {
           )}
 
           {state && nav.page === 'activity' && <ActivityPage state={state} />}
+
+          {nav.page === 'dora' && <DoraPage />}
         </div>
       </main>
     </div>

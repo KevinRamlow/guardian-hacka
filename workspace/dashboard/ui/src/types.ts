@@ -151,7 +151,29 @@ export interface DashboardState {
   lastUpdated: string;
 }
 
-export type Page = 'dashboard' | 'tasks' | 'activity' | 'agent-detail';
+export interface DoraMetric {
+  value: number | null;
+  unit: string;
+  trend: string | null;
+  rating: 'elite' | 'high' | 'medium' | 'low';
+}
+
+export interface DoraHistoryEntry {
+  date: string;
+  completed: number;
+  failed: number;
+  avgLeadTime: number | null;
+}
+
+export interface DoraData {
+  deploymentFrequency: DoraMetric;
+  leadTime: DoraMetric;
+  changeFailureRate: DoraMetric;
+  mttr: DoraMetric;
+  history: DoraHistoryEntry[];
+}
+
+export type Page = 'dashboard' | 'tasks' | 'activity' | 'dora' | 'agent-detail';
 
 export interface NavigationState {
   page: Page;

@@ -9,6 +9,7 @@ import {
   Database,
   Radio,
   Zap,
+  BarChart2,
 } from 'lucide-react';
 import type { Page, DashboardState } from '../types';
 
@@ -52,6 +53,11 @@ const Sidebar: React.FC<SidebarProps> = ({
       page: 'activity',
       label: 'Activity',
       icon: <Activity size={18} />,
+    },
+    {
+      page: 'dora',
+      label: 'DORA',
+      icon: <BarChart2 size={18} />,
     },
   ];
 
