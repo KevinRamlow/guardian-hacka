@@ -1,3 +1,4 @@
+# TODO: pin to digest for supply chain safety: FROM node:22-bookworm-slim@sha256:<digest>
 FROM node:22-bookworm-slim
 
 LABEL org.opencontainers.image.source="https://github.com/brandlovers-team/replicants-anton"
