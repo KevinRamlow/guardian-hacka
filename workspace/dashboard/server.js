@@ -1,6 +1,6 @@
 const express = require('express');
 const { WebSocketServer } = require('ws');
-const { execSync } = require('child_process');
+const { execSync, spawnSync } = require('child_process');
 const http = require('http');
 const path = require('path');
 const fs = require('fs');
@@ -31,7 +31,7 @@ for (const envFile of [
 }
 
 const PORT = parseInt(process.env.DASHBOARD_PORT || '8080', 10);
-const BIND = process.env.DASHBOARD_BIND || '0.0.0.0';
+const BIND = process.env.DASHBOARD_BIND || '127.0.0.1';
 const POLL_INTERVAL = 8000;
 const LINEAR_API_KEY = process.env.LINEAR_API_KEY || '';
 if (!LINEAR_API_KEY) console.log('WARNING: No LINEAR_API_KEY — Linear disabled');
@@ -877,7 +877,8 @@ wss.on('connection', (ws) => {
 
       if (msg.action === 'note' && msg.sessionKey && msg.message) {
         const taskId = msg.sessionKey.replace('state:', '');
-        safeExecSync(`bash ${WORKSPACE}/skills/task-manager/scripts/linear-log.sh "${taskId}" "${msg.message.replace(/"/g, '\\"')}" 2>/dev/null`);
+        const script = path.join(WORKSPACE, 'skills', 'task-manager', 'scripts', 'linear-log.sh');
+        spawnSync('bash', [script, taskId, msg.message], { timeout: 10000, stdio: ['ignore', 'pipe', 'pipe'] });
         await pollAndBroadcast();
       }
 
@@ -1258,7 +1259,10 @@ app.get('/api/dora', (req, res) => {
 // Stream live agent activity via SSE
 app.get('/api/stream/:taskId', (req, res) => {
   const taskId = req.params.taskId;
-  
+  if (!/^[A-Z]+-\d+$/.test(taskId)) {
+    return res.status(400).json({ error: 'Invalid taskId format' });
+  }
+
   res.writeHead(200, {
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-cache',
