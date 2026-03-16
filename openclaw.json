@@ -141,6 +141,14 @@
   },
   "channels": {
     "slack": {
+      "webClient": {
+        "retryConfig": {
+          "retries": 0,
+          "minTimeout": 300,
+          "maxTimeout": 1000,
+          "randomize": true
+        }
+      },
       "name": "Anton",
       "mode": "socket",
       "webhookPath": "/slack/events",

@@ -8,9 +8,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl jq git bash coreutils ca-certificates gnupg python3 \
     && rm -rf /var/lib/apt/lists/*
 
-# Install OpenClaw + mcporter + fix permissions for plugin installs at runtime
-RUN npm install -g openclaw@2026.3.8 mcporter \
-    && chown -R node:node /usr/local/lib/node_modules/openclaw/extensions/
+# Copy build scripts (Slack retry patch) before npm install
+COPY scripts/patch-slack-retry.sh /scripts/patch-slack-retry.sh
+RUN chmod +x /scripts/patch-slack-retry.sh
+
+# Install latest OpenClaw + mcporter + fix permissions + apply Slack retry patch
+RUN npm install -g openclaw@latest mcporter \
+    && chown -R node:node /usr/local/lib/node_modules/openclaw/extensions/ \
+    && /scripts/patch-slack-retry.sh
 
 # Create directory structure
 RUN mkdir -p /home/node/.openclaw/workspace \
