@@ -28,7 +28,7 @@ GIT_AUTHOR_EMAIL="${GIT_AUTHOR_EMAIL:-anton-bot@fonsecabc.dev}"
 
 git config --global user.name "${GIT_AUTHOR_NAME}"
 git config --global user.email "${GIT_AUTHOR_EMAIL}"
-git config --global safe.directory '*'
+git config --global safe.directory /home/node/.openclaw/workspace
 
 if [ -n "${GITHUB_TOKEN:-}" ]; then
   git config --global url."https://x-access-token:${GITHUB_TOKEN}@github.com/".insteadOf "https://github.com/"
