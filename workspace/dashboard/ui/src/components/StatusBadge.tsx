@@ -26,7 +26,8 @@ const statusConfig: Record<string, { bg: string; text: string; dot?: string }> =
 };
 
 const StatusBadge: React.FC<StatusBadgeProps> = ({ status, size = 'sm' }) => {
-  const config = statusConfig[status] || { bg: 'bg-zinc-500/10', text: 'text-zinc-400' };
+  const safeStatus = status ?? 'unknown';
+  const config = statusConfig[safeStatus] || { bg: 'bg-zinc-500/10', text: 'text-zinc-400' };
   const sizeClasses = size === 'sm' ? 'px-2 py-0.5 text-xs' : 'px-2.5 py-1 text-sm';
 
   return (
@@ -36,7 +37,7 @@ const StatusBadge: React.FC<StatusBadgeProps> = ({ status, size = 'sm' }) => {
       {config.dot && (
         <span className={`h-1.5 w-1.5 rounded-full ${config.dot} animate-pulse-dot`} />
       )}
-      {status.replace(/_/g, ' ')}
+      {safeStatus.replace(/_/g, ' ')}
     </span>
   );
 };

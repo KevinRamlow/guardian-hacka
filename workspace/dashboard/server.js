@@ -304,7 +304,7 @@ function checkSystemHealth() {
     checks.mysql = 'down';
   }
 
-  // Launchd jobs
+  // Launchd jobs (Mac only — not available in GKE)
   try {
     const result = safeExecSync('launchctl list 2>/dev/null | grep -c "com.anton"', 3000);
     const count = parseInt(result?.trim() || '0');
@@ -313,6 +313,15 @@ function checkSystemHealth() {
   } catch {
     checks.launchd = 'unknown';
     checks.launchdCount = 0;
+  }
+
+  // Queue — read paused flag from state.json (written by queue-control.sh)
+  try {
+    const stateRaw = fs.readFileSync(STATE_FILE, 'utf-8');
+    const state = JSON.parse(stateRaw);
+    checks.queue = state.queuePaused ? 'paused' : 'active';
+  } catch {
+    checks.queue = 'active';
   }
 
   return checks;
@@ -795,7 +804,7 @@ async function collectData() {
 
 function getTokenStatus() {
   try {
-    const out = execSync('~/.nvm/versions/node/v22.13.1/bin/openclaw sessions 2>/dev/null', {
+    const out = execSync('openclaw sessions 2>/dev/null', {
       timeout: 5000,
       encoding: 'utf-8'
     }).trim();
