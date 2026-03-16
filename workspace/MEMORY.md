@@ -8,18 +8,15 @@ Para commitar e fazer push de mudanças no meu próprio código, usar SEMPRE o s
 # Ver o que mudou vs origin/main
 bash scripts/git-self.sh status
 
-# Commitar e fazer push (cria branch anton/self/YYYYMMDD-HHmmss automaticamente)
+# Commitar e fazer push direto pra main
 bash scripts/git-self.sh commit "fix: description of change"
-
-# Commitar em branch específica
-bash scripts/git-self.sh commit "fix: description" "anton/feat/my-branch"
-
-# Criar PR
-bash scripts/git-self.sh pr "PR title" "PR description"
 
 # Sincronizar workspace com origin/main
 bash scripts/git-self.sh sync
 ```
+
+**⚠️ ATENÇÃO: cada push pra main dispara um rebuild Docker e reinicia o gateway.**
+Não fazer push após cada pequena mudança. Acumular todas as alterações de uma sessão de trabalho e fazer **um único commit** quando o conjunto de mudanças estiver completo e testado.
 
 **NUNCA** fazer `git init` manualmente no workspace. O repo root é um nível acima de `workspace/` — o script `git-self.sh` lida com esse mapeamento automaticamente (clona em /tmp/replicants-self-clone, copia os arquivos, commita do root correto).
 

@@ -2,10 +2,9 @@
 # git-self.sh — Anton's self-modification git helper
 #
 # Usage:
-#   git-self.sh status                       # show what changed vs remote main
-#   git-self.sh commit "msg" [branch-name]   # stage workspace changes, commit, push
-#   git-self.sh pr "title" ["body"]          # create PR
-#   git-self.sh sync                         # pull latest from remote main into workspace
+#   git-self.sh status          # show what changed vs remote main
+#   git-self.sh commit "msg"    # stage workspace changes, commit, push directly to main
+#   git-self.sh sync            # pull latest from remote main into workspace
 #
 # Flags:
 #   --force-reclone   delete /tmp/replicants-self-clone and re-clone fresh
@@ -14,7 +13,11 @@
 #   The replicants-anton repo root has workspace/ as a subdirectory.
 #   Anton works inside workspace/, but git operations need to happen from the repo root.
 #   This script handles that mapping: it clones the full repo to /tmp, copies the live
-#   workspace files in, commits, and pushes. No manual git init needed.
+#   workspace files in, commits, and pushes directly to main. No manual git init needed.
+#
+# ⚠️  IMPORTANT: pushing to main triggers a Docker rebuild and pod restart.
+#     Batch your changes — commit once when a logical set of changes is complete,
+#     NOT after every small edit.
 
 set -euo pipefail
 
@@ -87,12 +90,13 @@ done
 export FORCE_RECLONE
 
 [ ${#ARGS[@]} -ge 1 ] || {
-  echo "Usage: git-self.sh <status|commit|pr|sync> [args] [--force-reclone]"
+  echo "Usage: git-self.sh <status|commit|sync> [args] [--force-reclone]"
   echo ""
-  echo "  status                       show what changed vs origin/main"
-  echo "  commit \"msg\" [branch]        commit workspace changes and push"
-  echo "  pr \"title\" [\"body\"]          create GitHub PR from current branch"
-  echo "  sync                         pull origin/main into live workspace"
+  echo "  status          show what changed vs origin/main"
+  echo "  commit \"msg\"    commit workspace changes and push directly to main"
+  echo "  sync            pull origin/main into live workspace"
+  echo ""
+  echo "  ⚠️  commit triggers a Docker rebuild + pod restart. Batch changes!"
   exit 1
 }
 CMD="${ARGS[0]}"
@@ -129,17 +133,17 @@ case "${CMD}" in
 
   # ── commit ─────────────────────────────────────────────────────────────────
   commit)
-    [ ${#ARGS[@]} -ge 2 ] || die "Usage: git-self.sh commit \"message\" [branch-name]"
+    [ ${#ARGS[@]} -ge 2 ] || die "Usage: git-self.sh commit \"message\""
     COMMIT_MSG="${ARGS[1]}"
-    BRANCH_NAME="${ARGS[2]:-anton/self/$(date +%Y%m%d-%H%M%S)}"
 
     ensure_clone
 
     log "Fetching latest main..."
     git -C "${CLONE_DIR}" fetch origin main --depth=50
 
-    log "Creating branch '${BRANCH_NAME}' from origin/main..."
-    git -C "${CLONE_DIR}" checkout -B "${BRANCH_NAME}" origin/main
+    log "Resetting clone to origin/main..."
+    git -C "${CLONE_DIR}" checkout main
+    git -C "${CLONE_DIR}" reset --hard origin/main
 
     log "Copying live workspace files into clone..."
     copy_workspace_to_clone
@@ -157,35 +161,14 @@ case "${CMD}" in
 
 Co-Authored-By: Anton [bot] <anton-bot@fonsecabc.dev>"
 
-    log "Pushing '${BRANCH_NAME}' to origin..."
-    git -C "${CLONE_DIR}" push -u origin "${BRANCH_NAME}"
+    log "Pushing to origin/main..."
+    git -C "${CLONE_DIR}" push origin main
 
     echo ""
     echo "============================================================"
-    echo " Branch pushed: ${BRANCH_NAME}"
-    echo " Next step: bash scripts/git-self.sh pr \"PR title\""
+    echo " Pushed to main — CI will rebuild the Docker image."
+    echo " ⚠️  Gateway restart incoming. Batch future changes before pushing."
     echo "============================================================"
-    ;;
-
-  # ── pr ─────────────────────────────────────────────────────────────────────
-  pr)
-    [ ${#ARGS[@]} -ge 2 ] || die "Usage: git-self.sh pr \"title\" [\"body\"]"
-    PR_TITLE="${ARGS[1]}"
-    PR_BODY="${ARGS[2]:-Automated self-improvement by Anton [bot].}"
-
-    command -v gh &>/dev/null || die "'gh' CLI not found — cannot create PR."
-
-    CURRENT_BRANCH="$(git -C "${CLONE_DIR}" rev-parse --abbrev-ref HEAD 2>/dev/null || true)"
-    [ -n "${CURRENT_BRANCH}" ] || die "Could not detect branch in clone. Run 'commit' first."
-    [ "${CURRENT_BRANCH}" != "main" ] || die "HEAD is on main — run 'commit' first to create a branch."
-
-    log "Creating PR from '${CURRENT_BRANCH}'..."
-    gh pr create \
-      --repo "${REPO}" \
-      --title "${PR_TITLE}" \
-      --body "${PR_BODY}" \
-      --base main \
-      --head "${CURRENT_BRANCH}"
     ;;
 
   # ── sync ───────────────────────────────────────────────────────────────────
@@ -206,7 +189,7 @@ Co-Authored-By: Anton [bot] <anton-bot@fonsecabc.dev>"
     ;;
 
   *)
-    die "Unknown command '${CMD}'. Valid: status | commit | pr | sync"
+    die "Unknown command '${CMD}'. Valid: status | commit | sync"
     ;;
 
 esac
