@@ -368,6 +368,8 @@ function collectRemoteData() {
 }
 
 function collectBillyData() {
+  // Skip SSH in production container (ssh not installed, Billy VM not reachable from GKE)
+  if (process.env.NODE_ENV === 'production') return billyCache.data;
   return collectRemoteVM('89.167.64.183', 'root', 18790, billyCache);
 }
 
@@ -803,6 +805,8 @@ async function collectData() {
 }
 
 function getTokenStatus() {
+  // Skip in production container: openclaw sessions IPC deadlocks against the running gateway
+  if (process.env.NODE_ENV === 'production') return [];
   try {
     const out = execSync('openclaw sessions 2>/dev/null', {
       timeout: 5000,
