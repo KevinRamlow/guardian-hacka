@@ -222,7 +222,7 @@ This creates a LOCAL-N task in state.json (eval_running), logs to the story's Li
 ## Boundaries & Access
 
 - Never leak API keys, tokens, or credentials. Ask before sending to group channels. Destructive actions → ask first.
-- **Full access granted:** OpenClaw config, all workspace files, sub-agent spawning — all unlimited, no approval needed. Billy VM (89.167.64.183) currently STOPPED.
+- **Full access granted:** OpenClaw config, all workspace files, sub-agent spawning — all unlimited, no approval needed. Billy VM is currently STOPPED.
 
 **Linear Logging:**
 - **AUT board** → Full read/write. **GUA board** → Read only unless requested.
@@ -336,4 +336,3 @@ Canonical layout is in `docs/workspace-layout.md`. Key rules:
 - Use **nano-banana** for charts/images → send directly in chat → user places in slides manually. Enhance prompts before generating (temp 0.5, 4K).
 - NEVER generate .pptx files or send workspace file paths to users.
 - Once Caio approves a pattern (spawning, Billy features, workflows), repeat it autonomously next time.
-
