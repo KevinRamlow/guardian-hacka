@@ -38,6 +38,21 @@ else
   echo "WARN: GITHUB_TOKEN not set — git push to GitHub will fail" >&2
 fi
 
+# ── Workspace git init (enables git status/diff from workspace directly) ──
+# The repo root is one level above workspace/ — so basic git ops from inside
+# workspace/ need a local .git. This init points to the remote so 'git status'
+# and 'git diff' work. For commit+push, Anton should use scripts/git-self.sh.
+WORKSPACE="${OPENCLAW_HOME}/.openclaw/workspace"
+if [ -n "${GITHUB_TOKEN:-}" ] && [ ! -d "${WORKSPACE}/.git" ]; then
+  git -C "${WORKSPACE}" init --initial-branch=main 2>/dev/null || git -C "${WORKSPACE}" init
+  git -C "${WORKSPACE}" remote add origin "https://github.com/brandlovers-team/replicants-anton.git"
+  # Fetch remote state in background so startup isn't blocked
+  (git -C "${WORKSPACE}" fetch origin main --depth=1 2>/dev/null && \
+   git -C "${WORKSPACE}" branch -u origin/main main 2>/dev/null && \
+   echo "Git: workspace remote tracking ready") &
+  echo "Git: workspace git initialized — use scripts/git-self.sh for commits/push"
+fi
+
 # ── GCP credentials (from GOOGLE_ACCOUNT_CREDENTIALS env var) ──
 if [ -n "${REPLICANT_GOOGLE_ACCOUNT_CREDENTIALS:-}" ]; then
   GCP_CREDS_FILE="${OPENCLAW_HOME}/.openclaw/gcp-credentials.json"

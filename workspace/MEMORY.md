@@ -1,5 +1,30 @@
 # MEMORY.md - Long-Term Knowledge
 
+## Git Self-Modification Workflow
+
+Para commitar e fazer push de mudanças no meu próprio código, usar SEMPRE o script `scripts/git-self.sh`:
+
+```bash
+# Ver o que mudou vs origin/main
+bash scripts/git-self.sh status
+
+# Commitar e fazer push (cria branch anton/self/YYYYMMDD-HHmmss automaticamente)
+bash scripts/git-self.sh commit "fix: description of change"
+
+# Commitar em branch específica
+bash scripts/git-self.sh commit "fix: description" "anton/feat/my-branch"
+
+# Criar PR
+bash scripts/git-self.sh pr "PR title" "PR description"
+
+# Sincronizar workspace com origin/main
+bash scripts/git-self.sh sync
+```
+
+**NUNCA** fazer `git init` manualmente no workspace. O repo root é um nível acima de `workspace/` — o script `git-self.sh` lida com esse mapeamento automaticamente (clona em /tmp/replicants-self-clone, copia os arquivos, commita do root correto).
+
+Se o clone em /tmp ficar corrompido: `bash scripts/git-self.sh status --force-reclone`
+
 ## Guardian System (as of 2026-03-05)
 
 ### Key Architecture Points
