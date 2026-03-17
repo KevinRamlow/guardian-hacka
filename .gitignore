@@ -53,6 +53,9 @@ workspace/**/__pycache__/
 workspace/presentations/
 workspace/dashboard/node_modules/
 workspace/.git/
+workspace/.openclaw/
+workspace/.clawdhub/
+workspace/workspace/
 workspace/metrics/
 workspace/tasks/
 workspace/logs/

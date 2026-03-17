@@ -36,12 +36,20 @@ copy_workspace_to_clone() {
   if command -v rsync &>/dev/null; then
     rsync -a --delete \
       --exclude='.git' \
+      --exclude='.openclaw/' \
+      --exclude='.clawdhub/' \
+      --exclude='workspace/' \
       --exclude='sessions/' \
       --exclude='**/sessions/' \
+      --exclude='*.lock' \
       "${WORKSPACE}/" "${CLONE_DIR}/workspace/"
   else
     rm -rf "${CLONE_DIR}/workspace"
     cp -r "${WORKSPACE}" "${CLONE_DIR}/workspace"
+    # Remove runtime artifacts that must not be committed
+    rm -rf "${CLONE_DIR}/workspace/.openclaw" \
+           "${CLONE_DIR}/workspace/.clawdhub" \
+           "${CLONE_DIR}/workspace/workspace"
   fi
 }
 
