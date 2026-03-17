@@ -215,17 +215,6 @@ bash scripts/dispatcher.sh --eval --parent AUTO-XX --title "Eval: post fix"
 # With custom config
 bash scripts/dispatcher.sh --eval --parent AUTO-XX --title "Eval: archetype test" --eval-config evals/content_moderation/eval.yaml --eval-workers 10
 ```
-
-**Guardian Eval Default Setup (ALWAYS do this first if infra is missing):**
-1. Clone `guardian-agents-api` → `$OC_HOME/workspace/guardian-agents-api-real/`
-2. `python3 -m venv .venv && pip install -e .`
-3. gcloud SDK at `$HOME/google-cloud-sdk/` + activate SA: `gcloud auth activate-service-account --key-file=$OC_HOME/gcp-credentials.json`
-4. **CRITICAL**: SA credentials file must be decoded JSON (NOT base64). If base64 → `base64 -d` first.
-5. **CRITICAL**: `GOOGLE_GENAI_USE_VERTEXAI=1` in `.env` — without it, Gemini API mode → `audio_timestamp` error.
-6. `.env` in repo root with: `GOOGLE_GENAI_USE_VERTEXAI=1`, `GOOGLE_CLOUD_PROJECT=brandlovers-prod`, `GOOGLE_CLOUD_LOCATION=us-east1`, `GOOGLE_ACCOUNT_CREDENTIALS=<base64 SA>`, `PIPELINE_ENABLED=false`, `MAX_PARALLEL_AGENTS=5`
-7. Full human evals dataset: `evals/content_moderation/all/human_evals_combined_dataset.jsonl` (650 cases)
-8. Run: `.venv/bin/python3 evals/run_eval.py --config evals/content_moderation/eval.yaml --dataset <path> --workers 15`
-9. ~38s/case → 15 workers ≈ 45-60min for 650 cases
 This creates a LOCAL-N task in state.json (eval_running), logs to the story's Linear task as comments, and when eval completes the watcher auto-transitions to callback_pending → heartbeat spawns a callback agent to review results.
 **Use agentless evals instead of spawning agents for eval runs.** Agents waste tokens looping and checking — the eval process runs fine on its own.
 **NEVER use `--title` without `--parent` for evals.** Evals are always sub-tasks of a story.
