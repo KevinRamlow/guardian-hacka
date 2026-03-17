@@ -22,7 +22,7 @@ Não fazer push após cada pequena mudança. Acumular todas as alterações de u
 
 Se o clone em /tmp ficar corrompido: `bash scripts/git-self.sh status --force-reclone`
 
-## Guardian System (as of 2026-03-05)
+## Guardian System (as of 2026-03-17)
 
 ### Key Architecture Points
 - **Framework**: Google ADK + FastAPI
@@ -31,6 +31,32 @@ Se o clone em /tmp ficar corrompido: `bash scripts/git-self.sh status --force-re
 - **Agentic model ID**: `audio_output` key in `proofread_medias.metadata` JSON
 - **A/B split**: even creator IDs = agentic, odd = old model
 - **Memory pipelines**: Tolerance + error patterns in BigQuery, DBSCAN clustering (eps=0.1, min_samples=3)
+
+### Eval Infrastructure (default config)
+- **Repo**: `guardian-agents-api` cloned to `$OC_HOME/workspace/guardian-agents-api-real/`
+- **Venv**: `.venv/` inside repo, install via `pip install -e .`
+- **GCP credentials**: SA at `$OC_HOME/gcp-credentials.json` (must be decoded JSON, NOT base64)
+- **CRITICAL**: `GOOGLE_GENAI_USE_VERTEXAI=1` required — without it, Gemini API mode fails (audio_timestamp error)
+- **gcloud SDK**: `$HOME/google-cloud-sdk/bin/` — activate SA with `gcloud auth activate-service-account --key-file=...`
+- **Eval .env** at `guardian-agents-api-real/.env`:
+  ```
+  MAIN_PATH=/guardian-agents-api
+  GOOGLE_GENAI_USE_VERTEXAI=1
+  GOOGLE_CLOUD_PROJECT=brandlovers-prod
+  GOOGLE_CLOUD_LOCATION=us-east1
+  GOOGLE_ACCOUNT_CREDENTIALS=<base64 of SA JSON>
+  GOOGLE_APPLICATION_CREDENTIALS=/home/node/.openclaw/gcp-credentials.json
+  LANGFUSE_TRACING_ENVIRONMENT=eval
+  PIPELINE_ENABLED=false
+  MAX_PARALLEL_AGENTS=5
+  ```
+- **Eval command**: `.venv/bin/python3 evals/run_eval.py --config evals/content_moderation/eval.yaml --dataset <path> --workers 15`
+- **Datasets**:
+  - `evals/content_moderation/all/human_evals_combined_dataset.jsonl` — 650 cases (full human evals)
+  - `evals/content_moderation/all/guidelines_combined_dataset.jsonl` — 121 cases
+  - Per-classification: `general/`, `time_constraints/`, `captions/`, `brand_safety/`, `video_duration/`
+- **Performance**: ~38s/case, 15 workers ≈ 45-60min for 650 cases
+- **Runs saved to**: `evals/.runs/content_moderation/run_YYYYMMDD_HHMMSS/`
 
 ### Metrics (2026-03-07/08 — CORRECTED BASELINES)
 **Dataset:** guidelines_combined (121 cases)
@@ -136,7 +162,7 @@ The platform is called **CreatorAds** (repo: `brandlovers-team/creator-ads` — 
 - `creatorads-backoffice-app` — Admin backoffice
 - `user-management-api` — Auth/users
 - `guardian-api` — Guardian moderation API (Go)
-- `guardian-agents-api` — Guardian AI agents (Python)
+- `guardian-agents-api` — Guardian AI agents (Python) — cloned at `guardian-agents-api-real/`
 - `guardian-ads-treatment` — Media processing (Go)
 
 ## CRITICAL: Message Dedup Rules (2026-03-10, 3 incidents today)
