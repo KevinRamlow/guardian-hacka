@@ -25,7 +25,11 @@ OPENCLAW_DIR="${OPENCLAW_HOME:-$HOME}/.openclaw"
 WORKSPACE="${OPENCLAW_DIR}/workspace"
 CLONE_DIR="/tmp/replicants-self-clone"
 REPO="brandlovers-team/replicants-anton"
-REMOTE_URL="https://github.com/${REPO}.git"
+if [ -n "${GITHUB_TOKEN:-}" ]; then
+  REMOTE_URL="https://${GITHUB_TOKEN}@github.com/${REPO}.git"
+else
+  REMOTE_URL="https://github.com/${REPO}.git"
+fi
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
