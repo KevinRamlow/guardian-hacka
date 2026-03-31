@@ -77,7 +77,7 @@
         },
         "target": "slack",
         "directPolicy": "allow",
-        "to": "U04PHF0L65P",
+        "to": "C0AQ2DE6DMY",
         "ackMaxChars": 300,
         "lightContext": false
       },
@@ -93,19 +93,19 @@
         "id": "main"
       },
       {
+        "id": "pm"
+      },
+      {
+        "id": "analyst"
+      },
+      {
         "id": "developer"
       },
       {
         "id": "reviewer"
       },
       {
-        "id": "architect"
-      },
-      {
         "id": "guardian-tuner"
-      },
-      {
-        "id": "debugger"
       }
     ]
   },
@@ -141,34 +141,21 @@
   },
   "channels": {
     "slack": {
-      "name": "Anton",
+      "name": "Sentinel",
       "mode": "socket",
       "webhookPath": "/slack/events",
       "enabled": true,
       "userTokenReadOnly": true,
-      "groupPolicy": "allowlist",
+      "groupPolicy": "open",
       "streaming": "off",
       "nativeStreaming": true,
-      "dmPolicy": "allowlist",
-      "allowFrom": [
-        "U04PHF0L65P",
-        "U0388ARSD9N",
-        "U05M0ADSLKT",
-        "U03Q5D4P4BV",
-        "U01HZTCCYHX",
-        "U0AJU1XN3AT"
-      ],
+      "dmPolicy": "disabled",
+      "allowFrom": [],
       "dm": {
-        "enabled": true
+        "enabled": false
       },
       "channels": {
-        "D0AK1B981QR": {
-          "allow": true
-        },
-        "C0AJQ99GW6P": {
-          "allow": true
-        },
-        "C0AJTTFLN4X": {
+        "C0AQ2DE6DMY": {
           "allow": true,
           "requireMention": false,
           "allowBots": true

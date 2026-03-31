@@ -1,13 +1,16 @@
 # TODO: pin to digest for supply chain safety: FROM node:22-bookworm-slim@sha256:<digest>
 FROM node:22-bookworm-slim
 
-LABEL org.opencontainers.image.source="https://github.com/brandlovers-team/replicants-anton"
-LABEL org.opencontainers.image.description="Anton OpenClaw Gateway — AI Orchestrator"
+LABEL org.opencontainers.image.source="https://github.com/brandlovers-team/replicants-sentinel"
+LABEL org.opencontainers.image.description="Sentinel OpenClaw Gateway — Guardian Agreement Rate Optimizer"
 
-# System tools used by Anton's scripts
+# System tools used by Sentinel's scripts
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl jq git bash coreutils ca-certificates gnupg python3 \
+    curl jq git bash coreutils ca-certificates gnupg python3 python3-pip \
     && rm -rf /var/lib/apt/lists/*
+
+# Python dependencies for few-shot database
+RUN pip3 install --break-system-packages sqlite-vec google-generativeai
 
 # Copy build scripts (Slack retry patch) before npm install
 COPY scripts/patch-slack-retry.sh /scripts/patch-slack-retry.sh

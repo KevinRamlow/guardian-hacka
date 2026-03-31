@@ -1,5 +1,5 @@
 #!/bin/bash
-# Start Anton locally — gateway only
+# Start Sentinel locally — gateway only
 set -euo pipefail
 
 OPENCLAW_HOME="${OPENCLAW_HOME:-$(cd "$(dirname "$0")" && pwd)}"
@@ -28,6 +28,9 @@ fi
 # Setup sub-agent workspaces
 bash "$OPENCLAW_HOME/workspace/scripts/setup-workspaces.sh"
 
-echo "=== Starting OpenClaw Gateway ==="
+# Initialize few-shot database
+bash "$OPENCLAW_HOME/workspace/scripts/few-shot-db.sh" init 2>/dev/null || true
+
+echo "=== Starting Sentinel Gateway ==="
 echo "OPENCLAW_HOME=${OPENCLAW_HOME}"
 openclaw gateway --port "${GATEWAY_PORT:-18789}"

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Stop Anton locally
+# Stop Sentinel locally
 echo "=== Stopping gateway ==="
 openclaw gateway stop 2>/dev/null || pkill -f openclaw-gateway 2>/dev/null
 echo "=== Stopping claude agents ==="

@@ -189,14 +189,14 @@ api_key = os.environ.get("LINEAR_API_KEY", "")
 # Get team ID
 r = subprocess.run(["curl", "-s", "-X", "POST", "https://api.linear.app/graphql",
   "-H", f"Authorization: {api_key}", "-H", "Content-Type: application/json",
-  "-d", '{"query":"query{teams(filter:{key:{eq:\\"AUTO\\"}},first:1){nodes{id}}}"}'],
+  "-d", '{"query":"query{teams(filter:{key:{eq:\\"GAS\\"}},first:1){nodes{id}}}"}'],
   capture_output=True, text=True)
 team_id = json.loads(r.stdout)["data"]["teams"]["nodes"][0]["id"]
 
 # Get Todo state
 r2 = subprocess.run(["curl", "-s", "-X", "POST", "https://api.linear.app/graphql",
   "-H", f"Authorization: {api_key}", "-H", "Content-Type: application/json",
-  "-d", '{"query":"query{workflowStates(filter:{name:{eq:\\"Todo\\"},team:{key:{eq:\\"AUTO\\"}}},first:1){nodes{id}}}"}'],
+  "-d", '{"query":"query{workflowStates(filter:{name:{eq:\\"Todo\\"},team:{key:{eq:\\"GAS\\"}}},first:1){nodes{id}}}"}'],
   capture_output=True, text=True)
 state_id = json.loads(r2.stdout)["data"]["workflowStates"]["nodes"][0]["id"]
 

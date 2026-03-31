@@ -11,7 +11,7 @@ OC_ROOT="${OC_BASE}/.openclaw"
 AGENTS_DIR="$OC_ROOT/workspace/agents"
 SHARED_DIR="$AGENTS_DIR/shared"
 
-ROLES=(developer reviewer architect guardian-tuner debugger)
+ROLES=(pm analyst developer reviewer guardian-tuner)
 SYMLINKS=(scripts config knowledge skills)
 
 if [ ! -d "$SHARED_DIR" ]; then
