@@ -25,6 +25,13 @@ set -euo pipefail
 
 STATE_FILE="${OPENCLAW_HOME:-$HOME}/.openclaw/tasks/state.json"
 LOCKFILE="/tmp/task-manager.lock"
+MASTER_LOG="${OPENCLAW_HOME:-$HOME}/.openclaw/tasks/agent-logs/master.log"
+
+_log() {
+  local level="$1"; local msg="$2"
+  mkdir -p "$(dirname "$MASTER_LOG")"
+  echo "[$(date -u '+%Y-%m-%d %H:%M:%S UTC')] [$level] [task-manager] $msg" >> "$MASTER_LOG" 2>/dev/null || true
+}
 
 # Ensure state file exists
 init_state() {
@@ -32,14 +39,39 @@ init_state() {
   [ -f "$STATE_FILE" ] || echo '{"tasks":{},"maxConcurrent":3,"version":2}' > "$STATE_FILE"
 }
 
-# Locking
+# Locking — use flock on Linux, mkdir-based fallback on macOS
 lock_state() {
-  exec 201>"$LOCKFILE"
-  flock -w 5 201 || { echo "ERROR: State lock timeout" >&2; return 1; }
+  if command -v flock &>/dev/null; then
+    exec 201>"$LOCKFILE"
+    flock -w 5 201 || { _log ERROR "Lock acquisition timed out (cmd=$CMD id=${TASK_ID:-?})"; echo "ERROR: State lock timeout" >&2; return 1; }
+  else
+    local tries=0
+    while ! mkdir "$LOCKFILE.d" 2>/dev/null; do
+      tries=$((tries + 1))
+      if [ $tries -ge 50 ]; then
+        # Break stale lock if older than 10s
+        if [ -d "$LOCKFILE.d" ]; then
+          local age=$(( $(date +%s) - $(stat -f %m "$LOCKFILE.d" 2>/dev/null || echo 0) ))
+          if [ "$age" -ge 10 ]; then
+            rm -rf "$LOCKFILE.d" 2>/dev/null
+            continue
+          fi
+        fi
+        _log ERROR "Lock acquisition timed out (cmd=$CMD id=${TASK_ID:-?})"
+        echo "ERROR: State lock timeout" >&2
+        return 1
+      fi
+      sleep 0.1
+    done
+  fi
 }
 
 unlock_state() {
-  flock -u 201 2>/dev/null || true
+  if command -v flock &>/dev/null; then
+    flock -u 201 2>/dev/null || true
+  else
+    rm -rf "$LOCKFILE.d" 2>/dev/null || true
+  fi
 }
 
 # Valid transitions (single line for shell embedding)
@@ -115,6 +147,7 @@ json.dump(d, open(f, 'w'), indent=2)
 print('$TASK_ID')
 "
     unlock_state
+    _log INFO "Task created (id=$TASK_ID label=$LABEL timeout=${TIMEOUT_MIN}min)"
     ;;
 
   transition)
@@ -253,6 +286,7 @@ json.dump(d, open(f, 'w'), indent=2)
 print(f'{old_status} → {new_status}')
 "
     unlock_state
+    _log INFO "Status transition (id=$TASK_ID to=$NEW_STATUS)"
     ;;
 
   get)
@@ -594,6 +628,7 @@ json.dump(d, open(f, 'w'), indent=2)
 print(f'Registered: $TASK_ID (PID=$PID, timeout=${TIMEOUT_MIN}min)')
 "
     unlock_state
+    _log INFO "Agent registered (id=$TASK_ID pid=$PID timeout=${TIMEOUT_MIN}min label=$LABEL)"
     ;;
 
   count)

@@ -69,7 +69,7 @@
       },
       "elevatedDefault": "on",
       "heartbeat": {
-        "every": "5m",
+        "every": "${HEARTBEAT_INTERVAL}",
         "activeHours": {
           "start": "08:00",
           "end": "23:00",

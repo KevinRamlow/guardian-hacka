@@ -22,6 +22,33 @@ You handle: Slack reporting, timeouts, orphans, callbacks, improvement loop.
 
 ## Every heartbeat (5 minutes)
 
+### Priority 0 — Linear Task Intake (two parallel mechanics)
+
+**Mechanic A — Active search (heartbeat-driven):**
+Polls the Linear GAS board every heartbeat for Backlog and To Do cards:
+
+```bash
+bash scripts/linear-watcher.sh
+```
+
+- Queries Linear GAS team for tasks in **Backlog** or **To Do** state only
+- Skips tasks already tracked in `state.json` (idempotent)
+- Moves each picked-up task to "In Progress" in Linear
+- Dispatches a PM agent with the full card context (title, description, priority, labels)
+- Stops when no slots are available
+
+Only run if there are available slots. If `task-manager.sh slots` returns 0, skip.
+
+**Mechanic B — Slack mention (event-driven):**
+When someone mentions the bot in Slack with a Linear card number (e.g. `GAS-42`), the main agent handles it directly per the **Slack Direct Dispatch** section in `SOUL.md`:
+- Validates the card is in **Backlog** or **To Do** via `scripts/linear-fetch-card.sh`
+- Deduplicates against `state.json`
+- Dispatches PM agent with the fetched card context
+
+Both mechanics are independent and idempotent — a card dispatched via Slack will be skipped by the active search on the next heartbeat.
+
+---
+
 ### Priority 1 — Slack Reporting (sole owner)
 
 **COMPLETED TASKS:** `bash scripts/task-manager.sh list --status done`

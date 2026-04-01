@@ -71,6 +71,52 @@
 - Identify classifications with room for improvement
 - Spawn the PM → Analyst → Developer pipeline
 
+## Slack Direct Dispatch
+
+When a Slack message arrives (outside heartbeat) and contains a Linear card number pattern (e.g. `GAS-123`, `SENT-42`):
+
+1. **Parse** the card identifier from the message — first match of `[A-Z]+-\d+`
+
+2. **Check slots:**
+   ```bash
+   bash scripts/task-manager.sh slots
+   ```
+   - If `0`: reply (pt-BR) that the queue is full and list active tasks with `task-manager.sh list`
+
+3. **Check dedup:**
+   ```bash
+   bash scripts/task-manager.sh has <CARD-ID>
+   ```
+   - If already tracked: reply (pt-BR) with the card identifier and its current status — do not dispatch again
+
+4. **Fetch card from Linear** (Backlog and To Do only):
+   ```bash
+   CARD_JSON=$(bash scripts/linear-fetch-card.sh <CARD-ID>)
+   EXIT=$?
+   ```
+   - Exit `1`: card not found — reply (pt-BR) asking the user to verify the identifier
+   - Exit `2`: card in wrong state (already started/done/canceled) — reply (pt-BR) with the card's current state and that only Backlog and To Do cards are accepted
+
+5. **Dispatch PM agent** using the fetched context:
+   ```bash
+   TASK_BODY=$(echo "$CARD_JSON" | python3 -c "import json,sys; print(json.load(sys.stdin)['task_body'])")
+   LABEL=$(echo "$CARD_JSON"     | python3 -c "import json,sys; print(json.load(sys.stdin)['label'])")
+   bash scripts/dispatcher.sh \
+     --task <CARD-ID> \
+     --label "$LABEL" \
+     --role pm \
+     --timeout 20 \
+     "$TASK_BODY"
+   ```
+
+6. **ACK immediately** in Slack (pt-BR, one line): confirm the card identifier was queued and the PM agent was dispatched
+
+**Rules:**
+- One ACK only — never reply twice about the same dispatch
+- If the message has no recognizable card number, ask the user to provide one in the format `TEAM-N`
+
+---
+
 ## Communication Rules
 
 ### Portuguese (pt-BR) — Default for team/social

@@ -43,6 +43,12 @@ MASTER_LOG="$LOGS_DIR/master.log"
 
 source "$OC_HOME/.env" 2>/dev/null || true
 
+log() {
+  local level="$1"; local component="$2"; local msg="$3"
+  mkdir -p "$(dirname "$MASTER_LOG")"
+  echo "[$(date -u '+%Y-%m-%d %H:%M:%S UTC')] [$level] [$component] $msg" | tee -a "$MASTER_LOG" >&2
+}
+
 # ════════════════════════════════════════════════════════
 # ARGUMENT PARSING
 # ════════════════════════════════════════════════════════
@@ -86,6 +92,8 @@ if $EVAL_MODE; then
   ! $EXPLICIT_TIMEOUT && TIMEOUT_MIN=90
   [ -z "$LABEL" ] && [ -n "$TITLE" ] && LABEL="eval:${TITLE}"
 fi
+
+log INFO dispatcher "Task dispatch initiated (title=${TITLE:-$TASK_ID} eval=$EVAL_MODE)"
 
 # ════════════════════════════════════════════════════════
 # DISPATCH GUARD — Block forbidden patterns (skipped in --eval mode)
@@ -232,6 +240,7 @@ PYEOF
     exit 1
   fi
   echo "[dispatch] Created $TASK_ID: $TITLE"
+  log INFO dispatcher "Linear task created (id=$TASK_ID title=${TITLE})"
   [ -z "$LABEL" ] && LABEL="$(echo "$TITLE" | tr ' ' '-' | cut -c1-40)"
 else
   # Existing task — verify it exists in Linear
@@ -275,6 +284,7 @@ else:
 " 2>/dev/null || echo "OK:0/500")
 
   if [[ "$BUDGET_CHECK" == OVER:* ]]; then
+    log WARN dispatcher "Budget blocked (task=${TASK_ID} budget=$BUDGET_CHECK)"
     echo "BUDGET BLOCKED: $BUDGET_CHECK" >&2
     echo "  Use --force to bypass" >&2
     exit 2
@@ -368,6 +378,7 @@ PYEOF
 ) || true
 
   if [[ "$DEDUP_RESULT" == duplicate:* ]]; then
+    log WARN dispatcher "Dedup blocked (task=${TASK_ID} reason=$DEDUP_RESULT)"
     echo "DEDUP BLOCKED: $DEDUP_RESULT" >&2
     exit 1
   fi
@@ -379,6 +390,7 @@ fi
 
 SLOTS=$(bash "$TASK_MGR" slots)
 if [ "$SLOTS" -le 0 ]; then
+  log WARN dispatcher "No slots available (task=${TASK_ID} running=$(bash "$TASK_MGR" count))"
   echo "ERROR: No agent slots available ($(bash "$TASK_MGR" count) running)" >&2
   exit 1
 fi
@@ -397,6 +409,8 @@ CREATE_ARGS=(--task "$TASK_ID" --label "$LABEL" --timeout "$TIMEOUT_MIN")
 [ -n "$PARENT_TASK" ] && CREATE_ARGS+=(--parent "$PARENT_TASK")
 bash "$TASK_MGR" create "${CREATE_ARGS[@]}" 2>/dev/null || true
 
+log INFO dispatcher "State registered (task_id=${TASK_ID} label=${LABEL} timeout=${TIMEOUT_MIN}min)"
+
 mkdir -p "$LOGS_DIR" "$TASKS_DIR"
 PROMPT_FILE="$TASKS_DIR/${TASK_ID}-full-prompt.md"
 
@@ -406,6 +420,8 @@ PROMPT_FILE="$TASKS_DIR/${TASK_ID}-full-prompt.md"
   echo ""
   echo "$TASK_TEXT"
 } > "$PROMPT_FILE"
+
+log INFO dispatcher "Prompt prepared (task_id=${TASK_ID} file=$(basename "$PROMPT_FILE") bytes=$(wc -c < "$PROMPT_FILE"))"
 
 # ════════════════════════════════════════════════════════
 # STEP 6: SPAWN (Agent or Eval)
@@ -425,6 +441,7 @@ if $EVAL_MODE; then
   [ -n "$EVAL_DATASET" ] && EVAL_ARGS+=(--dataset "$EVAL_DATASET")
   EVAL_ARGS+=(--workers "$EVAL_WORKERS")
 
+  log INFO dispatcher "Eval dispatch initiated (task_id=${TASK_ID} workers=${EVAL_WORKERS} timeout=${TIMEOUT_MIN}min)"
   echo "[dispatch:eval] Launching eval for $TASK_ID (workers=$EVAL_WORKERS)..."
 
   # Source eval env + run
@@ -458,11 +475,13 @@ if $EVAL_MODE; then
   fi
 
   if [ -z "$PYTHON_PID" ] || ! kill -0 "$PYTHON_PID" 2>/dev/null; then
+    log ERROR dispatcher "Eval process not found (task_id=${TASK_ID} wrapper_pid=$EVAL_PID)"
     echo "ERROR: Eval process not found (wrapper PID=$EVAL_PID)" >&2
     cat "$LOGS_DIR/${TASK_ID}-stderr.log" 2>/dev/null >&2
     bash "$TASK_MGR" transition "$TASK_ID" failed --exit-code 1 2>/dev/null || true
     exit 1
   fi
+  log INFO dispatcher "Eval spawned (task_id=${TASK_ID} pid=$EVAL_PID python_pid=${PYTHON_PID} timeout=${TIMEOUT_MIN}min)"
 
   # Build context for callback
   EVAL_CONTEXT="Agentless eval dispatched"
@@ -536,14 +555,12 @@ print(f'{s.get(\"mean_aggregate_score\", 0) * 100:.1f}')
       bash "$LINEAR_SCRIPT" comment "$LINEAR_LOG_ID" "[$TASK_ID] Eval completed (exit=$EXIT_CODE)" 2>/dev/null || true
     fi
 
-    TS=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
-    echo "[$TS] [eval-watcher] $TASK_ID: eval done (exit=$EXIT_CODE, accuracy=${ACCURACY:-?}%)" >> "$MASTER_LOG" 2>/dev/null || true
+    echo "[$(date -u '+%Y-%m-%d %H:%M:%S UTC')] [INFO] [dispatcher:eval-watcher] Eval completed (task_id=$TASK_ID exit=$EXIT_CODE accuracy=${ACCURACY:-?}%)" >> "$MASTER_LOG" 2>/dev/null || true
 
   ) &>/dev/null &
 
   # ── LOG + OUTPUT ──
-  TS=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
-  echo "[$TS] [eval-dispatch] $TASK_ID: PID=$EVAL_PID python=$PYTHON_PID timeout=${TIMEOUT_MIN}min parent=${PARENT_TASK:-none}" >> "$MASTER_LOG" 2>/dev/null || true
+  echo "[$(date -u '+%Y-%m-%d %H:%M:%S UTC')] [INFO] [dispatcher:eval-dispatch] Eval watcher started (task_id=$TASK_ID pid=$EVAL_PID python=$PYTHON_PID timeout=${TIMEOUT_MIN}min parent=${PARENT_TASK:-none})" >> "$MASTER_LOG" 2>/dev/null || true
 
   # Linear log — log to parent (story) if this is a sub-task
   EVAL_LINEAR_ID="$TASK_ID"
@@ -561,7 +578,7 @@ AGENT_ID="${ROLE:-main}"
 TIMEOUT_SEC=$((TIMEOUT_MIN * 60))
 
 nohup bash -c "
-  exec ~/.nvm/versions/node/v22.13.1/bin/openclaw agent \
+  exec $(which openclaw) agent \
     --agent '$AGENT_ID' \
     --message \"\$(cat '$PROMPT_FILE')\" \
     --timeout $TIMEOUT_SEC \
@@ -572,11 +589,13 @@ AGENT_PID=$!
 
 sleep 2
 if ! kill -0 "$AGENT_PID" 2>/dev/null; then
+  log ERROR dispatcher "Agent died immediately (task_id=${TASK_ID} pid=$AGENT_PID role=${ROLE:-main})"
   echo "ERROR: Agent died immediately (PID=$AGENT_PID)" >&2
   cat "$LOGS_DIR/${TASK_ID}-stderr.log" 2>/dev/null >&2
   bash "$TASK_MGR" transition "$TASK_ID" failed --exit-code 1 2>/dev/null || true
   exit 1
 fi
+log INFO dispatcher "Agent spawned (task_id=${TASK_ID} pid=$AGENT_PID role=${ROLE:-main} timeout=${TIMEOUT_MIN}min)"
 
 # Register PID in state
 bash "$TASK_MGR" register "$TASK_ID" "$AGENT_PID" 0 "$LABEL" "dispatch" "$TIMEOUT_MIN"
@@ -652,9 +671,7 @@ else:
     [[ "$TASK_ID" != LOCAL-* ]] && bash "$LINEAR_SCRIPT" status "$TASK_ID" blocked 2>/dev/null || true
   fi
 
-  # Disk log
-  TS=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
-  echo "[$TS] [watcher] $TASK_ID: $QUALITY (exit=$EXIT_CODE)" >> "$MASTER_LOG" 2>/dev/null || true
+  echo "[$(date -u '+%Y-%m-%d %H:%M:%S UTC')] [INFO] [dispatcher:watcher] Agent exited (task_id=$TASK_ID quality=$QUALITY exit=$EXIT_CODE)" >> "$MASTER_LOG" 2>/dev/null || true
 
 ) &>/dev/null &
 
@@ -662,8 +679,8 @@ else:
 # STEP 8: LOG + OUTPUT
 # ════════════════════════════════════════════════════════
 
-TS=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
-echo "[$TS] [spawn] $TASK_ID: PID=$AGENT_PID timeout=${TIMEOUT_MIN}min agent=$AGENT_ID role=${ROLE:-none}" >> "$MASTER_LOG" 2>/dev/null || true
+log INFO dispatcher "Watcher started (task_id=${TASK_ID} pid=$AGENT_PID agent=$AGENT_ID poll=5s)"
+echo "[$(date -u '+%Y-%m-%d %H:%M:%S UTC')] [INFO] [dispatcher:spawn] Agent registered (task_id=$TASK_ID pid=$AGENT_PID timeout=${TIMEOUT_MIN}min agent=$AGENT_ID role=${ROLE:-none})" >> "$MASTER_LOG" 2>/dev/null || true
 
 SPAWN_LINEAR_ID="$TASK_ID"
 [[ "$TASK_ID" == LOCAL-* ]] && [ -n "$PARENT_TASK" ] && SPAWN_LINEAR_ID="$PARENT_TASK"

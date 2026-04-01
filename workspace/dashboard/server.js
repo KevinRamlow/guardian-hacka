@@ -43,6 +43,13 @@ const LANGFUSE_PUBLIC_KEY = process.env.LANGFUSE_PUBLIC_KEY || '';
 const LANGFUSE_SECRET_KEY = process.env.LANGFUSE_SECRET_KEY || '';
 const LANGFUSE_AUTH = Buffer.from(`${LANGFUSE_PUBLIC_KEY}:${LANGFUSE_SECRET_KEY}`).toString('base64');
 
+const slog = (level, component, msg, meta = {}) => {
+  const extra = Object.keys(meta).length ? ' ' + Object.entries(meta).map(([k, v]) => `${k}=${v}`).join(' ') : '';
+  console.log(`[${new Date().toISOString()}] [${level}] [${component}] ${msg}${extra}`);
+};
+
+slog('INFO', 'dashboard', 'Server initializing', { port: PORT, bind: BIND });
+
 const app = express();
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
@@ -120,8 +127,9 @@ function loadStatsFromDisk() {
 function saveStatsToDisk() {
   try {
     fs.writeFileSync(STATS_FILE, JSON.stringify(persistentStats, null, 2));
+    slog('DEBUG', 'dashboard', 'Stats persisted', { path: STATS_FILE, completed: persistentStats.completedToday, failed: persistentStats.failedToday });
   } catch (e) {
-    console.error('Failed to save stats:', e.message);
+    slog('ERROR', 'dashboard', 'Failed to save stats', { error: e.message });
   }
 }
 
@@ -844,8 +852,10 @@ function broadcast(data) {
   });
 }
 
-process.on('uncaughtException', (e) => { console.error('UNCAUGHT:', e.message); });
-process.on('unhandledRejection', (e) => { console.error('UNHANDLED REJECTION:', e?.message || e); });
+process.on('uncaughtException', (e) => { slog('ERROR', 'dashboard', 'Uncaught exception', { error: e.message }); });
+process.on('unhandledRejection', (e) => { slog('ERROR', 'dashboard', 'Unhandled rejection', { error: e?.message || String(e) }); });
+process.on('SIGTERM', () => { slog('INFO', 'dashboard', 'SIGTERM received — shutting down'); server.close(); });
+process.on('SIGINT', () => { slog('INFO', 'dashboard', 'SIGINT received — shutting down'); server.close(); });
 
 async function pollAndBroadcast() {
   try {
@@ -858,6 +868,10 @@ async function pollAndBroadcast() {
 }
 
 wss.on('connection', (ws) => {
+  const clientId = `ws-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+  ws._clientId = clientId;
+  slog('INFO', 'dashboard', 'WebSocket client connected', { clientId, totalClients: wss.clients.size });
+  ws.on('close', () => slog('INFO', 'dashboard', 'WebSocket client disconnected', { clientId }));
   ws.send(JSON.stringify({ type: 'update', data: dashboardState }));
 
   ws.on('message', async (raw) => {
@@ -1403,7 +1417,7 @@ app.use((req, res, next) => {
 loadStatsFromDisk();
 
 server.listen(PORT, BIND, () => {
-  console.log(`Anton Dashboard on http://${BIND}:${PORT}`);
+  slog('INFO', 'dashboard', 'Server ready', { url: `http://${BIND}:${PORT}`, pollInterval: `${POLL_INTERVAL}ms` });
   pollAndBroadcast();
   setInterval(pollAndBroadcast, POLL_INTERVAL);
 });
